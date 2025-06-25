@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: model-converter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main application service
+  app:
+    build: .
+    container_name: model-converter-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./model_cache:/app/model_cache
+      - ./logs:/app/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+
+  # Celery Worker service
+  worker:
+    build: .
+    container_name: model-converter-worker
+    command: ["python", "-m", "celery", "-A", "app.tasks", "worker", "--loglevel=info", "--concurrency=2"]
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./model_cache:/app/model_cache
+      - ./logs:/app/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat service (scheduler)
+  beat:
+    build: .
+    container_name: model-converter-beat
+    command: ["python", "-m", "celery", "-A", "app.tasks", "beat", "--loglevel=info"]
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=false
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Flower monitoring service
+  flower:
+    build: .
+    container_name: model-converter-flower
+    command: ["celery", "-A", "app.tasks", "flower", "--port=5555"]
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: model-converter-network 

@@ -1,0 +1,21 @@
+# 忽略模型缓存和 HuggingFace 相关文件
+model_cache/
+*.safetensors
+*.bin
+*.pt
+
+# 忽略输出文件
+outputs/
+*.onnx
+
+# 忽略数据库和临时文件
+dump.rdb
+*.lock
+
+# 忽略 Python 编译文件
+__pycache__/
+*.pyc
+
+# 其他常见忽略
+.env
+.env.* 

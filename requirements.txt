@@ -1,0 +1,52 @@
+# Core frameworks
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+celery==5.3.4
+redis==5.0.1
+streamlit==1.28.1
+pydantic==2.5.0
+pydantic-settings==2.1.0
+transformers==4.35.2
+torch==2.1.1
+onnx==1.15.0
+onnxruntime==1.16.3
+psutil==5.9.6
+python-multipart==0.0.6
+websockets==12.0
+
+# Model conversion
+transformers>=4.35.0
+
+# Format conversion
+onnx>=1.15.0
+onnxruntime>=1.16.0
+
+# System monitoring
+psutil>=5.9.0
+
+# Utility libraries
+pydantic>=2.5.0
+python-multipart>=0.0.6
+websockets>=12.0
+pydantic-settings
+
+# Logging
+loguru==0.7.2
+
+# Testing
+pytest==7.4.3
+
+# Dev tools
+black==23.11.0
+
+# Optional: MLX for Mac (uncomment if needed)
+# mlx>=0.0.8  # Only install on Mac with Python 3.10+ 
+
+# New dependencies for extended formats
+auto-gptq==0.5.1
+auto-awq==0.1.6
+llama-cpp-python==0.2.20
+ctransformers==0.2.27
+mlx==0.0.8
+sentencepiece==0.1.99
+protobuf==4.25.1 
