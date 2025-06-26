@@ -72,6 +72,39 @@ ModelConverterTool/
 
 ---
 
+## Output Directory Structure
+
+After conversion, your output directory will typically look like this:
+
+```
+outputs/my_model_onnx/
+├── model.onnx            # ONNX model file
+├── config.json           # Model configuration
+├── tokenizer.json        # Tokenizer config (if applicable)
+├── special_tokens_map.json
+├── format_config.json    # Format-specific metadata
+└── README.md             # Model card with conversion info
+```
+
+- Not all files are present for every format. For example, ONNX only requires `model.onnx` and optionally config files.
+- The directory name and structure may vary depending on your output path and format.
+
+---
+
+## Version Compatibility
+
+For best results, we recommend the following versions:
+
+- Python: 3.8–3.11
+- torch: 2.0 or newer
+- transformers: 4.30 or newer
+- onnx: 1.13 or newer
+- onnxruntime: 1.14 or newer
+
+Other versions may work, but these are tested and supported. If you encounter issues, please check your package versions first.
+
+---
+
 ## Installation
 
 ```bash
