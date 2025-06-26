@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 # Add src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
 
-from src.converter import ModelConverter
-from src.validator import ModelValidator
-from src.config import (
+from model_converter_tool.converter import ModelConverter
+from model_converter_tool.validator import ModelValidator
+from model_converter_tool.config import (
     ConversionConfig, load_config_preset, list_available_presets, resolve_final_config
 )
-from src.utils import setup_directories, cleanup_temp_files
+from model_converter_tool.utils import setup_directories, cleanup_temp_files
 
 
 def cmd_convert(args) -> None:

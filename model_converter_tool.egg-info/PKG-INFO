@@ -1,3 +1,19 @@
+Metadata-Version: 2.4
+Name: model-converter-tool
+Version: 1.0.0
+Summary: A CLI and API tool for converting machine learning models between formats.
+Home-page: https://github.com/duoyuncloud/ModelConverterTool
+Author-email: Your Name <your@email.com>
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: torch
+Requires-Dist: transformers
+Requires-Dist: onnx
+Requires-Dist: onnxruntime
+Requires-Dist: safetensors
+Dynamic: home-page
+Dynamic: requires-python
+
 # Model Converter Tool
 
 A powerful, API-first and CLI-friendly tool for converting, validating, and managing machine learning models across multiple formats. Supports real model conversion for ONNX, FP16, HuggingFace, TorchScript, GGUF, MLX, GPTQ, AWQ, and more.

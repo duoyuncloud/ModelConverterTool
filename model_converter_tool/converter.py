@@ -233,18 +233,20 @@ class ModelConverter:
             logger.error(f"Failed to load model {model_name}: {e}")
             raise e
 
-    def convert(self, 
-                input_source: str,
-                output_format: str,
-                output_path: str,
-                model_type: str = "auto",
-                quantization: Optional[str] = None,
-                device: str = "auto",
-                config: Optional[Dict[str, Any]] = None,
-                offline_mode: bool = False) -> bool:
+    def convert(
+        self,
+        input_source: str,
+        output_format: str,
+        output_path: str,
+        model_type: str = "auto",
+        quantization: Optional[str] = None,
+        device: str = "auto",
+        config: Optional[Dict[str, Any]] = None,
+        offline_mode: bool = False
+    ) -> bool:
         """
-        Convert a model between formats with enhanced validation and error handling
-        
+        Convert a model between formats.
+
         Args:
             input_source: HuggingFace model name (hf:model_name) or local path
             output_format: Target format (onnx, gguf, mlx, etc.)
@@ -254,7 +256,7 @@ class ModelConverter:
             device: Device for conversion (auto, cpu, cuda)
             config: Optional configuration dictionary with model parameters
             offline_mode: If True, only use local models, skip HuggingFace downloads
-        
+
         Returns:
             bool: True if conversion successful, False otherwise
         """
