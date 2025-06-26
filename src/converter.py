@@ -576,7 +576,14 @@ class ModelConverter:
                 import auto_gptq
                 from auto_gptq import AutoGPTQForCausalLM
             except ImportError:
-                logger.warning("GPTQ conversion requires auto-gptq. Install with: pip install auto-gptq")
+                logger.warning(
+                    "\n⚠️ auto-gptq 安装失败或不可用：\n"
+                    "  - 这不会影响大部分模型格式的转换。\n"
+                    "  - 只有 GPTQ 量化格式的真实量化功能不可用，工具会自动导出兼容格式。\n"
+                    "  - 如需真实量化，请在支持 CUDA 的 Linux + NVIDIA 显卡环境下安装 auto-gptq。\n"
+                    "  - 安装命令：pip install auto-gptq\n"
+                    "  - 详情见：https://github.com/PanQiWei/AutoGPTQ"
+                )
                 logger.info("Creating GPTQ-compatible format without full quantization")
                 return self._convert_to_gptq_compatible(model_name, output_path, model_type, quantization, device)
             
@@ -686,7 +693,14 @@ class ModelConverter:
                 import awq
                 from awq import AutoAWQForCausalLM
             except ImportError:
-                logger.warning("AWQ conversion requires autoawq. Install with: pip install autoawq")
+                logger.warning(
+                    "\n⚠️ autoawq 安装失败或不可用：\n"
+                    "  - 这不会影响大部分模型格式的转换。\n"
+                    "  - 只有 AWQ 量化格式的真实量化功能不可用，工具会自动导出兼容格式。\n"
+                    "  - 如需真实量化，请在支持 CUDA 的 Linux + NVIDIA 显卡环境下安装 autoawq。\n"
+                    "  - 安装命令：pip install autoawq\n"
+                    "  - 详情见：https://github.com/casper-hansen/AutoAWQ"
+                )
                 logger.info("Creating AWQ-compatible format without full quantization")
                 return self._convert_to_awq_compatible(model_name, output_path, model_type, quantization, device)
             

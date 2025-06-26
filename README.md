@@ -250,3 +250,15 @@ python model_converter.py convert \
     --output-path "./output" \
     --verbose
 ```
+
+## 常见问题（FAQ）
+
+### auto-gptq/autoawq 安装报错怎么办？
+
+- 这些依赖只在 Linux + NVIDIA 显卡环境下可用。
+- 如果你在 macOS 或没有 NVIDIA 显卡的机器上看到安装报错，可以放心忽略，不影响大部分功能。
+- 只有 GPTQ/AWQ 量化格式的真实量化不可用，其他格式转换都没问题。
+- 如需 GPTQ/AWQ 真实量化，请在支持 CUDA 的 Linux + NVIDIA 显卡环境下安装 auto-gptq/autoawq。
+- 相关项目地址：
+  - auto-gptq: https://github.com/PanQiWei/AutoGPTQ
+  - autoawq: https://github.com/casper-hansen/AutoAWQ

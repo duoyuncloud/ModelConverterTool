@@ -15,7 +15,7 @@ llama-cpp-python>=0.2.0
 mlx>=0.0.8
 
 # Optional: Quantization libraries
-auto-gptq>=0.4.0
+auto-gptq>=0.4.0  # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错
 awq>=0.1.0
 
 # Configuration and utilities
@@ -31,4 +31,6 @@ protobuf>=3.20.0
 # Development dependencies
 pytest>=7.0.0
 black>=23.0.0
-flake8>=6.0.0 
+flake8>=6.0.0
+
+autoawq>=0.2.0    # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错 
