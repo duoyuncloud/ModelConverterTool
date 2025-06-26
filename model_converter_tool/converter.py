@@ -1047,7 +1047,6 @@ class ModelConverter:
         try:
             model_card = f"""---
 language: en
-license: mit
 tags:
 - {format_type}
 - converted
@@ -1070,8 +1069,6 @@ This model has been converted to {format_type.upper()} format using Model-Conver
 ## Usage
 This model can be loaded using the appropriate {format_type.upper()} loader for your framework.
 
-## License
-Please refer to the original model's license for usage terms.
 """
             
             with open(output_dir / "README.md", "w") as f:

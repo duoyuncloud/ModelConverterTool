@@ -7,9 +7,6 @@ name = "model-converter-tool"
 version = "1.0.0"
 description = "A CLI and API tool for converting machine learning models between formats."
 readme = "README.md"
-authors = [
-    { name = "Your Name", email = "your@email.com" }
-]
 requires-python = ">=3.8"
 dependencies = [
     "torch",
