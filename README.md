@@ -86,6 +86,12 @@ pip install auto-gptq awq llama-cpp-python mlx
 
 ---
 
+## Typical User Workflow
+
+Most users use this tool to convert their own locally trained models (e.g., HuggingFace, PyTorch, ONNX) to other formats for deployment or interoperability. You can convert a single model or batch convert multiple models using a YAML configuration file. Public model pre-download is not required for normal use.
+
+---
+
 ## Quick Start
 
 ### CLI Usage
@@ -112,6 +118,57 @@ success = converter.convert(
     model_type="text-classification"
 )
 print("Conversion success:", success)
+```
+
+---
+
+## Batch Conversion & Configuration
+
+You can convert multiple models at once, or use advanced options, by editing a YAML configuration file.
+
+### 1. Copy the template
+
+```bash
+cp configs/batch_template.yaml configs/my_batch.yaml
+```
+
+### 2. Edit your YAML config
+
+Fill in your own model paths, output formats, and options. Example for batch conversion:
+
+```yaml
+models:
+  my_model_1:
+    input: "/path/to/my_model_1"
+    output_format: "onnx"
+    output_path: "outputs/my_model_1_onnx"
+    model_type: "text-classification"
+  my_model_2:
+    input: "/path/to/my_model_2"
+    output_format: "torchscript"
+    output_path: "outputs/my_model_2_ts"
+    model_type: "text-generation"
+```
+
+You can also use a YAML file for advanced single-model conversion:
+
+```yaml
+model_name: "my-custom-model"
+model_type: "text-generation"
+output_format: "onnx"
+device: "cuda"
+quantization: "q4_k_m"
+config:
+  max_length: 512
+  use_cache: false
+```
+
+You can place your YAML config anywhere, but we recommend keeping it in the `configs/` directory for organization.
+
+### 3. Run batch conversion
+
+```bash
+python3 model_converter.py batch-convert --config-file configs/my_batch.yaml
 ```
 
 ---
@@ -147,60 +204,6 @@ converter.convert(
 
 ---
 
-## Configuration
-
-### Model Presets
-
-Predefined model configurations are available in `configs/model_presets.yaml`:
-
-```yaml
-common_models:
-  bert-base-uncased:
-    default_format: onnx
-    description: BERT base uncased model
-    model_type: text-classification
-    supported_formats:
-      - onnx
-      - gguf
-      - mlx
-      - torchscript
-```
-
-### Custom Configuration
-
-You can create custom YAML configuration files for batch or advanced conversion:
-
-```yaml
-model_name: "my-custom-model"
-model_type: "text-generation"
-output_format: "onnx"
-device: "cuda"
-quantization: "q4_k_m"
-config:
-  max_length: 512
-  use_cache: false
-```
-
----
-
-## Output Format
-
-All conversions produce outputs that comply with Hugging Face format standards:
-
-```
-output_model/
-├── model.onnx            # ONNX model file
-├── model.pt              # TorchScript model file
-├── model.safetensors     # Model weights (HF/FP16)
-├── config.json           # Model configuration
-├── tokenizer.json        # Tokenizer configuration
-├── special_tokens_map.json  # Special tokens
-├── format_config.json    # Format-specific metadata
-└── README.md             # Model card with conversion info
-```
-
----
-
 ## Supported Model Types
 
 - Text: text-generation, text-classification, text2text-generation
@@ -222,3 +225,14 @@ output_model/
 2. Quantization Dependencies
    - Install required packages: `auto-gptq`, `awq`, `llama-cpp-python`, `mlx`
    - Some quantization requires CUDA support (Linux + NVIDIA GPU)
+
+### Frequently Asked Questions
+
+**Q: Do I need to pre-download public models?**  
+A: No, unless you want to test or demo. For your own models, just use `--local-path` and point to your local model directory.
+
+**Q: Where should I put my YAML config?**  
+A: Anywhere you like! The `configs/` directory is recommended for organization, but you can specify any path with `--config-file`.
+
+**Q: Can I convert models fully offline?**  
+A: Yes! Use `--offline-mode` and provide a local model path. No internet connection is required for local models.
