@@ -119,6 +119,26 @@ pip install auto-gptq awq llama-cpp-python mlx
 
 ---
 
+## Recommended & Optional Dependencies
+
+The following packages are recommended for advanced features and postprocess options:
+
+| Package         | Purpose                                      | Required for                |
+|----------------|----------------------------------------------|-----------------------------|
+| onnxsim        | ONNX model simplification                    | postprocess: simplify (ONNX)|
+| torch-optimizer| TorchScript optimization                     | postprocess: optimize (TS)  |
+| safetensors    | Fast model saving/loading                    | FP16, general use           |
+
+To install all optional features:
+
+```bash
+pip install onnxsim torch-optimizer
+```
+
+If you only need basic conversion, these are not required.
+
+---
+
 ## Typical User Workflow
 
 Most users use this tool to convert their own locally trained models (e.g., HuggingFace, PyTorch, ONNX) to other formats for deployment or interoperability. You can convert a single model or batch convert multiple models using a YAML configuration file. Public model pre-download is not required for normal use.
@@ -159,6 +179,9 @@ print("Conversion success:", success)
 
 You can convert multiple models at once, or use advanced options, by editing a YAML configuration file.
 
+- Each model in the YAML can have its own `device`, `quantization`, and `postprocess` fields (all optional).
+- After each conversion, validation is automatically run and logs are saved to `outputs/logs/{model_name}.log`.
+
 ### 1. Copy the template
 
 ```bash
@@ -167,7 +190,7 @@ cp configs/batch_template.yaml configs/my_batch.yaml
 
 ### 2. Edit your YAML config
 
-Fill in your own model paths, output formats, and options. Example for batch conversion:
+Example for batch conversion:
 
 ```yaml
 models:
@@ -176,25 +199,23 @@ models:
     output_format: "onnx"
     output_path: "outputs/my_model_1_onnx"
     model_type: "text-classification"
+    device: "cpu"           # optional
+    quantization: "q4_k_m"  # optional
+    postprocess: "strip_unused_nodes" # optional
   my_model_2:
     input: "/path/to/my_model_2"
     output_format: "torchscript"
     output_path: "outputs/my_model_2_ts"
     model_type: "text-generation"
+    device: "cuda"
 ```
 
-You can also use a YAML file for advanced single-model conversion:
+**Field explanations:**
+- `device`: Which device to use for conversion. Options: `"cpu"`, `"cuda"`, or `"auto"` (default, auto-selects GPU if available).
+- `quantization`: Quantization method to reduce model size or speed up inference. Options include `"fp16"`, `"int8"`, `"q4_k_m"`, etc. Not all models/formats support all methods.
+- `postprocess`: Extra processing after conversion. For ONNX models, you can use `"simplify"` (requires onnx-simplifier) or `"optimize"` (requires onnxoptimizer). For TorchScript models, you can use `"optimize"` (uses torch.jit.optimize_for_inference). For FP16 models, you can use `"prune"` (sets small weights to zero, requires safetensors). GGUF and MLX postprocess are reserved for future use.
 
-```yaml
-model_name: "my-custom-model"
-model_type: "text-generation"
-output_format: "onnx"
-device: "cuda"
-quantization: "q4_k_m"
-config:
-  max_length: 512
-  use_cache: false
-```
+You can also use a YAML file for advanced single-model conversion.
 
 You can place your YAML config anywhere, but we recommend keeping it in the `configs/` directory for organization.
 

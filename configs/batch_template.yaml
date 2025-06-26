@@ -1,5 +1,6 @@
 # Batch conversion configuration template
 # Use this file to convert multiple models at once
+# You can specify device, quantization, and postprocess for each model (all optional)
 
 models:
   gpt2_to_onnx:
@@ -7,15 +8,20 @@ models:
     output_format: "onnx"
     output_path: "outputs/gpt2.onnx"
     model_type: "text-generation"
+    device: "cpu"           # optional, e.g. 'cpu', 'cuda', 'auto'
+    quantization: "q4_k_m"  # optional, e.g. 'q4_k_m', 'fp16', etc.
+    postprocess: "strip_unused_nodes" # optional, placeholder for future use
   
   bert_to_fp16:
     input: "hf:bert-base-uncased"
     output_format: "fp16"
     output_path: "outputs/bert_fp16"
     model_type: "text-classification"
+    device: "auto"
   
   distilbert_to_onnx:
     input: "hf:distilbert-base-uncased"
     output_format: "onnx"
     output_path: "outputs/distilbert.onnx"
-    model_type: "text-classification" 
+    model_type: "text-classification"
+    # device, quantization, postprocess can be omitted if not needed 

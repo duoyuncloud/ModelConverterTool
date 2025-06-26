@@ -33,4 +33,11 @@ pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
 
-autoawq>=0.2.0    # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错 
+autoawq>=0.2.0    # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错
+
+# Optional dependencies for advanced features/postprocess:
+# onnxsim: ONNX model simplification (for postprocess:simplify)
+# torch-optimizer: TorchScript optimization (for postprocess:optimize)
+# safetensors: Fast model saving/loading (already required)
+# To install all optional features:
+# pip install onnxsim torch-optimizer 

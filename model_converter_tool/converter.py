@@ -242,52 +242,33 @@ class ModelConverter:
         quantization: Optional[str] = None,
         device: str = "auto",
         config: Optional[Dict[str, Any]] = None,
-        offline_mode: bool = False
-    ) -> bool:
+        offline_mode: bool = False,
+        postprocess: Optional[str] = None
+    ) -> dict:
         """
         Convert a model between formats.
-
-        Args:
-            input_source: HuggingFace model name (hf:model_name) or local path
-            output_format: Target format (onnx, gguf, mlx, etc.)
-            output_path: Output file/directory path
-            model_type: Model type for conversion
-            quantization: Quantization method (for supported formats)
-            device: Device for conversion (auto, cpu, cuda)
-            config: Optional configuration dictionary with model parameters
-            offline_mode: If True, only use local models, skip HuggingFace downloads
-
-        Returns:
-            bool: True if conversion successful, False otherwise
+        Returns a dict with success, validation, postprocess_result, and error info.
         """
         try:
             logger.info(f"Starting conversion: {input_source} -> {output_format}")
-            
-            # Enhanced input validation
             validation_result = self._validate_conversion_inputs(
                 input_source, output_format, model_type, quantization, device
             )
             if not validation_result['valid']:
                 for error in validation_result['errors']:
                     logger.error(f"Validation error: {error}")
-                return False
-            
-            # Parse input source
+                return {'success': False, 'error': 'input validation failed'}
             if input_source.startswith("hf:"):
                 if offline_mode:
                     logger.error("Offline mode enabled but HuggingFace model specified")
-                    return False
+                    return {'success': False, 'error': 'offline mode with HF'}
                 model_name = input_source[3:]
                 input_type = "huggingface"
             else:
                 model_name = input_source
                 input_type = "local"
-            
-            # Create output directory if needed
             output_dir = Path(output_path).parent
             output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Log conversion details
             logger.info(f"Input type: {input_type}")
             logger.info(f"Model name: {model_name}")
             logger.info(f"Model type: {model_type}")
@@ -298,45 +279,62 @@ class ModelConverter:
                 logger.info(f"Using custom configuration with {len(config)} parameters")
             if offline_mode:
                 logger.info("Offline mode enabled")
-            
-            # Perform real/placeholder conversion based on format
+            postprocess_result = None
             if output_format == "hf":
                 success = self._convert_to_hf(model_name, output_path, model_type, device, offline_mode)
             elif output_format == "onnx":
                 success = self._convert_to_onnx(model_name, output_path, model_type, device, offline_mode)
+                if success and postprocess:
+                    logger.info(f"Running ONNX postprocess: {postprocess}")
+                    postprocess_result = self._postprocess_onnx(output_path, postprocess)
             elif output_format == "torchscript":
                 success = self._convert_to_torchscript(model_name, output_path, model_type, device, offline_mode)
+                if success and postprocess:
+                    logger.info(f"Running TorchScript postprocess: {postprocess}")
+                    postprocess_result = self._postprocess_torchscript(output_path, postprocess)
             elif output_format == "fp16":
                 success = self._convert_to_fp16(model_name, output_path, model_type, device, offline_mode)
+                if success and postprocess:
+                    logger.info(f"Running FP16 postprocess: {postprocess}")
+                    postprocess_result = self._postprocess_fp16(output_path, postprocess)
             elif output_format == "gptq":
                 success = self._convert_to_gptq(model_name, output_path, model_type, quantization, device)
             elif output_format == "awq":
                 success = self._convert_to_awq(model_name, output_path, model_type, quantization, device)
             elif output_format == "gguf":
                 success = self._convert_to_gguf(model_name, output_path, model_type, quantization, device)
+                if success and postprocess:
+                    logger.info(f"Running GGUF postprocess: {postprocess}")
+                    postprocess_result = self._postprocess_gguf(output_path, postprocess)
             elif output_format == "mlx":
                 success = self._convert_to_mlx(model_name, output_path, model_type, quantization, device)
+                if success and postprocess:
+                    logger.info(f"Running MLX postprocess: {postprocess}")
+                    postprocess_result = self._postprocess_mlx(output_path, postprocess)
             else:
                 logger.error(f"Conversion to {output_format} not yet implemented")
-                return False
-            
+                return {'success': False, 'error': 'not implemented'}
+            validation_passed = False
             if success:
                 logger.info(f"Conversion completed successfully: {output_path}")
-                # Validate output
                 if self._validate_output(output_path, output_format):
                     logger.info("Output validation passed")
+                    validation_passed = True
                 else:
                     logger.warning("Output validation failed, but conversion completed")
-                return True
+                return {
+                    'success': True,
+                    'validation': validation_passed,
+                    'postprocess_result': postprocess_result
+                }
             else:
                 logger.error("Conversion failed")
-                return False
-                
+                return {'success': False, 'error': 'conversion failed'}
         except Exception as e:
             logger.error(f"Conversion error: {e}")
             import traceback
             logger.debug(f"Traceback: {traceback.format_exc()}")
-            return False
+            return {'success': False, 'error': str(e)}
     
     def _validate_conversion_inputs(self, input_source: str, output_format: str, 
                                    model_type: str, quantization: str, device: str) -> Dict[str, Any]:
@@ -1454,7 +1452,6 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         return info 
 
     def batch_convert(self, tasks: List[dict], max_workers: int = None, max_retries: int = 2, log_level: str = "INFO") -> List[dict]:
-        """并行批量转换，支持失败自动重试和进度条。tasks为dict列表，每项包含input_source/output_format/output_path/model_type等。返回每个任务的结果。"""
         import concurrent.futures
         from tqdm import tqdm
         import logging
@@ -1466,7 +1463,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         def run_task(task):
             for attempt in range(max_retries+1):
                 try:
-                    ok = self.convert(
+                    result = self.convert(
                         input_source=task['input_source'],
                         output_format=task['output_format'],
                         output_path=task['output_path'],
@@ -1474,15 +1471,137 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
                         quantization=task.get('quantization'),
                         device=task.get('device', 'auto'),
                         config=task.get('config'),
-                        offline_mode=task.get('offline_mode', False)
+                        offline_mode=task.get('offline_mode', False),
+                        postprocess=task.get('postprocess')
                     )
-                    if ok:
-                        return {**task, 'success': True, 'attempts': attempt+1}
+                    if result.get('success'):
+                        return {**task, **result, 'attempts': attempt+1}
                 except Exception as e:
                     logger.error(f"Task failed: {task['input_source']} -> {task['output_format']}, error: {e}")
-            return {**task, 'success': False, 'attempts': max_retries+1}
+            return {**task, 'success': False, 'error': 'max retries', 'attempts': max_retries+1}
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(run_task, t) for t in tasks]
             for f in tqdm(concurrent.futures.as_completed(futures), total=len(tasks), desc="Batch Conversion"):
                 results.append(f.result())
-        return results 
+        # Print improved summary
+        print("\nBatch Conversion Summary:")
+        for r in results:
+            print(f"- {r.get('input_source')} -> {r.get('output_format')}: {'✅' if r.get('success') else '❌'} | Validation: {'✅' if r.get('validation') else '❌'} | Postprocess: {r.get('postprocess_result') or '-'}")
+        success_count = sum(1 for r in results if r.get('success'))
+        print(f"\n📊 Batch conversion completed: {success_count}/{len(results)} successful\n")
+        return results
+
+    def _postprocess_onnx(self, output_path, postprocess_type):
+        import os
+        import onnx
+        onnx_file = os.path.join(output_path, "model.onnx") if os.path.isdir(output_path) else output_path
+        if not os.path.exists(onnx_file):
+            msg = f"  - ONNX file not found for postprocess: {onnx_file}"
+            print(msg)
+            return msg
+        if postprocess_type == "simplify":
+            try:
+                from onnxsim import simplify
+                model = onnx.load(onnx_file)
+                model_simp, check = simplify(model)
+                if check:
+                    onnx.save(model_simp, onnx_file)
+                    msg = f"  - ONNX simplified successfully: {onnx_file}"
+                    print(msg)
+                    return msg
+                else:
+                    msg = f"  - ONNX simplification failed: {onnx_file}"
+                    print(msg)
+                    return msg
+            except ImportError:
+                msg = "  - onnx-simplifier not installed. Run: pip install onnxsim"
+                print(msg)
+                return msg
+            except Exception as e:
+                msg = f"  - ONNX simplification error: {e}"
+                print(msg)
+                return msg
+        elif postprocess_type == "optimize":
+            try:
+                import onnxoptimizer
+                model = onnx.load(onnx_file)
+                passes = onnxoptimizer.get_available_passes()
+                optimized = onnxoptimizer.optimize(model, passes)
+                onnx.save(optimized, onnx_file)
+                msg = f"  - ONNX optimized successfully: {onnx_file}"
+                print(msg)
+                return msg
+            except ImportError:
+                msg = "  - onnxoptimizer not installed. Run: pip install onnxoptimizer"
+                print(msg)
+                return msg
+            except Exception as e:
+                msg = f"  - ONNX optimization error: {e}"
+                print(msg)
+                return msg
+        else:
+            msg = f"  - Unknown ONNX postprocess type: {postprocess_type}"
+            print(msg)
+            return msg
+
+    def _postprocess_torchscript(self, output_path, postprocess_type):
+        import os
+        import torch
+        ts_file = os.path.join(output_path, "model.pt") if os.path.isdir(output_path) else output_path
+        if not os.path.exists(ts_file):
+            msg = f"  - TorchScript file not found: {ts_file}"
+            print(msg)
+            return msg
+        if postprocess_type == "optimize":
+            try:
+                model = torch.jit.load(ts_file)
+                optimized = torch.jit.optimize_for_inference(model)
+                torch.jit.save(optimized, ts_file)
+                msg = f"  - TorchScript optimized successfully: {ts_file}"
+                print(msg)
+                return msg
+            except Exception as e:
+                msg = f"  - TorchScript optimization error: {e}"
+                print(msg)
+                return msg
+        else:
+            msg = f"  - Unknown TorchScript postprocess type: {postprocess_type}"
+            print(msg)
+            return msg
+
+    def _postprocess_fp16(self, output_path, postprocess_type):
+        import os
+        import torch
+        try:
+            import safetensors.torch
+        except ImportError:
+            msg = "  - safetensors not installed. Run: pip install safetensors"
+            print(msg)
+            return msg
+        st_file = os.path.join(output_path, "model.safetensors") if os.path.isdir(output_path) else output_path
+        if not os.path.exists(st_file):
+            msg = f"  - FP16 file not found: {st_file}"
+            print(msg)
+            return msg
+        if postprocess_type == "prune":
+            try:
+                state_dict = safetensors.torch.load_file(st_file)
+                pruned = {k: (v * (v.abs() > 1e-4)) for k, v in state_dict.items()}
+                safetensors.torch.save_file(pruned, st_file)
+                msg = f"  - FP16 weights pruned (|w|<1e-4 set to 0): {st_file}"
+                print(msg)
+                return msg
+            except Exception as e:
+                msg = f"  - FP16 pruning error: {e}"
+                print(msg)
+                return msg
+        else:
+            msg = f"  - Unknown FP16 postprocess type: {postprocess_type}"
+            print(msg)
+            return msg
+
+    def _postprocess_gguf(self, output_path, postprocess_type):
+        print(f"  - GGUF postprocess ({postprocess_type}) not yet implemented. Placeholder.")
+
+    def _postprocess_mlx(self, output_path, postprocess_type):
+        print(f"  - MLX postprocess ({postprocess_type}) not yet implemented. Placeholder.") 

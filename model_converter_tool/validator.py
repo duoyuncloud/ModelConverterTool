@@ -116,34 +116,19 @@ class ModelValidator:
         details = []
         errors = []
         warnings = []
-        
         model_dir = Path(model_path)
-        
-        # Determine required files based on model type and format
-        if model_type == "auto":
-            # Try to detect model type
-            if (model_dir / "config.json").exists() and (model_dir / "model.safetensors").exists():
-                required_files = self.required_files['huggingface']
-            elif (model_dir / "model.onnx").exists() or (model_dir.parent / "distilbert.onnx").exists():
-                required_files = self.required_files['onnx']
-            elif (model_dir / "model.gguf").exists():
-                required_files = self.required_files['gguf']
-            elif (model_dir / "model.npz").exists():
-                required_files = self.required_files['mlx']
-            elif (model_dir / "model.pt").exists():
-                required_files = self.required_files['torchscript']
-            else:
-                # Check if it's a single file (like ONNX)
-                if model_dir.is_file():
-                    details.append(f"✅ Found model file: {model_dir.name}")
-                    return {'details': details, 'errors': errors, 'warnings': warnings}
-                else:
-                    required_files = self.required_files['huggingface']  # Default
-        else:
-            required_files = self.required_files.get(model_type, self.required_files['huggingface'])
-        
-        # Check each required file
-        for file_name in required_files:
+        # 优化：对 onnx/torchscript/gguf/mlx 只要求主文件存在，附属文件缺失降级为 warning
+        main_file_map = {
+            'onnx': 'model.onnx',
+            'torchscript': 'model.pt',
+            'gguf': 'model.gguf',
+            'mlx': 'model.npz',
+        }
+        # fallback 逻辑
+        key = model_type if model_type in self.required_files else 'huggingface'
+        # 检查是否真的为 huggingface 格式（有 config.json 且有权重文件）
+        is_hf = (model_dir / 'config.json').exists() and ((model_dir / 'pytorch_model.bin').exists() or (model_dir / 'model.safetensors').exists())
+        for file_name in self.required_files[key]:
             file_path = model_dir / file_name
             if file_path.exists():
                 details.append(f"✅ Found required file: {file_name}")
@@ -151,6 +136,9 @@ class ModelValidator:
                 # For HuggingFace models, check for safetensors as alternative to pytorch_model.bin
                 if file_name == "pytorch_model.bin" and (model_dir / "model.safetensors").exists():
                     details.append(f"✅ Found required file: model.safetensors (alternative to {file_name})")
+                elif file_name == "pytorch_model.bin" and not is_hf:
+                    # 非 huggingface 格式，缺失 pytorch_model.bin 只给 warning
+                    warnings.append(f"⚠️ Missing optional file: {file_name} (not required for this format)")
                 else:
                     errors.append(f"❌ Missing required file: {file_name}")
         

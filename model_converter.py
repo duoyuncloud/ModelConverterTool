@@ -15,6 +15,8 @@ import sys
 import argparse
 from typing import Optional, Dict, Any, List
 import logging
+import importlib
+import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -32,6 +34,32 @@ from model_converter_tool.config import (
     ConversionConfig, load_config_preset, list_available_presets, resolve_final_config
 )
 from model_converter_tool.utils import setup_directories, cleanup_temp_files
+
+RECOMMENDED_VERSIONS = {
+    'torch': '2.0',
+    'transformers': '4.30',
+    'onnx': '1.13',
+    'onnxruntime': '1.14',
+}
+
+def check_dependencies(skip_check=False):
+    if skip_check:
+        return
+    import sys
+    import pkg_resources
+    print("[Dependency Check] Checking required package versions...")
+    for pkg, min_version in RECOMMENDED_VERSIONS.items():
+        try:
+            mod = importlib.import_module(pkg)
+            ver = getattr(mod, '__version__', None)
+            if ver is None:
+                ver = pkg_resources.get_distribution(pkg).version
+            if tuple(map(int, ver.split('.')[:2])) < tuple(map(int, min_version.split('.'))):
+                print(f"WARNING: {pkg} version {ver} is below recommended {min_version}. Consider upgrading: pip install -U {pkg}")
+        except ImportError:
+            print(f"WARNING: {pkg} is not installed. Install with: pip install {pkg}")
+        except Exception as e:
+            print(f"WARNING: Could not check {pkg}: {e}")
 
 
 def cmd_convert(args) -> None:
@@ -174,29 +202,27 @@ def cmd_list_models(args) -> None:
 
 
 def cmd_batch_convert(args) -> None:
-    """Convert multiple models from configuration file"""
+    """Convert multiple models from configuration file, with per-model device/quantization/postprocess and batch validation/logging."""
     if not os.path.exists(args.config_file):
         print(f"❌ Configuration file does not exist: {args.config_file}")
         sys.exit(1)
-    
     try:
         setup_directories()
         converter = ModelConverter()
-        
+        validator = ModelValidator()
         # Load batch configuration
         with open(args.config_file, 'r') as f:
             import yaml
             batch_config = yaml.safe_load(f)
-        
         print(f"🔄 Starting batch conversion from: {args.config_file}")
-        
         models = batch_config.get('models', {})
         success_count = 0
         total_count = len(models)
-        
+        os.makedirs('outputs/logs', exist_ok=True)
         for model_name, model_config in models.items():
             print(f"\n📦 Processing: {model_name}")
-            
+            log_lines = []
+            log_lines.append(f"[{datetime.datetime.now()}] Processing: {model_name}")
             try:
                 # Extract conversion parameters
                 input_source = model_config.get('input')
@@ -205,33 +231,60 @@ def cmd_batch_convert(args) -> None:
                 model_type = model_config.get('model_type', 'auto')
                 quantization = model_config.get('quantization')
                 device = model_config.get('device', 'auto')
-                # Use offline mode from CLI if set
+                postprocess = model_config.get('postprocess')
                 offline_mode = getattr(args, 'offline_mode', False)
                 # Perform conversion
-                success = converter.convert(
+                log_lines.append(f"Converting: {input_source} -> {output_format} at {output_path}")
+                result = converter.convert(
                     input_source=input_source,
                     output_format=output_format,
                     output_path=output_path,
                     model_type=model_type,
                     quantization=quantization,
                     device=device,
-                    offline_mode=offline_mode
+                    offline_mode=offline_mode,
+                    postprocess=postprocess
                 )
-                
-                if success:
+                if result.get('success'):
                     print(f"✅ {model_name}: Conversion successful")
-                    success_count += 1
+                    log_lines.append("Conversion successful")
+                    # Validate output
+                    val_result = validator.validate_model(
+                        model_path=output_path,
+                        model_type=model_type
+                    )
+                    if val_result.is_valid:
+                        print(f"  - Validation passed!")
+                        log_lines.append("Validation passed!")
+                    else:
+                        print(f"  - Validation failed!")
+                        log_lines.append("Validation failed!")
+                        for err in val_result.errors:
+                            print(f"    - {err}")
+                            log_lines.append(f"    - {err}")
+                    # Print details/warnings
+                    for detail in val_result.details:
+                        log_lines.append(f"    {detail}")
+                    for warn in val_result.warnings:
+                        log_lines.append(f"    WARNING: {warn}")
+                    success_count += 1 if val_result.is_valid else 0
                 else:
                     print(f"❌ {model_name}: Conversion failed")
-                    
+                    log_lines.append("Conversion failed")
+                # Postprocess summary
+                if postprocess:
+                    print(f"  - Postprocess result: {result.get('postprocess_result') or '-'}")
+                    log_lines.append(f"Postprocess result: {result.get('postprocess_result') or '-'}")
             except Exception as e:
                 print(f"❌ {model_name}: Error - {e}")
-        
+                log_lines.append(f"Error: {e}")
+            # Write log for this model
+            log_path = f"outputs/logs/{model_name}.log"
+            with open(log_path, 'w') as lf:
+                lf.write('\n'.join(log_lines))
         print(f"\n📊 Batch conversion completed: {success_count}/{total_count} successful")
-        
         if success_count < total_count:
             sys.exit(1)
-            
     except Exception as e:
         print(f"❌ Batch conversion error: {e}")
         sys.exit(1)
@@ -241,6 +294,8 @@ def cmd_batch_convert(args) -> None:
 
 def main():
     """Main CLI entry point"""
+    skip_dep_check = '--skip-dependency-check' in sys.argv
+    check_dependencies(skip_check=skip_dep_check)
     parser = argparse.ArgumentParser(
         description="Model Converter Tool - Convert models between different formats",
         formatter_class=argparse.RawDescriptionHelpFormatter,
