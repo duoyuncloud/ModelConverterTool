@@ -103,6 +103,37 @@ print("Conversion success:", success)
 
 ---
 
+## Offline Mode
+
+You can run the converter in **offline mode** to ensure no downloads are performed and only local model files are used. This is useful for air-gapped, reproducible, or secure environments.
+
+- To enable offline mode, add the `--offline-mode` flag to your CLI command.
+- In offline mode, you must provide a local model path (not a HuggingFace model name).
+- If you try to use a HuggingFace model (e.g., `--hf-model gpt2`) in offline mode, the tool will show an error and stop.
+
+### CLI Example
+
+```bash
+# Convert a local model in offline mode
+model-converter convert --local-path /models/my_model --output-format onnx --offline-mode
+
+# Batch convert with offline mode
+model-converter batch-convert --config-file configs/batch_template.yaml --offline-mode
+```
+
+### API Example
+
+```python
+converter.convert(
+    input_source="/models/my_model",
+    output_format="onnx",
+    output_path="outputs/my_model_onnx",
+    offline_mode=True
+)
+```
+
+---
+
 ## Configuration
 
 ### Model Presets

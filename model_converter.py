@@ -76,7 +76,8 @@ def cmd_convert(args) -> None:
             model_type=args.model_type,
             quantization=args.quantization,
             device=args.device,
-            config=config
+            config=config,
+            offline_mode=getattr(args, 'offline_mode', False)
         )
         if success:
             print(f"✅ Conversion completed successfully!")
@@ -204,7 +205,8 @@ def cmd_batch_convert(args) -> None:
                 model_type = model_config.get('model_type', 'auto')
                 quantization = model_config.get('quantization')
                 device = model_config.get('device', 'auto')
-                
+                # Use offline mode from CLI if set
+                offline_mode = getattr(args, 'offline_mode', False)
                 # Perform conversion
                 success = converter.convert(
                     input_source=input_source,
@@ -212,7 +214,8 @@ def cmd_batch_convert(args) -> None:
                     output_path=output_path,
                     model_type=model_type,
                     quantization=quantization,
-                    device=device
+                    device=device,
+                    offline_mode=offline_mode
                 )
                 
                 if success:
@@ -249,6 +252,8 @@ Examples:
   python model_converter.py convert --hf-model gpt2 --output-format onnx --config-file my_config.yaml
   # Override architecture params
   python model_converter.py convert --hf-model gpt2 --output-format onnx --hidden-size 2048 --num-layers 24
+  # Offline mode (local only)
+  python model_converter.py convert --local-path /models/my_model --output-format onnx --offline-mode
         """
     )
     
@@ -284,6 +289,8 @@ Examples:
     parser_convert.add_argument('--num-kv-heads', type=int, help='Override number of key-value heads')
     parser_convert.add_argument('--vocab-size', type=int, help='Override vocabulary size')
     parser_convert.add_argument('--intermediate-size', type=int, help='Override intermediate size')
+    parser_convert.add_argument('--offline-mode', action='store_true',
+                              help='Enable offline mode (only use local files, no downloads)')
     parser_convert.set_defaults(func=cmd_convert)
     
     # validate command
@@ -316,6 +323,8 @@ Examples:
     parser_batch = subparsers.add_parser('batch-convert', help='Convert multiple models from config file')
     parser_batch.add_argument('--config-file', type=str, required=True,
                             help='Path to batch configuration YAML file')
+    parser_batch.add_argument('--offline-mode', action='store_true',
+                            help='Enable offline mode for all batch conversions (only use local files, no downloads)')
     parser_batch.set_defaults(func=cmd_batch_convert)
     
     # Parse arguments and execute command
