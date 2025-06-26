@@ -16,7 +16,7 @@ mlx>=0.0.8
 
 # Optional: Quantization libraries
 auto-gptq>=0.4.0  # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错
-awq>=0.1.0
+# awq>=0.1.0  # Not available on PyPI, install manually if needed
 
 # Configuration and utilities
 pyyaml>=6.0
