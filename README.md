@@ -1,20 +1,19 @@
 # Model Converter Tool
 
-A powerful, API-first and CLI-friendly tool for converting, validating, and managing machine learning models across multiple formats. Supports real model conversion for ONNX, FP16, HuggingFace, TorchScript, GGUF, MLX, GPTQ, AWQ, and more.
+A CLI and API tool for converting, validating, and managing machine learning models across multiple formats. Supports ONNX, FP16, HuggingFace, TorchScript, GGUF, MLX, GPTQ, AWQ, and more.
 
 ---
 
 ## Features
 
-- **Real Model Conversion**: True conversion logic for all supported formats (not dummy models)
-- **API First**: Import and use in your own Python code or scripts
-- **CLI Friendly**: Full-featured command-line interface for quick operations
-- **Multi-format Support**: ONNX, TorchScript, FP16, GPTQ, AWQ, GGUF, MLX, HuggingFace
-- **Quantization**: Built-in quantization for GPTQ, AWQ, GGUF (where supported)
-- **Batch Conversion**: Convert multiple models via YAML configuration
-- **Offline Mode**: Work with local models without internet access
-- **Fallback Strategies**: Multi-step fallback for robust conversion
-- **Validation**: Validate model files and configurations
+- Real model conversion for all supported formats
+- API and CLI usage
+- Multi-format support: ONNX, TorchScript, FP16, GPTQ, AWQ, GGUF, MLX, HuggingFace
+- Quantization for GPTQ, AWQ, GGUF (where supported)
+- Batch conversion via YAML configuration
+- Offline mode for local models
+- Fallback strategies for robust conversion
+- Model file and configuration validation
 
 ---
 
@@ -22,16 +21,16 @@ A powerful, API-first and CLI-friendly tool for converting, validating, and mana
 
 ```
 ModelConverterTool/
-├── src/                    # Core conversion logic
-│   ├── converter.py       # Main conversion engine
-│   ├── config.py          # Configuration management
-│   ├── utils.py           # Utility functions
-│   └── validator.py       # Validation logic
-├── configs/               # YAML configuration files
-│   ├── model_presets.yaml # Model presets and configurations
-│   └── batch_template.yaml # Batch conversion templates
-├── model_converter.py     # CLI entry point
-├── requirements.txt       # Dependencies
+├── model_converter_tool/      # Core logic
+│   ├── converter.py          # Conversion engine
+│   ├── config.py             # Configuration management
+│   ├── utils.py              # Utility functions
+│   └── validator.py          # Validation logic
+├── configs/                  # YAML configuration files
+│   ├── model_presets.yaml    # Model presets
+│   └── batch_template.yaml   # Batch conversion templates
+├── model_converter.py        # CLI entry point
+├── requirements.txt          # Dependencies
 ├── setup.py / pyproject.toml # Packaging
 └── README.md
 ```
@@ -49,14 +48,14 @@ ModelConverterTool/
 - MLX models
 
 ### Output Formats
-- **HuggingFace**: Standard Hugging Face format with optimizations
-- **ONNX**: Optimized for inference with dynamic shapes
-- **TorchScript**: PyTorch's production-ready format
-- **FP16**: Half-precision floating point for memory efficiency
-- **GPTQ**: 4-bit quantization for large language models
-- **AWQ**: Activation-aware quantization
-- **GGUF**: llama.cpp optimized format
-- **MLX**: Apple Silicon optimized format
+- HuggingFace
+- ONNX
+- TorchScript
+- FP16
+- GPTQ
+- AWQ
+- GGUF
+- MLX
 
 ---
 
@@ -68,7 +67,7 @@ git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
 pip install -e .
 
-# Optional: Install quantization dependencies (for GPTQ/AWQ/GGUF/MLX)
+# Optional: Install quantization dependencies
 pip install auto-gptq awq llama-cpp-python mlx
 ```
 
@@ -79,29 +78,18 @@ pip install auto-gptq awq llama-cpp-python mlx
 ### CLI Usage
 
 ```bash
-# Convert a HuggingFace model to ONNX
 model-converter convert --hf-model gpt2 --output-format onnx --output-path ./outputs/gpt2_onnx
-
-# Convert to FP16
 model-converter convert --hf-model gpt2 --output-format fp16 --output-path ./outputs/gpt2_fp16
-
-# Convert with quantization (e.g., GPTQ)
 model-converter convert --hf-model distilbert-base-uncased --output-format gptq --output-path ./outputs/distilbert_gptq --quantization q4_k_m
-
-# Batch conversion
 model-converter batch-convert --config-file configs/batch_template.yaml
-
-# List supported formats
 model-converter list-formats
-
-# Validate a model
 model-converter validate --hf-model gpt2 --model-type text-generation
 ```
 
 ### API Usage
 
 ```python
-from src.converter import ModelConverter
+from model_converter_tool import ModelConverter
 
 converter = ModelConverter()
 success = converter.convert(
@@ -171,19 +159,11 @@ output_model/
 
 ## Supported Model Types
 
-- **Text**: text-generation, text-classification, text2text-generation
-- **Vision**: image-classification, image-segmentation, object-detection
-- **Audio**: audio-classification, audio-ctc, speech-seq2seq
-- **Multimodal**: vision-encoder-decoder, question-answering
-- **Specialized**: token-classification, multiple-choice, fill-mask
-
----
-
-## Performance Optimizations
-
-- **Fast Model Loading**: Optimized loading for common models with preset configurations
-- **Fallback Strategies**: Multi-step fallback for ONNX, TorchScript, quantization, etc.
-- **Memory Efficient**: FP16 and quantized formats for large models
+- Text: text-generation, text-classification, text2text-generation
+- Vision: image-classification, image-segmentation, object-detection
+- Audio: audio-classification, audio-ctc, speech-seq2seq
+- Multimodal: vision-encoder-decoder, question-answering
+- Specialized: token-classification, multiple-choice, fill-mask
 
 ---
 
@@ -191,40 +171,10 @@ output_model/
 
 ### Common Issues
 
-1. **ONNX Conversion Fails**
+1. ONNX Conversion Fails
    - Try different model types or simpler models
    - Use `--device cpu` for compatibility
    - Check model complexity and dependencies
-2. **Quantization Dependencies**
+2. Quantization Dependencies
    - Install required packages: `auto-gptq`, `awq`, `llama-cpp-python`, `mlx`
    - Some quantization requires CUDA support (Linux + NVIDIA GPU)
-   - On macOS or without NVIDIA GPU, GPTQ/AWQ real quantization is not available, but other formats work fine
-3. **Memory Issues**
-   - Use `--device cpu` for large models
-   - Try FP16 conversion for memory efficiency
-   - Use quantization for very large models
-
-### How to install quantization dependencies?
-
-- These are only required for GPTQ/AWQ/GGUF/MLX formats.
-- On macOS or without NVIDIA GPU, you may see installation errors for `auto-gptq`/`awq`—these can be safely ignored unless you need real quantization.
-- For real GPTQ/AWQ quantization, use a Linux machine with CUDA and install:
-  - [auto-gptq](https://github.com/PanQiWei/AutoGPTQ)
-  - [autoawq](https://github.com/casper-hansen/AutoAWQ)
-
-### How to use the API?
-
-- Import `ModelConverter` from `src.converter` and call `convert()` as shown above.
-- All CLI features are also available via the API.
-
----
-
-## License
-
-MIT License
-
----
-
-## Links
-
-- [GitHub Repository](https://github.com/duoyuncloud/ModelConverterTool)
