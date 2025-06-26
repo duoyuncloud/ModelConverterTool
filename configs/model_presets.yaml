@@ -1,0 +1,159 @@
+common_models:
+  bert-base-uncased:
+    default_format: onnx
+    description: BERT base uncased model
+    model_type: text-classification
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+    # Architecture details
+    hidden_size: 768
+    num_hidden_layers: 12
+    num_attention_heads: 12
+    vocab_size: 30522
+    intermediate_size: 3072
+    max_position_embeddings: 512
+    hidden_act: "gelu"
+    attention_dropout: 0.1
+    hidden_dropout_prob: 0.1
+  distilbert-base-uncased:
+    default_format: onnx
+    description: DistilBERT base uncased model
+    model_type: text-classification
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+    # Architecture details
+    hidden_size: 768
+    num_hidden_layers: 6
+    num_attention_heads: 12
+    vocab_size: 30522
+    intermediate_size: 3072
+    max_position_embeddings: 512
+    hidden_act: "gelu"
+    attention_dropout: 0.1
+    hidden_dropout_prob: 0.1
+  gpt2:
+    default_format: onnx
+    description: GPT-2 base model
+    model_type: text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+    # Architecture details
+    hidden_size: 768
+    num_hidden_layers: 12
+    num_attention_heads: 12
+    vocab_size: 50257
+    intermediate_size: 3072
+    max_position_embeddings: 1024
+    hidden_act: "gelu"
+    attention_dropout: 0.1
+    resid_pdrop: 0.1
+    embd_pdrop: 0.1
+  t5-small:
+    default_format: onnx
+    description: T5 small model
+    model_type: text2text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+    # Architecture details
+    hidden_size: 512
+    num_hidden_layers: 6
+    num_attention_heads: 8
+    vocab_size: 32100
+    intermediate_size: 2048
+    max_position_embeddings: 512
+    hidden_act: "relu"
+    attention_dropout: 0.1
+    dropout_rate: 0.1
+llm_models:
+  meta-llama/Llama-2-7b-hf:
+    default_format: gguf
+    description: Llama 2 7B model
+    model_type: text-generation
+    quantization_options:
+    - q4_k_m
+    - q8_0
+    - q5_k_m
+    supported_formats:
+    - gguf
+    - onnx
+    - mlx
+    # Architecture details
+    hidden_size: 4096
+    num_hidden_layers: 32
+    num_attention_heads: 32
+    num_key_value_heads: 32
+    vocab_size: 32000
+    intermediate_size: 11008
+    max_position_embeddings: 4096
+    hidden_act: "silu"
+    rms_norm_eps: 1e-05
+    rope_theta: 10000.0
+    use_cache: true
+    tie_word_embeddings: true
+  microsoft/DialoGPT-medium:
+    default_format: onnx
+    description: DialoGPT medium model
+    model_type: text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    # Architecture details
+    hidden_size: 1024
+    num_hidden_layers: 24
+    num_attention_heads: 16
+    vocab_size: 50257
+    intermediate_size: 4096
+    max_position_embeddings: 1024
+    hidden_act: "gelu"
+    attention_dropout: 0.1
+    resid_pdrop: 0.1
+    embd_pdrop: 0.1
+vision_models:
+  google/vit-base-patch16-224:
+    default_format: onnx
+    description: ViT base model
+    model_type: image-classification
+    supported_formats:
+    - onnx
+    - mlx
+    - torchscript
+    # Architecture details
+    hidden_size: 768
+    num_hidden_layers: 12
+    num_attention_heads: 12
+    vocab_size: 1000
+    intermediate_size: 3072
+    image_size: 224
+    patch_size: 16
+    num_channels: 3
+    hidden_act: "gelu"
+    attention_dropout: 0.0
+    hidden_dropout_prob: 0.0
+  microsoft/resnet-50:
+    default_format: onnx
+    description: ResNet-50 model
+    model_type: image-classification
+    supported_formats:
+    - onnx
+    - mlx
+    - torchscript
+    # Architecture details
+    vocab_size: 1000
+    image_size: 224
+    num_channels: 3
+    # ResNet specific
+    num_layers: 50
+    hidden_act: "relu"

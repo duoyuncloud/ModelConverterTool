@@ -1,0 +1,21 @@
+# Batch conversion configuration template
+# Use this file to convert multiple models at once
+
+models:
+  gpt2_to_onnx:
+    input: "hf:gpt2"
+    output_format: "onnx"
+    output_path: "outputs/gpt2.onnx"
+    model_type: "text-generation"
+  
+  bert_to_fp16:
+    input: "hf:bert-base-uncased"
+    output_format: "fp16"
+    output_path: "outputs/bert_fp16"
+    model_type: "text-classification"
+  
+  distilbert_to_onnx:
+    input: "hf:distilbert-base-uncased"
+    output_format: "onnx"
+    output_path: "outputs/distilbert.onnx"
+    model_type: "text-classification" 

@@ -1,115 +1,252 @@
 # Model Converter Tool
 
-A robust, extensible tool for converting, validating, and managing machine learning models across multiple formats. Built for efficiency, automation, and integration with modern ML workflows.
+A powerful CLI tool for converting Hugging Face models between different formats with real conversion capabilities and standard HF format compliance.
 
 ## Features
-- **Real model conversion** between formats: ONNX, GPTQ, AWQ, GGUF, MLX, TorchScript, FP16, HuggingFace, and more
-- Supports both HuggingFace model names and local file uploads
-- Batch conversion and validation
-- Real-time progress tracking via WebSocket
-- Caching and model preloading for performance
-- System and cache monitoring endpoints
-- RESTful API with OpenAPI documentation
-- Docker and Docker Compose support
 
-## Technology Stack
-- Python 3.9+
-- FastAPI (REST API)
-- Celery (task queue)
-- Redis (cache, broker, progress tracking)
-- HuggingFace Transformers
-- ONNX, TensorFlow, CoreML, OpenVINO, and other conversion libraries
+- **Real Model Conversions**: Actual conversion logic for all supported formats
+- **Standard HF Format**: All outputs comply with Hugging Face format standards
+- **Multi-format Support**: Convert between ONNX, TorchScript, FP16, GPTQ, AWQ, GGUF, and MLX
+- **Quantization Support**: Built-in quantization for GPTQ, AWQ, and GGUF formats
+- **Fallback Strategies**: Multi-step fallback for complex model conversions
+- **Batch Operations**: Convert multiple models using YAML configurations
+- **Offline Mode**: Work with local models without internet access
+
+## Project Structure
+
+```
+Model-Converter-Tool/
+├── src/                    # Core conversion logic
+│   ├── converter.py       # Main conversion engine
+│   ├── config.py          # Configuration management
+│   ├── utils.py           # Utility functions
+│   └── validator.py       # Validation logic
+├── configs/               # YAML configuration files
+│   ├── model_presets.yaml # Model presets and configurations
+│   └── batch_template.yaml # Batch conversion templates
+├── model_converter.py     # CLI entry point
+└── requirements-cli.txt   # Dependencies
+```
+
+## Supported Formats
+
+### Input Formats
+- Hugging Face models (`hf:model_name`)
+- Local model directories
+- ONNX models
+- TorchScript models
+- GGUF models
+- MLX models
+
+### Output Formats
+- **HF**: Standard Hugging Face format with optimizations
+- **ONNX**: Optimized for inference with dynamic shapes
+- **TorchScript**: PyTorch's production-ready format
+- **FP16**: Half-precision floating point for memory efficiency
+- **GPTQ**: 4-bit quantization for large language models
+- **AWQ**: Activation-aware quantization
+- **GGUF**: Optimized for llama.cpp inference
+- **MLX**: Apple Silicon optimized format
+
+## Installation
+
+```bash
+# Clone and install
+git clone <repository-url>
+cd Model-Converter-Tool-clean
+pip install -r requirements-cli.txt
+
+# Optional: Install quantization dependencies
+pip install auto-gptq awq llama-cpp-python mlx
+```
 
 ## Quick Start
 
-### Prerequisites
-- Python 3.9+
-- Redis server (for caching and Celery broker)
-- (Optional) Docker & Docker Compose
-
-### Local Development
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Start Redis server (if not running)
-redis-server
-
-# Create required directories
-mkdir -p uploads outputs
-
-# Start FastAPI server
-python -m uvicorn app.main:app --reload
-
-# Start Celery worker (required for real conversion)
-python -m celery -A app.tasks worker --loglevel=info
-
-# Start Streamlit UI
-python3 -m streamlit run streamlit_app.py
-```
-
-### Production (Recommended)
-```bash
-# Build and run with Docker Compose
-# (Ensure Docker and Docker Compose are installed)
-docker-compose up --build
-```
-
-## Usage
-
-### 1. Convert HuggingFace Models
-- Enter a valid HuggingFace model name (e.g., `gpt2`, `bert-base-uncased`, `meta-llama/Llama-2-7b-hf`).
-- Select the target format and model type.
-- Click "Start Conversion" to perform a real conversion (not a dummy/test file).
-
-### 2. Convert Local Files
-- Select "Local File" as the model source.
-- Upload a HuggingFace-compatible model file or directory (preferably as a zip/tar.gz, or upload all required files).
-- Select the target format and model type.
-- Click "Start Conversion".
-
-> **Note:** For best results, upload the full HuggingFace model directory (including config, weights, and tokenizer files).
-
-### 3. Download Results
-- After conversion, download the output from the UI or find it in the `outputs/` directory.
-
-## API Usage
-- Access API docs at: `http://localhost:8000/docs`
-- Key endpoints:
-  - `/convert` : Submit model conversion task
-  - `/status/{task_id}` : Get task status
-  - `/download/{task_id}` : Download converted model
-  - `/validate/model` : Validate model
-  - `/cache/stats` : Cache statistics
-  - `/ws/{task_id}` : WebSocket for progress
-
-## Environment Variables (see `env.example`)
-- `REDIS_URL` : Redis connection string
-- `UPLOAD_DIR`, `OUTPUT_DIR` : File storage paths
-- `SUPPORTED_FORMATS`, `SUPPORTED_MODEL_TYPES` : Supported model formats/types
-- `CACHE_TTL`, `MAX_CACHE_SIZE` : Cache settings
-- `ONNX_OPSET_VERSION`, `GPTQ_BITS`, etc.: Conversion parameters
-
-## Real Quantization Requirements (GPTQ/AWQ)
-- **OS:** Linux (x86_64)
-- **GPU:** CUDA-enabled NVIDIA GPU
-- **Python Packages:**
-  - `auto-gptq` for GPTQ quantization
-  - `awq` for AWQ quantization
+### Basic Conversion
 
 ```bash
-pip install auto-gptq awq
+# Convert to HF format (optimized)
+python model_converter.py convert \
+    --input "hf:distilbert-base-uncased" \
+    --output-format hf \
+    --output-path "./outputs/distilbert_hf" \
+    --model-type text-classification
+
+# Convert to ONNX
+python model_converter.py convert \
+    --input "hf:distilbert-base-uncased" \
+    --output-format onnx \
+    --output-path "./outputs/distilbert_onnx" \
+    --model-type text-classification
+
+# Convert to FP16
+python model_converter.py convert \
+    --input "hf:gpt2" \
+    --output-format fp16 \
+    --output-path "./outputs/gpt2_fp16" \
+    --model-type text-generation
+
+# Convert with quantization
+python model_converter.py convert \
+    --input "hf:distilbert-base-uncased" \
+    --output-format gptq \
+    --output-path "./outputs/distilbert_gptq" \
+    --model-type text-classification \
+    --quantization q4_k_m
 ```
 
-- These quantization methods will **not** work on macOS或CPU-only系统。
-- 如果环境不满足，工具会给出清晰的报错。
-- 你仍然可以在任何系统上将已量化模型（如 HuggingFace 上下载的）转换为其他格式。
+### Batch Conversion
+
+```bash
+# Convert multiple models
+python model_converter.py batch \
+    --config configs/batch_template.yaml \
+    --output-dir "./batch_outputs"
+```
+
+### Advanced Options
+
+```bash
+# Use specific device
+python model_converter.py convert \
+    --input "hf:model" \
+    --output-format onnx \
+    --output-path "./output" \
+    --device cuda
+
+# Offline mode
+python model_converter.py convert \
+    --input "./local_model" \
+    --output-format onnx \
+    --output-path "./outputs/local_onnx" \
+    --offline-mode
+
+# Validate conversion
+python model_converter.py validate \
+    --input "hf:gpt2" \
+    --output-format onnx
+```
+
+## Configuration
+
+### Model Presets
+
+The tool includes predefined model configurations in `configs/model_presets.yaml`:
+
+```yaml
+common_models:
+  bert-base-uncased:
+    default_format: onnx
+    description: BERT base uncased model
+    model_type: text-classification
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+```
+
+### Custom Configuration
+
+Create custom YAML configurations for specific models:
+
+```yaml
+model_name: "my-custom-model"
+model_type: "text-generation"
+output_format: "onnx"
+device: "cuda"
+quantization: "q4_k_m"
+config:
+  max_length: 512
+  use_cache: false
+```
+
+## Output Format
+
+All conversions produce outputs that comply with Hugging Face format standards:
+
+```
+output_model/
+├── model.onnx          # Converted model file (ONNX)
+├── model.pt            # Converted model file (TorchScript)
+├── model.safetensors   # Model weights (HF/FP16)
+├── config.json         # Model configuration
+├── tokenizer.json      # Tokenizer configuration
+├── special_tokens_map.json  # Special tokens
+├── format_config.json  # Format-specific metadata
+└── README.md          # Model card with conversion info
+```
+
+### Format-Specific Features
+
+- **HF**: Safe serialization, model type optimization, device-specific optimizations
+- **ONNX**: Dynamic shapes, optimized graph, minimal ONNX fallback
+- **TorchScript**: Script/trace fallback, use_cache optimization
+- **FP16**: Half-precision weights, memory efficient
+- **GPTQ/AWQ**: Quantized weights with calibration data
+- **GGUF**: llama.cpp optimized format
+- **MLX**: Apple Silicon optimized weights
+
+## Supported Model Types
+
+- **Text Models**: text-generation, text-classification, text2text-generation
+- **Vision Models**: image-classification, image-segmentation, object-detection
+- **Audio Models**: audio-classification, audio-ctc, speech-seq2seq
+- **Multimodal**: vision-encoder-decoder, question-answering
+- **Specialized**: token-classification, multiple-choice, fill-mask
+
+## Performance Optimizations
+
+### Fast Model Loading
+Optimized loading for common models with preset configurations:
+
+```python
+fast_models = {
+    'gpt2': {'max_length': 512, 'use_cache': False},
+    'bert-base-uncased': {'max_length': 512},
+    'distilbert-base-uncased': {'max_length': 512},
+}
+```
+
+### Fallback Strategies
+- **ONNX**: transformers.onnx → torch.onnx → minimal ONNX
+- **TorchScript**: script → trace → use_cache=False
+- **Quantization**: Multiple quantization levels and methods
+
+## Testing
+
+```bash
+# Test enhanced conversions
+python test_enhanced_conversion.py
+
+# Test local conversions (offline)
+python test_local_conversion.py
+```
 
 ## Troubleshooting
-- 确保 FastAPI、Celery worker、Redis、Streamlit UI 均已启动。
-- 检查 `outputs/` 目录，确认输出文件大小和内容是否为真实模型。
-- 如遇报错，请查看终端日志或 UI 错误提示，并根据提示修复。
 
----
+### Common Issues
 
-**Enjoy real, production-grade model conversion!**
+1. **ONNX Conversion Fails**:
+   - Try different model types or simpler models
+   - Use `--device cpu` for compatibility
+   - Check model complexity and dependencies
+
+2. **Quantization Dependencies**:
+   - Install required packages: `auto-gptq`, `awq`, `llama-cpp-python`
+   - Some quantization requires CUDA support
+
+3. **Memory Issues**:
+   - Use `--device cpu` for large models
+   - Try FP16 conversion for memory efficiency
+   - Use quantization for very large models
+
+### Debug Mode
+
+```bash
+python model_converter.py convert \
+    --input "hf:model" \
+    --output-format onnx \
+    --output-path "./output" \
+    --verbose
+```
