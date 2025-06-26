@@ -17,6 +17,19 @@ A CLI and API tool for converting, validating, and managing machine learning mod
 
 ---
 
+## Refined Validation (New)
+
+- The `validate` command now supports smart auto-detection of model format (ONNX, GGUF, MLX, TorchScript, HuggingFace, etc.) when using `--model-type auto` (default).
+- Validation will output detailed reasoning about format detection and required files.
+- No need to manually specify format for most common cases; the tool will infer and validate accordingly.
+- Example:
+
+```bash
+python3 model_converter.py validate --local-path ./outputs/my_model_dir
+```
+
+---
+
 ## Project Structure
 
 ```
