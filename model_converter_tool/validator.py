@@ -55,7 +55,7 @@ class ModelValidator:
         errors = []
         warnings = []
         model_info = {}
-        
+        detected_format = None
         try:
             # Parse model path
             if model_path.startswith("hf:"):
@@ -66,45 +66,47 @@ class ModelValidator:
                 model_name = model_path
                 input_type = "local"
                 details.append(f"Validating local model: {model_name}")
-            
             # Basic validation
             if input_type == "local":
                 if not os.path.exists(model_name):
                     errors.append(f"Model path does not exist: {model_name}")
                     return ValidationResult(False, details, errors, warnings, model_info)
-                
+                # Smart format detection
+                detected_format, detect_details = self._detect_format(model_name)
+                details.extend(detect_details)
+                # If user did not specify model_type, use detected_format
+                effective_type = model_type
+                if model_type == "auto" and detected_format:
+                    effective_type = detected_format
+                    details.append(f"🔎 Detected model format: {detected_format}")
+                elif model_type == "auto":
+                    details.append("⚠️ Could not confidently detect model format, fallback to HuggingFace.")
+                    effective_type = "huggingface"
                 # Check required files
-                file_validation = self._validate_files(model_name, model_type)
+                file_validation = self._validate_files(model_name, effective_type)
                 details.extend(file_validation['details'])
                 errors.extend(file_validation['errors'])
                 warnings.extend(file_validation['warnings'])
-            
             # Configuration validation
             if check_config:
                 config_validation = self._validate_config(model_path, model_type)
                 details.extend(config_validation['details'])
                 errors.extend(config_validation['errors'])
                 warnings.extend(config_validation['warnings'])
-            
             # Weights validation
             if check_weights:
                 weights_validation = self._validate_weights(model_path, model_type)
                 details.extend(weights_validation['details'])
                 errors.extend(weights_validation['errors'])
                 warnings.extend(weights_validation['warnings'])
-            
             # Model info
             model_info = self._extract_model_info(model_path, model_type)
-            
             is_valid = len(errors) == 0
-            
             if is_valid:
                 details.append("✅ Model validation passed")
             else:
                 details.append("❌ Model validation failed")
-            
             return ValidationResult(is_valid, details, errors, warnings, model_info)
-            
         except Exception as e:
             errors.append(f"Validation error: {e}")
             return ValidationResult(False, details, errors, warnings, model_info)
@@ -162,7 +164,7 @@ class ModelValidator:
         
         try:
             if model_path.startswith("hf:"):
-                # For HuggingFace models, we can't easily validate config without downloading
+                # For HuggingFace models, can't easily validate config without downloading
                 details.append("ℹ️ HuggingFace model config validation skipped (requires download)")
                 return {'details': details, 'errors': errors, 'warnings': warnings}
             
@@ -251,3 +253,27 @@ class ModelValidator:
             logger.warning(f"Could not extract model info: {e}")
         
         return info 
+
+    def _detect_format(self, model_path: str):
+        """Detect model format based on files in the directory. Returns (format, details)"""
+        details = []
+        model_dir = Path(model_path)
+        # Priority: onnx > gguf > mlx > torchscript > huggingface
+        if (model_dir / "model.onnx").exists():
+            details.append("Detected model.onnx file, likely ONNX format.")
+            return "onnx", details
+        if (model_dir / "model.gguf").exists():
+            details.append("Detected model.gguf file, likely GGUF format.")
+            return "gguf", details
+        if (model_dir / "model.npz").exists() and (model_dir / "config.json").exists():
+            details.append("Detected model.npz and config.json, likely MLX format.")
+            return "mlx", details
+        if (model_dir / "model.pt").exists():
+            details.append("Detected model.pt file, likely TorchScript format.")
+            return "torchscript", details
+        if (model_dir / "config.json").exists() and ((model_dir / "pytorch_model.bin").exists() or (model_dir / "model.safetensors").exists()):
+            details.append("Detected config.json and weights, likely HuggingFace format.")
+            return "huggingface", details
+        # Fallback
+        details.append("No known model format signature found.")
+        return None, details 
