@@ -40,4 +40,7 @@ autoawq>=0.2.0    # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环�
 # torch-optimizer: TorchScript optimization (for postprocess:optimize)
 # safetensors: Fast model saving/loading (already required)
 # To install all optional features:
-# pip install onnxsim torch-optimizer 
+# pip install onnxsim torch-optimizer
+
+# For testing
+pytest>=7.0.0 
