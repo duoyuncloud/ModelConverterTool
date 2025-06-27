@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERROR# CI-specific requirements (excludes GPU-specific and problematic dependencies)
+# CI-specific requirements (excludes GPU-specific and problematic dependencies)
 # Core dependencies
 torch>=2.0.0
 transformers>=4.30.0
@@ -34,4 +34,4 @@ flake8>=6.0.0
 # Added from the code block (commented out for CI)
 # auto-gptq  # CUDA only, excluded from CI
 # llama-cpp-python  # Optional, excluded from CI
-tiktoken 
+tiktoken>=0.5.0 

@@ -23,7 +23,9 @@ def test_dummy_model_conversion_and_inference(model_cfg, export_format):
         # 1. 生成 dummy model
         create_dummy_model(output_dir=str(dummy_dir), **model_cfg)
         assert (dummy_dir / "config.json").exists()
-        assert (dummy_dir / "pytorch_model.bin").exists()
+        # Check for either pytorch_model.bin or model.safetensors
+        model_file_exists = (dummy_dir / "pytorch_model.bin").exists() or (dummy_dir / "model.safetensors").exists()
+        assert model_file_exists, f"Model file not found in {list(dummy_dir.glob('*'))}"
         # 2. 用 model-converter 导出指定格式
         out_dir = Path(temp_dir) / f"dummy_{export_format}"
         out_dir.mkdir()

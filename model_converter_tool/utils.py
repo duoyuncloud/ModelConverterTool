@@ -197,31 +197,109 @@ def create_dummy_model(
     with open(os.path.join(output_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
-    # 2. 生成随机权重的 state_dict
-    class DummyLlama(torch.nn.Module):
-        def __init__(self, config):
-            super().__init__()
-            self.embed_tokens = torch.nn.Embedding(config["vocab_size"], config["hidden_size"])
-            self.lm_head = torch.nn.Linear(config["hidden_size"], config["vocab_size"], bias=False)
-        def forward(self, input_ids):
-            x = self.embed_tokens(input_ids)
-            x = x.mean(dim=1)  # fake pooling
-            logits = self.lm_head(x)
-            return {"logits": logits}
-    model = DummyLlama(config)
-    state_dict = model.state_dict()
-    torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))
+    # 2. 生成随机权重的 state_dict - Create a more realistic Llama-like model
+    try:
+        # Try to use actual LlamaForCausalLM for compatibility
+        from transformers import LlamaConfig, LlamaForCausalLM
+        
+        llama_config = LlamaConfig(
+            vocab_size=config["vocab_size"],
+            hidden_size=config["hidden_size"],
+            intermediate_size=config["intermediate_size"],
+            num_hidden_layers=config["num_hidden_layers"],
+            num_attention_heads=config["num_attention_heads"],
+            max_position_embeddings=config["max_position_embeddings"],
+            rms_norm_eps=1e-6,
+            rope_theta=10000.0,
+            bos_token_id=config["bos_token_id"],
+            eos_token_id=config["eos_token_id"],
+            pad_token_id=config["pad_token_id"],
+            torch_dtype="float16"
+        )
+        
+        # Create the model with small random weights
+        model = LlamaForCausalLM(llama_config)
+        
+        # Initialize with smaller weights for faster testing
+        for name, param in model.named_parameters():
+            if 'weight' in name:
+                param.data.normal_(mean=0.0, std=0.02)
+            elif 'bias' in name:
+                param.data.zero_()
+        
+        # Save the model 
+        model.save_pretrained(output_dir)
+        
+    except Exception as e:
+        logger.warning(f"Failed to create LlamaForCausalLM: {e}, falling back to simple model")
+        
+        # Fallback: create minimal state dict manually
+        state_dict = {
+            "model.embed_tokens.weight": torch.randn(config["vocab_size"], config["hidden_size"]) * 0.02,
+            "lm_head.weight": torch.randn(config["vocab_size"], config["hidden_size"]) * 0.02,
+        }
+        
+        # Add transformer layers
+        for layer_idx in range(config["num_hidden_layers"]):
+            prefix = f"model.layers.{layer_idx}"
+            state_dict.update({
+                f"{prefix}.self_attn.q_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.self_attn.k_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.self_attn.v_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.self_attn.o_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.mlp.gate_proj.weight": torch.randn(config["intermediate_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.mlp.up_proj.weight": torch.randn(config["intermediate_size"], config["hidden_size"]) * 0.02,
+                f"{prefix}.mlp.down_proj.weight": torch.randn(config["hidden_size"], config["intermediate_size"]) * 0.02,
+                f"{prefix}.input_layernorm.weight": torch.ones(config["hidden_size"]),
+                f"{prefix}.post_attention_layernorm.weight": torch.ones(config["hidden_size"]),
+            })
+            
+        # Add final norm
+        state_dict["model.norm.weight"] = torch.ones(config["hidden_size"])
+        
+        torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))
 
-    # 3. 生成简单tokenizer
-    vocab = {f"token{i}": i for i in range(vocab_size)}
-    tokenizer = PreTrainedTokenizerFast(
-        tokenizer_object=None,
-        unk_token="<unk>",
-        pad_token="<pad>",
-        bos_token="<s>",
-        eos_token="</s>",
-    )
-    tokenizer.vocab = vocab
-    tokenizer.save_pretrained(output_dir)
+    # 3. Create simple tokenizer files manually (avoid network dependency)
+    # Create basic tokenizer config
+    tokenizer_config = {
+        "tokenizer_class": "PreTrainedTokenizerFast",
+        "bos_token": "<s>",
+        "eos_token": "</s>",
+        "pad_token": "<pad>",
+        "unk_token": "<unk>",
+        "model_max_length": max_position_embeddings
+    }
+    with open(os.path.join(output_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
+        json.dump(tokenizer_config, f, indent=2)
+    
+    # Create simple vocabulary  
+    vocab = {"<pad>": 0, "<s>": 1, "</s>": 2, "<unk>": 3}
+    for i in range(4, min(vocab_size, 1000)):  # Limit vocab size for CI
+        vocab[f"token{i}"] = i
+    
+    with open(os.path.join(output_dir, "vocab.json"), "w", encoding="utf-8") as f:
+        json.dump(vocab, f, indent=2)
+    
+    # Create simplified tokenizer.json
+    tokenizer_data = {
+        "version": "1.0",
+        "model": {
+            "type": "WordLevel",
+            "vocab": vocab,
+            "unk_token": "<unk>"
+        },
+        "normalizer": None,
+        "pre_tokenizer": {"type": "Whitespace"},
+        "post_processor": None,
+        "decoder": None,
+        "added_tokens": [
+            {"id": 0, "content": "<pad>", "single_word": False, "lstrip": False, "rstrip": False, "normalized": False, "special": True},
+            {"id": 1, "content": "<s>", "single_word": False, "lstrip": False, "rstrip": False, "normalized": False, "special": True},
+            {"id": 2, "content": "</s>", "single_word": False, "lstrip": False, "rstrip": False, "normalized": False, "special": True},
+            {"id": 3, "content": "<unk>", "single_word": False, "lstrip": False, "rstrip": False, "normalized": False, "special": True}
+        ]
+    }
+    with open(os.path.join(output_dir, "tokenizer.json"), "w", encoding="utf-8") as f:
+        json.dump(tokenizer_data, f, indent=2)
 
     print(f"✅ Dummy model generated at {output_dir}")
