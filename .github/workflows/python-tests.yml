@@ -1,33 +1,80 @@
-name: Python package
+name: Python Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10']
+        exclude:
+          # Exclude Python 3.11 for now due to compatibility issues with some ML libraries
+          - python-version: '3.11'
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements-ci.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+    - name: Cache model downloads
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/huggingface
+        key: ${{ runner.os }}-hf-cache-${{ hashFiles('**/requirements-ci.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-hf-cache-
+
+    - name: Upgrade pip and install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements-ci.txt
 
     - name: Install package in editable mode
       run: |
         pip install -e .
 
-    - name: Run tests
+    - name: Create test outputs directory
       run: |
-        pytest 
+        mkdir -p outputs
+        mkdir -p temp
+
+    - name: Run tests with timeout and coverage
+      run: |
+        pytest tests/ -v --timeout=300 --cov=model_converter_tool --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+    - name: Run linting
+      run: |
+        black --check --diff model_converter_tool/ tests/
+        flake8 model_converter_tool/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+
+  # Separate job for testing with GPU-specific dependencies (if needed in future)
+  # test-gpu:
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   needs: test
+  #   # This would require a GPU runner or self-hosted runner with GPU 

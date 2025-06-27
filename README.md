@@ -17,6 +17,61 @@ A CLI and API tool for converting, validating, and managing machine learning mod
 
 ---
 
+## CI/CD and Testing
+
+This project uses GitHub Actions for continuous integration with the following workflows:
+
+### Quick Test (`quick-test.yml`)
+- Runs on every push and pull request
+- Fast execution (10-minute timeout)
+- Tests basic functionality without network access
+- Includes linting checks (black, flake8)
+- Uses minimal dependencies for speed
+
+### Full Test (`python-tests.yml`)
+- Runs on every push and pull request
+- Comprehensive testing with multiple Python versions (3.9, 3.10)
+- Includes network-dependent tests (model downloads)
+- Code coverage reporting
+- Full dependency installation
+
+### Test Categories
+- **Offline tests**: Basic functionality, validation, error handling
+- **Network tests**: Model conversion with real HuggingFace models
+- **Integration tests**: End-to-end conversion workflows
+
+### Running Tests Locally
+
+```bash
+# Install test dependencies
+pip install -r requirements-ci.txt
+
+# Run all tests
+pytest tests/ -v
+
+# Run only offline tests (faster)
+pytest tests/ -v -m "not network"
+
+# Run only network tests
+pytest tests/ -v -m "network"
+
+# Run with coverage
+pytest tests/ -v --cov=model_converter_tool --cov-report=html
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass locally
+6. Submit a pull request
+
+The CI will automatically run tests and linting checks on your PR.
+
+---
+
 ## Validation
 
 - The `validate` command supports smart auto-detection of model format (ONNX, GGUF, MLX, TorchScript, HuggingFace, etc.) when using `--model-type auto` (default).
@@ -42,8 +97,16 @@ ModelConverterTool/
 ├── configs/                  # YAML configuration files
 │   ├── model_presets.yaml    # Model presets
 │   └── batch_template.yaml   # Batch conversion templates
+├── .github/workflows/        # CI/CD workflows
+│   ├── python-tests.yml      # Full test suite
+│   └── quick-test.yml        # Quick tests
+├── tests/                    # Test suite
+│   ├── test_basic.py         # Core functionality tests
+│   ├── test_utils.py         # Utility function tests
+│   └── test_validator.py     # Validation tests
 ├── model_converter.py        # CLI entry point
-├── requirements.txt          # Dependencies
+├── requirements.txt          # Full dependencies
+├── requirements-ci.txt       # CI-specific dependencies
 ├── setup.py / pyproject.toml # Packaging
 └── README.md
 ```

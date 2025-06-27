@@ -1,0 +1,49 @@
+name: Quick Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quick-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-3.10-quick-${{ hashFiles('**/requirements-ci.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-3.10-quick-
+
+    - name: Install minimal dependencies for quick test
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install pytest requests pyyaml click rich tqdm
+        pip install -e .
+
+    - name: Create test directories
+      run: |
+        mkdir -p outputs temp
+
+    - name: Run quick offline tests
+      run: |
+        pytest tests/ -v -k "not network" --tb=short
+
+    - name: Run linting check
+      run: |
+        pip install black flake8
+        black --check --diff model_converter_tool/ tests/
+        flake8 model_converter_tool/ tests/ --max-line-length=88 --extend-ignore=E203,W503 
