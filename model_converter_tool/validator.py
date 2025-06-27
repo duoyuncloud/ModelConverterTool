@@ -2,12 +2,12 @@
 Model validation functionality
 """
 
-import os
 import json
 import logging
-from typing import Dict, Any, List, Optional
-from pathlib import Path
+import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -125,12 +125,12 @@ class ModelValidator:
         warnings = []
         model_dir = Path(model_path)
         # 优化：对 onnx/torchscript/gguf/mlx 只要求主文件存在，附属文件缺失降级为 warning
-        main_file_map = {
-            "onnx": "model.onnx",
-            "torchscript": "model.pt",
-            "gguf": "model.gguf",
-            "mlx": "model.npz",
-        }
+        # main_file_map = {  # Not used
+        #     "onnx": "model.onnx",
+        #     "torchscript": "model.pt",
+        #     "gguf": "model.gguf",
+        #     "mlx": "model.npz",
+        # }
         # fallback 逻辑
         key = model_type if model_type in self.required_files else "huggingface"
         # 检查是否真的为 huggingface 格式（有 config.json 且有权重文件）

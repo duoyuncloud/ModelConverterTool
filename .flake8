@@ -1,12 +1,12 @@
 [flake8]
 max-line-length = 88
 extend-ignore = 
-    E203,  # whitespace before ':'
-    W503,  # line break before binary operator
-    E501,  # line too long (handled by black)
-    F401,  # imported but unused (common in __init__.py)
-    F403,  # wildcard import
-    F405,  # name may be undefined, or defined from star imports
+    E203,
+    W503,
+    E501,
+    F401,
+    F403,
+    F405
 exclude = 
     .git,
     __pycache__,

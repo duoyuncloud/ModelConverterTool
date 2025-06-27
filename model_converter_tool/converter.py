@@ -2,30 +2,20 @@
 Core model conversion functionality
 """
 
-import os
-import sys
-import logging
-from typing import Dict, Any, Optional, List
-from pathlib import Path
-import tempfile
-import shutil
-import torch
-from transformers import (
-    AutoModel,
-    AutoTokenizer,
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-)
-import json
-import yaml
-from transformers.onnx import export
-import onnx
-import onnxruntime as ort
-from datetime import datetime
 import hashlib
+import json
+import logging
+import os
 import pickle
-from functools import lru_cache
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import onnx
+import torch
+from transformers import AutoConfig, AutoTokenizer
+from transformers.onnx import export
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +31,6 @@ class ModelConverter:
             ("torch", "torch"),
             ("transformers", "transformers"),
             ("onnx", "onnx"),
-            ("onnxruntime", "onnxruntime"),
             ("safetensors", "safetensors"),
         ]
         for mod, pip_name in deps:
@@ -148,9 +137,9 @@ class ModelConverter:
 
                 if hasattr(torch.backends.cuda, "enable_flash_sdp"):
                     torch.backends.cuda.enable_flash_sdp(True)
-            except:
+            except Exception:
                 pass
-        except:
+        except Exception:
             pass
         self._check_dependencies_and_env()
 
@@ -231,12 +220,12 @@ class ModelConverter:
             from transformers import (
                 AutoModel,
                 AutoModelForCausalLM,
-                AutoModelForSequenceClassification,
-                AutoModelForSeq2SeqLM,
                 AutoModelForImageClassification,
-                AutoModelForQuestionAnswering,
-                AutoModelForTokenClassification,
                 AutoModelForMaskedLM,
+                AutoModelForQuestionAnswering,
+                AutoModelForSeq2SeqLM,
+                AutoModelForSequenceClassification,
+                AutoModelForTokenClassification,
             )
 
             # Load model based on type with optimizations
@@ -734,15 +723,17 @@ class ModelConverter:
 
             # Convert to GPTQ format
             try:
-                # Load model
+                # Load model based on type
                 if model_type == "text-generation":
                     from transformers import AutoModelForCausalLM
 
-                    model = AutoModelForCausalLM.from_pretrained(model_name)
+                    # Load model for quantization
+                    AutoModelForCausalLM.from_pretrained(model_name)
                 else:
                     from transformers import AutoModel
 
-                    model = AutoModel.from_pretrained(model_name)
+                    # Load model for quantization
+                    AutoModel.from_pretrained(model_name)
 
                 # Apply GPTQ quantization
                 quantized_model = AutoGPTQForCausalLM.from_pretrained(
@@ -875,15 +866,17 @@ class ModelConverter:
 
             # Convert to AWQ format
             try:
-                # Load model
+                # Load model based on type
                 if model_type == "text-generation":
                     from transformers import AutoModelForCausalLM
 
-                    model = AutoModelForCausalLM.from_pretrained(model_name)
+                    # Load model for quantization
+                    AutoModelForCausalLM.from_pretrained(model_name)
                 else:
                     from transformers import AutoModel
 
-                    model = AutoModel.from_pretrained(model_name)
+                    # Load model for quantization
+                    AutoModel.from_pretrained(model_name)
 
                 # Apply AWQ quantization
                 quantized_model = AutoAWQForCausalLM.from_pretrained(
@@ -1096,7 +1089,7 @@ class ModelConverter:
             with open(gguf_file, "w") as f:
                 f.write("# GGUF Model File\n")
                 f.write(f"# Converted from: {model_name}\n")
-                f.write(f"# Format: GGUF\n")
+                f.write("# Format: GGUF\n")
                 f.write(f"# Quantization: {quantization or 'none'}\n")
 
             # Clean up temp directory
@@ -1311,8 +1304,8 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         """Create a minimal ONNX file when conversion fails"""
         try:
             # Create a simple ONNX model with basic operations
-            from onnx import helper, numpy_helper
             import numpy as np
+            from onnx import helper, numpy_helper
 
             # Create a simple graph
             input_shape = (
@@ -1684,9 +1677,11 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         """Validate if conversion is supported"""
         # Parse input source
         if input_source.startswith("hf:"):
-            input_format = "hf"
+            # input_format = "hf"  # Not used
+            pass
         else:
-            input_format = "local"
+            # input_format = "local"  # Not used
+            pass
 
         # Check if output format is supported
         if output_format not in self.supported_formats["output"]:
@@ -1743,8 +1738,9 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         log_level: str = "INFO",
     ) -> List[dict]:
         import concurrent.futures
-        from tqdm import tqdm
         import logging
+
+        from tqdm import tqdm
 
         logging.basicConfig(level=getattr(logging, log_level.upper(), logging.INFO))
         if max_workers is None:
@@ -1802,6 +1798,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
 
     def _postprocess_onnx(self, output_path, postprocess_type):
         import os
+
         import onnx
 
         onnx_file = (
@@ -1862,6 +1859,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
 
     def _postprocess_torchscript(self, output_path, postprocess_type):
         import os
+
         import torch
 
         ts_file = (
@@ -1892,6 +1890,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
 
     def _postprocess_fp16(self, output_path, postprocess_type):
         import os
+
         import torch
 
         try:
