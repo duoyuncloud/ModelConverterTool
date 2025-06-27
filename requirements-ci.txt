@@ -33,4 +33,5 @@ flake8>=6.0.0
 
 # Added from the code block
 auto-gptq
-llama-cpp-python 
+llama-cpp-python
+tiktoken 
