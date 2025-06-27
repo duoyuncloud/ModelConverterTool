@@ -7,6 +7,7 @@ from model_converter_tool.converter import ModelConverter
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import importlib.util
 import sys
+import torch
 
 # Dynamically check for export format dependencies
 
@@ -68,13 +69,19 @@ def test_dummy_model_conversion_and_inference(model_cfg, export_format):
         # 3. 检查导出文件存在
         files = list(out_dir.glob("*"))
         assert len(files) > 0, f"No files generated for {export_format}"
-        # 4. 能否被 transformers 加载（仅hf/torchscript）
-        if export_format in ["hf", "torchscript"]:
+        # 4. 能否被 transformers 加载（仅hf）
+        if export_format == "hf":
             model = AutoModelForCausalLM.from_pretrained(str(out_dir))
             tokenizer = AutoTokenizer.from_pretrained(str(out_dir))
             inputs = tokenizer("hello world", return_tensors="pt")
             outputs = model(**inputs)
             assert outputs is not None
-        # 5. 能否被 onnxruntime/llama.cpp 加载（可选，需环境支持）
+        # 5. 能否被 torch.jit.load 加载（仅torchscript）
+        if export_format == "torchscript":
+            pt_files = list(out_dir.glob("*.pt"))
+            assert pt_files, f"No TorchScript .pt file found in {out_dir}"
+            ts_model = torch.jit.load(str(pt_files[0]))
+            assert ts_model is not None
+        # 能否被 onnxruntime/llama.cpp 加载（可选，需环境支持）
         # 这里只做文件存在性和转换流程验证
 # Note: This test is CI-robust: only supported formats are tested, and export failures are skipped. For full coverage, run locally with all dependencies. 
