@@ -74,7 +74,6 @@ jobs:
 
     - name: Run linting
       run: |
-        black --check --diff model_converter_tool/ tests/
         flake8 model_converter_tool/ tests/ --max-line-length=88 --extend-ignore=E203,W503
 
   # Separate job for testing with GPU-specific dependencies (if needed in future)

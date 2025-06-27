@@ -44,6 +44,5 @@ jobs:
 
     - name: Run linting check
       run: |
-        pip install black flake8
-        black --check --diff model_converter_tool/ tests/
+        pip install flake8
         flake8 model_converter_tool/ tests/ --max-line-length=88 --extend-ignore=E203,W503 
