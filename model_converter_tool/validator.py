@@ -7,7 +7,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,8 @@ class ModelValidator:
             if file_path.exists():
                 details.append(f"✅ Found required file: {file_name}")
             else:
-                # For HuggingFace models, check for safetensors as alternative to pytorch_model.bin
+                # For HuggingFace models, check for safetensors as alternative to
+                # pytorch_model.bin
                 if (
                     file_name == "pytorch_model.bin"
                     and (model_dir / "model.safetensors").exists()
@@ -171,7 +172,8 @@ class ModelValidator:
 
         try:
             if model_path.startswith("hf:"):
-                # For HuggingFace models, can't easily validate config without downloading
+                # For HuggingFace models, can't easily validate config without
+                # downloading
                 details.append(
                     "ℹ️ HuggingFace model config validation skipped (requires download)"
                 )

@@ -5,9 +5,8 @@ Utility functions for model conversion
 import logging
 import os
 import shutil
-import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

@@ -1,13 +1,11 @@
 """
-Configuration management for model conversion
+Configuration management for the model converter tool
 """
 
-import os
 from dataclasses import dataclass, field
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-import yaml
 
 
 @dataclass

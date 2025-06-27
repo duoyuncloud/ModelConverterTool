@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import onnx
 import torch
 from transformers import AutoConfig, AutoTokenizer
@@ -701,7 +702,6 @@ class ModelConverter:
 
             # Check GPTQ dependencies
             try:
-                import auto_gptq
                 from auto_gptq import AutoGPTQForCausalLM
             except ImportError:
                 logger.warning(
@@ -844,7 +844,6 @@ class ModelConverter:
 
             # Check AWQ dependencies
             try:
-                import awq
                 from awq import AutoAWQForCausalLM
             except ImportError:
                 logger.warning(
@@ -1078,14 +1077,14 @@ class ModelConverter:
             tokenizer.save_pretrained(str(temp_dir))
 
             # Use llama-cpp-python conversion
-            import llama_cpp
             from llama_cpp import Llama
 
             # Create a simple GGUF file (this is a simplified approach)
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
 
             # For now, create a placeholder GGUF file
-            # In a real implementation, you would use llama-cpp-python's conversion utilities
+            # In a real implementation, you would use llama-cpp-python's conversion
+            # utilities
             with open(gguf_file, "w") as f:
                 f.write("# GGUF Model File\n")
                 f.write(f"# Converted from: {model_name}\n")
@@ -1151,8 +1150,6 @@ class ModelConverter:
 
                 # Save MLX model
                 mlx_file = output_dir / "model.npz"
-                import mlx.core as mx
-                import numpy as np
 
                 # Convert MLX model dict to numpy arrays for saving
                 np_arrays = {}
@@ -1196,7 +1193,6 @@ class ModelConverter:
     def _convert_pytorch_to_mlx(self, pytorch_model):
         """Convert PyTorch model to MLX format with improved mapping"""
         import mlx.core as mx
-        import numpy as np
 
         mlx_model = {}
 
@@ -1304,7 +1300,6 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         """Create a minimal ONNX file when conversion fails"""
         try:
             # Create a simple ONNX model with basic operations
-            import numpy as np
             from onnx import helper, numpy_helper
 
             # Create a simple graph

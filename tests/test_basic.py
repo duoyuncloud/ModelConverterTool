@@ -11,7 +11,7 @@ def is_network_available():
     try:
         requests.get("https://huggingface.co", timeout=5)
         return True
-    except:
+    except BaseException:
         return False
 
 
