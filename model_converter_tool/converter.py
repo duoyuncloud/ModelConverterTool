@@ -386,6 +386,32 @@ class ModelConverter:
                 if success and postprocess:
                     logger.info(f"Running MLX postprocess: {postprocess}")
                     postprocess_result = self._postprocess_mlx(output_path, postprocess)
+            elif output_format == "llama" or output_format == "llama-format":
+                ok = self._convert_minicpm_to_llama(
+                    input_source=input_source,
+                    output_path=output_path,
+                    device=device,
+                )
+                model_validation_result = None
+                if ok and validate:
+                    try:
+                        from .validator import ModelValidator
+                        validator = ModelValidator()
+                        # llama-format本质是hf格式
+                        model_validation_result = validator.validate_converted_model(
+                            output_path,
+                            "hf",
+                            "text-generation"
+                        )
+                    except Exception as e:
+                        model_validation_result = {"success": False, "error": str(e)}
+                return {
+                    "success": ok,
+                    "output_path": output_path,
+                    "model_validation": model_validation_result,
+                    "output_format": output_format,
+                    "model_type": "text-generation",
+                }
             else:
                 logger.error(f"Conversion to {output_format} not yet implemented")
                 return {"success": False, "error": "not implemented"}
@@ -1825,11 +1851,11 @@ for your framework.
             # Multi-step TorchScript export with fallbacks
             export_success = False
 
-            # Step 1: Try torch.jit.script with strict=False
+            # Step 1: Try torch.jit.script without strict argument
             try:
-                logger.info("Attempting torch.jit.script with strict=False...")
+                logger.info("Attempting torch.jit.script...")
                 model.eval()
-                scripted_model = torch.jit.script(model, strict=False)
+                scripted_model = torch.jit.script(model)
                 scripted_model.save(str(torchscript_file))
                 export_success = True
                 logger.info("TorchScript script export successful")
@@ -2380,3 +2406,76 @@ for your framework.
         )
         print(msg)
         return msg
+
+    def _convert_minicpm_to_llama(
+        self,
+        input_source: str,
+        output_path: str,
+        device: str = "auto",
+    ) -> bool:
+        """
+        Convert MiniCPM model to Llama-format (HuggingFace PyTorch bin).
+        Args:
+            input_source: Path to MiniCPM model directory or HF repo.
+            output_path: Path to save Llama-format model (directory or bin file).
+            device: 'cuda', 'cpu', or 'auto'.
+        Returns:
+            True if conversion succeeded, else False.
+        """
+        import torch
+        from transformers import AutoModelForCausalLM, AutoConfig
+        import math
+        import os
+
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # 加载MiniCPM模型
+        model = AutoModelForCausalLM.from_pretrained(
+            input_source,
+            torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+            device_map=device,
+            trust_remote_code=True,
+        )
+        config = model.config
+        state_dict = model.state_dict()
+
+        # 读取关键参数
+        scale_emb = getattr(config, "scale_emb", 1.0)
+        dim_model_base = getattr(config, "dim_model_base", getattr(config, "hidden_size", 1))
+        scale_depth = getattr(config, "scale_depth", 1.0)
+        real_num_layers = getattr(config, "num_hidden_layers", 0)
+        mup_num_layers = getattr(config, "mup_num_layers", real_num_layers)
+        if mup_num_layers is None or mup_num_layers == 0:
+            mup_num_layers = real_num_layers
+        hidden_size = getattr(config, "hidden_size", 1)
+
+        # 打印参数，便于调试
+        print(f"scale_emb = {scale_emb}")
+        print(f"dim_model_base = {dim_model_base}")
+        print(f"scale_depth = {scale_depth}")
+        print(f"real_num_layers = {real_num_layers}")
+        print(f"mup_num_layers = {mup_num_layers}")
+        print(f"hidden_size = {hidden_size}")
+
+        # 权重缩放
+        # 1. embedding
+        if "model.embed_tokens.weight" in state_dict:
+            state_dict["model.embed_tokens.weight"] = state_dict["model.embed_tokens.weight"] * scale_emb
+        # 2. lm_head
+        if "lm_head.weight" in state_dict:
+            state_dict["lm_head.weight"] = state_dict["lm_head.weight"] / (hidden_size / dim_model_base)
+        # 3. 层内参数
+        for i in range(real_num_layers):
+            attn_out_name = f"model.layers.{i}.self_attn.o_proj.weight"
+            if attn_out_name in state_dict:
+                state_dict[attn_out_name] = state_dict[attn_out_name] * (scale_depth / math.sqrt(mup_num_layers))
+            ffn_down_proj_name = f"model.layers.{i}.mlp.down_proj.weight"
+            if ffn_down_proj_name in state_dict:
+                state_dict[ffn_down_proj_name] = state_dict[ffn_down_proj_name] * (scale_depth / math.sqrt(mup_num_layers))
+
+        # 输出到output_path
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        torch.save(state_dict, output_path)
+        print(f"[MiniCPM->Llama] Saved converted weights to {output_path}")
+        return True

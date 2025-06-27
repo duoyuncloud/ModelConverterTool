@@ -321,6 +321,8 @@ class ModelValidator:
                 output_shape = outputs.logits.shape
             elif hasattr(outputs, 'last_hidden_state'):
                 output_shape = outputs.last_hidden_state.shape
+            elif isinstance(outputs, dict) and 'logits' in outputs:
+                output_shape = outputs['logits'].shape
             else:
                 output_shape = tuple(outputs.shape) if hasattr(outputs, 'shape') else "unknown"
             

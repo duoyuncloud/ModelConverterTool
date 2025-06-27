@@ -20,5 +20,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
           pip install pytest
-      - name: Run GPT-2 conversion and validation tests
-        run: pytest tests/test_gpt2_conversion_ci.py -v 
+      - name: Run all tests including MiniCPM conversion
+        run: pytest tests/ -v 
