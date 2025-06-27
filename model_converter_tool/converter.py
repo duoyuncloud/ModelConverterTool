@@ -530,8 +530,6 @@ class ModelConverter:
     def _get_max_onnx_opset(self):
         """Detect the highest ONNX opset supported by torch.onnx and onnxruntime"""
         try:
-            import torch.onnx
-
             # torch.onnx 通常支持到 opset 20
             max_opset = 20
         except Exception:
