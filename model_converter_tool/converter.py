@@ -1069,146 +1069,111 @@ class ModelConverter:
         """Alternative GGUF conversion method using direct API"""
         try:
             logger.info("Trying alternative GGUF conversion method")
-
-            # Check if llama-cpp-python is available
             try:
-                import llama_cpp
+                # Import check only - not used directly
+                import llama_cpp  # noqa: F401
             except ImportError:
                 logger.error("llama-cpp-python not available for GGUF conversion")
                 return False
-
-            # Load model and convert using transformers
             from transformers import AutoModel, AutoTokenizer
-
-            # Load the model - use AutoModel instead of AutoModelForCausalLM
-            # to handle different model types
             model = AutoModel.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-            # Save in a temporary directory for conversion
             temp_dir = output_dir / "temp_model"
             temp_dir.mkdir(exist_ok=True)
-
             model.save_pretrained(str(temp_dir))
             tokenizer.save_pretrained(str(temp_dir))
-
-            # Create GGUF file path
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-
-            # Try using llama-cpp-python's conversion utilities
             try:
-                # Check if convert_hf_to_gguf is available
                 try:
                     from llama_cpp import convert_hf_to_gguf
                     logger.info("Using llama-cpp-python convert_hf_to_gguf")
-                    
-                    # Convert using the function
                     convert_hf_to_gguf(
                         model_path=str(temp_dir),
                         output_path=str(gguf_file),
                         model_type="llama",  # Default type
                         outtype=quantization or "f16"
                     )
-                    
                     logger.info(f"GGUF conversion successful: {gguf_file}")
-                    # Clean up temp directory
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     return True
-                    
                 except ImportError:
-                    logger.info("convert_hf_to_gguf not available, trying subprocess")
-                    
-                    # Try using subprocess with llama-cpp-python tools
+                    logger.info(
+                        "convert_hf_to_gguf not available, trying subprocess"
+                    )
                     import subprocess
                     import sys
-
                     python_exe = sys.executable
-                    
-                    # Try different possible conversion commands
                     conversion_commands = [
                         [python_exe, "-m", "llama_cpp.convert_hf_to_gguf"],
                         [python_exe, "-m", "llama_cpp.convert"],
                         ["llama-cpp-convert"],
                         ["llama-cpp-convert-hf-to-gguf"]
                     ]
-                    
                     for cmd_base in conversion_commands:
                         try:
                             cmd = cmd_base + [
                                 "--outfile", str(gguf_file),
                                 "--model-dir", str(temp_dir),
                             ]
-
                             if quantization:
                                 cmd.extend(["--outtype", quantization])
-
-                            logger.info(f"Trying conversion command: {' '.join(cmd)}")
-                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-
+                            logger.info(
+                                f"Trying conversion command: {' '.join(cmd)}"
+                            )
+                            result = subprocess.run(
+                                cmd, capture_output=True, text=True, timeout=300
+                            )
                             if result.returncode == 0:
-                                logger.info(f"GGUF conversion successful: {gguf_file}")
-                                # Clean up temp directory
+                                logger.info(
+                                    f"GGUF conversion successful: {gguf_file}"
+                                )
                                 shutil.rmtree(temp_dir, ignore_errors=True)
                                 return True
                             else:
                                 logger.warning(f"Command failed: {result.stderr}")
-                                
                         except (subprocess.TimeoutExpired, FileNotFoundError):
                             continue
-                    
-                    # If all commands failed, try manual conversion
-                    logger.info("All conversion commands failed, trying manual conversion")
-                    return self._manual_gguf_conversion(model, tokenizer, gguf_file, quantization)
-
+                    logger.info(
+                        "All conversion commands failed, trying manual conversion"
+                    )
+                    return self._manual_gguf_conversion(
+                        model, tokenizer, gguf_file, quantization
+                    )
             except Exception as e:
                 logger.warning(f"GGUF conversion failed: {e}")
-                # Try manual conversion as fallback
-                return self._manual_gguf_conversion(model, tokenizer, gguf_file, quantization)
-
+                return self._manual_gguf_conversion(
+                    model, tokenizer, gguf_file, quantization
+                )
         except Exception as e:
             logger.error(f"Alternative GGUF conversion failed: {e}")
             return False
 
-    def _manual_gguf_conversion(self, model, tokenizer, gguf_file: Path, quantization: str) -> bool:
+    def _manual_gguf_conversion(
+        self, model, tokenizer, gguf_file: Path, quantization: str
+    ) -> bool:
         """Manual GGUF conversion using llama-cpp-python API"""
         try:
             logger.info("Attempting manual GGUF conversion")
-            
-            # This is a simplified manual conversion
-            # In a full implementation, you would need to:
-            # 1. Extract model weights and convert to GGUF format
-            # 2. Handle tokenizer conversion
-            # 3. Apply quantization if specified
-            
-            # For now, create a minimal GGUF-compatible structure
             import struct
             import json
-            
-            # Create a basic GGUF file structure
             with open(gguf_file, 'wb') as f:
-                # GGUF magic number
                 f.write(b'GGUF')
-                
-                # Version
                 f.write(struct.pack('<I', 1))
-                
-                # Number of tensors (placeholder)
                 f.write(struct.pack('<Q', 0))
-                
-                # Number of metadata KV pairs
                 metadata = {
                     "model.family": "llama",
                     "model.architecture": "llama",
                     "model.file_type": quantization or "f16",
                     "tokenizer.ggml.model": "llama",
                     "tokenizer.ggml.tokens": json.dumps(tokenizer.get_vocab()),
-                    "tokenizer.ggml.scores": json.dumps([0.0] * len(tokenizer.get_vocab())),
-                    "tokenizer.ggml.token_types": json.dumps([1] * len(tokenizer.get_vocab())),
+                    "tokenizer.ggml.scores": json.dumps(
+                        [0.0] * len(tokenizer.get_vocab())
+                    ),
+                    "tokenizer.ggml.token_types": json.dumps(
+                        [1] * len(tokenizer.get_vocab())
+                    ),
                 }
-                
                 f.write(struct.pack('<Q', len(metadata)))
-                
-                # Write metadata
                 for key, value in metadata.items():
                     key_bytes = key.encode('utf-8')
                     value_bytes = value.encode('utf-8')
@@ -1216,10 +1181,8 @@ class ModelConverter:
                     f.write(key_bytes)
                     f.write(struct.pack('<Q', len(value_bytes)))
                     f.write(value_bytes)
-            
             logger.info(f"Manual GGUF conversion completed: {gguf_file}")
             return True
-            
         except Exception as e:
             logger.error(f"Manual GGUF conversion failed: {e}")
             return False
