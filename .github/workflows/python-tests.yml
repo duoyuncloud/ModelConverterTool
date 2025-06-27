@@ -61,9 +61,12 @@ jobs:
       run: |
         pytest tests/ -v --timeout=300 --cov=model_converter_tool --cov-report=xml --cov-report=term-missing
 
+    - name: Set Codecov token env
+      run: echo "CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }}" >> $GITHUB_ENV
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
-      if: secrets.CODECOV_TOKEN != ''
+      if: ${{ env.CODECOV_TOKEN != '' }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
