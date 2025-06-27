@@ -1601,7 +1601,11 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
             return msg
 
     def _postprocess_gguf(self, output_path, postprocess_type):
-        print(f"  - GGUF postprocess ({postprocess_type}) not yet implemented. Placeholder.")
+        msg = f"  - GGUF postprocess ({postprocess_type}) not yet implemented. Placeholder."
+        print(msg)
+        return msg
 
     def _postprocess_mlx(self, output_path, postprocess_type):
-        print(f"  - MLX postprocess ({postprocess_type}) not yet implemented. Placeholder.") 
+        msg = f"  - MLX postprocess ({postprocess_type}) not yet implemented. Placeholder."
+        print(msg)
+        return msg 
