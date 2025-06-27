@@ -29,4 +29,8 @@ flake8>=6.0.0
 # - auto-gptq>=0.4.0 (CUDA only)
 # - autoawq>=0.2.0 (CUDA only)
 # - llama-cpp-python>=0.2.0 (optional)
-# - mlx>=0.0.8 (Apple Silicon only) 
+# - mlx>=0.0.8 (Apple Silicon only)
+
+# Added from the code block
+auto-gptq
+llama-cpp-python 
