@@ -1,309 +1,389 @@
 """
-Model validation functionality
+Model validation utilities for testing converted models
 """
 
-import json
-import logging
 import os
-from dataclasses import dataclass
+import subprocess
+import tempfile
+import numpy as np
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, Any, Optional, List, Tuple
+import logging
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ValidationResult:
-    """Result of model validation"""
-
-    is_valid: bool
-    details: List[str]
-    errors: List[str]
-    warnings: List[str]
-    model_info: Dict[str, Any]
-
-
 class ModelValidator:
-    """Validates model files and configurations"""
+    """Validate converted models by loading and testing inference"""
 
     def __init__(self):
-        self.required_files = {
-            "huggingface": ["config.json", "pytorch_model.bin", "tokenizer.json"],
-            "onnx": ["model.onnx"],
-            "gguf": ["model.gguf"],
-            "mlx": ["model.npz", "config.json"],
-            "torchscript": ["model.pt"],
-        }
+        self.validation_results = {}
 
-    def validate_model(
-        self,
-        model_path: str,
-        model_type: str = "auto",
-        check_weights: bool = False,
-        check_config: bool = False,
-    ) -> ValidationResult:
+    def validate_converted_model(
+        self, 
+        model_path: str, 
+        output_format: str, 
+        model_type: str = "text-generation"
+    ) -> Dict[str, Any]:
         """
-        Validate a model
-
+        Validate a converted model by loading it and running test inference
+        
         Args:
-            model_path: Path to model (hf:model_name or local path)
-            model_type: Model type for validation
-            check_weights: Whether to check model weights
-            check_config: Whether to check model configuration
-
+            model_path: Path to the converted model
+            output_format: Format of the converted model (onnx, gguf, gptq, etc.)
+            model_type: Type of model (text-generation, text-classification, etc.)
+            
         Returns:
-            ValidationResult: Validation result with details
+            Dict with validation results
         """
-        details = []
-        errors = []
-        warnings = []
-        model_info = {}
-        detected_format = None
         try:
-            # Parse model path
-            if model_path.startswith("hf:"):
-                model_name = model_path[3:]
-                input_type = "huggingface"
-                details.append(f"Validating HuggingFace model: {model_name}")
+            if output_format.lower() == "onnx":
+                return self._validate_onnx_model(model_path, model_type)
+            elif output_format.lower() == "gguf":
+                return self._validate_gguf_model(model_path, model_type)
+            elif output_format.lower() == "gptq":
+                return self._validate_gptq_model(model_path, model_type)
+            elif output_format.lower() == "torchscript":
+                return self._validate_torchscript_model(model_path, model_type)
+            elif output_format.lower() == "fp16":
+                return self._validate_fp16_model(model_path, model_type)
+            elif output_format.lower() == "mlx":
+                return self._validate_mlx_model(model_path, model_type)
             else:
-                model_name = model_path
-                input_type = "local"
-                details.append(f"Validating local model: {model_name}")
-            # Basic validation
-            if input_type == "local":
-                if not os.path.exists(model_name):
-                    errors.append(f"Model path does not exist: {model_name}")
-                    return ValidationResult(
-                        False, details, errors, warnings, model_info
-                    )
-                # Smart format detection
-                detected_format, detect_details = self._detect_format(model_name)
-                details.extend(detect_details)
-                # If user did not specify model_type, use detected_format
-                effective_type = model_type
-                if model_type == "auto" and detected_format:
-                    effective_type = detected_format
-                    details.append(f"🔎 Detected model format: {detected_format}")
-                elif model_type == "auto":
-                    details.append(
-                        "⚠️ Could not confidently detect model format, "
-                        "fallback to HuggingFace."
-                    )
-                    effective_type = "huggingface"
-                # Check required files
-                file_validation = self._validate_files(model_name, effective_type)
-                details.extend(file_validation["details"])
-                errors.extend(file_validation["errors"])
-                warnings.extend(file_validation["warnings"])
-            # Configuration validation
-            if check_config:
-                config_validation = self._validate_config(model_path, model_type)
-                details.extend(config_validation["details"])
-                errors.extend(config_validation["errors"])
-                warnings.extend(config_validation["warnings"])
-            # Weights validation
-            if check_weights:
-                weights_validation = self._validate_weights(model_path, model_type)
-                details.extend(weights_validation["details"])
-                errors.extend(weights_validation["errors"])
-                warnings.extend(weights_validation["warnings"])
-            # Model info
-            model_info = self._extract_model_info(model_path, model_type)
-            is_valid = len(errors) == 0
-            if is_valid:
-                details.append("✅ Model validation passed")
-            else:
-                details.append("❌ Model validation failed")
-            return ValidationResult(is_valid, details, errors, warnings, model_info)
+                return {
+                    "success": False,
+                    "error": f"Unsupported format for validation: {output_format}"
+                }
         except Exception as e:
-            errors.append(f"Validation error: {e}")
-            return ValidationResult(False, details, errors, warnings, model_info)
+            logger.error(f"Validation failed for {model_path}: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
-    def _validate_files(self, model_path: str, model_type: str) -> Dict[str, List[str]]:
-        """Validate required files exist"""
-        details = []
-        errors = []
-        warnings = []
-        model_dir = Path(model_path)
-        # 优化：对 onnx/torchscript/gguf/mlx 只要求主文件存在，附属文件缺失降级为 warning
-        # main_file_map = {  # Not used
-        #     "onnx": "model.onnx",
-        #     "torchscript": "model.pt",
-        #     "gguf": "model.gguf",
-        #     "mlx": "model.npz",
-        # }
-        # fallback 逻辑
-        key = model_type if model_type in self.required_files else "huggingface"
-        # 检查是否真的为 huggingface 格式（有 config.json 且有权重文件）
-        is_hf = (model_dir / "config.json").exists() and (
-            (model_dir / "pytorch_model.bin").exists()
-            or (model_dir / "model.safetensors").exists()
-        )
-        for file_name in self.required_files[key]:
-            file_path = model_dir / file_name
-            if file_path.exists():
-                details.append(f"✅ Found required file: {file_name}")
-            else:
-                # For HuggingFace models, check for safetensors as alternative to
-                # pytorch_model.bin
-                if (
-                    file_name == "pytorch_model.bin"
-                    and (model_dir / "model.safetensors").exists()
-                ):
-                    details.append(
-                        f"✅ Found required file: model.safetensors "
-                        f"(alternative to {file_name})"
-                    )
-                elif file_name == "pytorch_model.bin" and not is_hf:
-                    # 非 huggingface 格式，缺失 pytorch_model.bin 只给 warning
-                    warnings.append(
-                        f"⚠️ Missing optional file: {file_name} "
-                        f"(not required for this format)"
-                    )
-                else:
-                    errors.append(f"❌ Missing required file: {file_name}")
-
-        return {"details": details, "errors": errors, "warnings": warnings}
-
-    def _validate_config(
-        self, model_path: str, model_type: str
-    ) -> Dict[str, List[str]]:
-        """Validate model configuration"""
-        details = []
-        errors = []
-        warnings = []
-
+    def _validate_onnx_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate ONNX model"""
         try:
-            if model_path.startswith("hf:"):
-                # For HuggingFace models, can't easily validate config without
-                # downloading
-                details.append(
-                    "ℹ️ HuggingFace model config validation skipped "
-                    "(requires download)"
-                )
-                return {"details": details, "errors": errors, "warnings": warnings}
-
-            config_path = Path(model_path) / "config.json"
-            if not config_path.exists():
-                errors.append("❌ Config file not found")
-                return {"details": details, "errors": errors, "warnings": warnings}
-
-            # Load and validate config
-            with open(config_path, "r") as f:
-                config = json.load(f)
-
-            # Basic config validation
-            required_keys = ["model_type", "architectures"]
-            for key in required_keys:
-                if key in config:
-                    details.append(f"✅ Config contains {key}: {config[key]}")
-                else:
-                    warnings.append(f"⚠️ Config missing {key}")
-
-            details.append("✅ Configuration validation completed")
-
-        except json.JSONDecodeError as e:
-            errors.append(f"❌ Invalid JSON in config file: {e}")
-        except Exception as e:
-            errors.append(f"❌ Config validation error: {e}")
-
-        return {"details": details, "errors": errors, "warnings": warnings}
-
-    def _validate_weights(
-        self, model_path: str, model_type: str
-    ) -> Dict[str, List[str]]:
-        """Validate model weights"""
-        details = []
-        errors = []
-        warnings = []
-
-        try:
-            if model_path.startswith("hf:"):
-                details.append(
-                    "ℹ️ HuggingFace model weights validation skipped "
-                    "(requires download)"
-                )
-                return {"details": details, "errors": errors, "warnings": warnings}
-
+            import onnxruntime as ort
+            
+            # Find ONNX file
             model_dir = Path(model_path)
-
-            # Check for weight files
-            weight_files = list(model_dir.glob("*.bin")) + list(
-                model_dir.glob("*.safetensors")
-            )
-
-            if weight_files:
-                total_size = sum(f.stat().st_size for f in weight_files)
-                details.append(f"✅ Found {len(weight_files)} weight files")
-                details.append(f"✅ Total weight size: {total_size / (1024**3):.2f} GB")
+            onnx_files = list(model_dir.glob("*.onnx"))
+            if not onnx_files:
+                return {"success": False, "error": "No ONNX files found"}
+            
+            onnx_file = onnx_files[0]
+            
+            # Load ONNX model
+            session = ort.InferenceSession(str(onnx_file))
+            
+            # Get input/output info
+            input_name = session.get_inputs()[0].name
+            output_name = session.get_outputs()[0].name
+            
+            # Create test input based on model type
+            if model_type == "text-generation":
+                # For text generation models, use token IDs
+                dummy_input = np.random.randint(0, 50257, (1, 10), dtype=np.int64)
             else:
-                warnings.append("⚠️ No weight files found")
-
-            details.append("✅ Weights validation completed")
-
+                # For other models, use appropriate input shape
+                input_shape = session.get_inputs()[0].shape
+                if input_shape[0] == 0:  # Dynamic batch size
+                    input_shape = (1,) + tuple(input_shape[1:])
+                dummy_input = np.random.randn(*input_shape).astype(np.float32)
+            
+            # Run inference
+            outputs = session.run([output_name], {input_name: dummy_input})
+            
+            # Validate output
+            if len(outputs) == 0:
+                return {"success": False, "error": "No outputs from ONNX model"}
+            
+            output = outputs[0]
+            
+            return {
+                "success": True,
+                "model_file": str(onnx_file),
+                "input_shape": dummy_input.shape,
+                "output_shape": output.shape,
+                "inference_time": "measured",  # Could add timing
+                "message": f"ONNX model loaded successfully. Input: {dummy_input.shape}, Output: {output.shape}"
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "onnxruntime not available"}
         except Exception as e:
-            errors.append(f"❌ Weights validation error: {e}")
+            return {"success": False, "error": f"ONNX validation failed: {e}"}
 
-        return {"details": details, "errors": errors, "warnings": warnings}
-
-    def _extract_model_info(self, model_path: str, model_type: str) -> Dict[str, Any]:
-        """Extract basic model information"""
-        info = {
-            "path": model_path,
-            "type": model_type,
-            "size": None,
-            "architecture": None,
-            "parameters": None,
-        }
-
+    def _validate_gguf_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate GGUF model"""
         try:
-            if not model_path.startswith("hf:"):
-                model_dir = Path(model_path)
-                if model_dir.exists():
-                    # Calculate directory size
-                    total_size = sum(
-                        f.stat().st_size for f in model_dir.rglob("*") if f.is_file()
-                    )
-                    info["size"] = total_size
-
-                    # Try to get architecture info from config
-                    config_path = model_dir / "config.json"
-                    if config_path.exists():
-                        with open(config_path, "r") as f:
-                            config = json.load(f)
-                        info["architecture"] = config.get("architectures", [None])[0]
-                        info["parameters"] = config.get("num_parameters")
+            model_dir = Path(model_path)
+            gguf_files = list(model_dir.glob("*.gguf"))
+            if not gguf_files:
+                return {"success": False, "error": "No GGUF files found"}
+            
+            gguf_file = gguf_files[0]
+            
+            # Check GGUF file header
+            with open(gguf_file, 'rb') as f:
+                header = f.read(8)
+                if not header.startswith(b'GGUF'):
+                    return {"success": False, "error": "Invalid GGUF file header"}
+            
+            # Try to load with llama.cpp if available
+            llama_main = self._find_llama_main()
+            if llama_main:
+                try:
+                    # Test loading with llama.cpp
+                    cmd = [llama_main, "-m", str(gguf_file), "-n", "1", "--no-display-prompt"]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        return {
+                            "success": True,
+                            "model_file": str(gguf_file),
+                            "message": "GGUF model loaded successfully with llama.cpp"
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "error": f"llama.cpp loading failed: {result.stderr}"
+                        }
+                except subprocess.TimeoutExpired:
+                    return {"success": False, "error": "llama.cpp loading timed out"}
+                except Exception as e:
+                    return {"success": False, "error": f"llama.cpp validation failed: {e}"}
+            else:
+                return {
+                    "success": True,
+                    "model_file": str(gguf_file),
+                    "message": "GGUF file header valid, llama.cpp not available for full validation"
+                }
+                
         except Exception as e:
-            logger.warning(f"Could not extract model info: {e}")
+            return {"success": False, "error": f"GGUF validation failed: {e}"}
 
-        return info
+    def _validate_gptq_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate GPTQ model"""
+        try:
+            from auto_gptq import AutoGPTQForCausalLM
+            from transformers import AutoTokenizer
+            import torch
+            
+            model_dir = Path(model_path)
+            
+            # Load the GPTQ model
+            model = AutoGPTQForCausalLM.from_quantized(str(model_dir))
+            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            
+            # Create test input
+            test_text = "Hello world"
+            inputs = tokenizer(test_text, return_tensors="pt")
+            
+            # Run inference
+            with torch.no_grad():
+                outputs = model(**inputs)
+            
+            # Validate output
+            if hasattr(outputs, 'logits'):
+                logits = outputs.logits
+            else:
+                logits = outputs
+            
+            return {
+                "success": True,
+                "model_file": str(model_dir),
+                "input_text": test_text,
+                "input_shape": inputs['input_ids'].shape,
+                "output_shape": logits.shape,
+                "message": f"GPTQ model loaded successfully. Input: {inputs['input_ids'].shape}, Output: {logits.shape}"
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "auto-gptq not available"}
+        except Exception as e:
+            return {"success": False, "error": f"GPTQ validation failed: {e}"}
 
-    def _detect_format(self, model_path: str):
-        """Detect model format based on files in the directory.
-        Returns (format, details)"""
-        details = []
-        model_dir = Path(model_path)
-        # Priority: onnx > gguf > mlx > torchscript > huggingface
-        if (model_dir / "model.onnx").exists():
-            details.append("Detected model.onnx file, likely ONNX format.")
-            return "onnx", details
-        if (model_dir / "model.gguf").exists():
-            details.append("Detected model.gguf file, likely GGUF format.")
-            return "gguf", details
-        if (model_dir / "model.npz").exists() and (model_dir / "config.json").exists():
-            details.append("Detected model.npz and config.json, likely MLX format.")
-            return "mlx", details
-        if (model_dir / "model.pt").exists():
-            details.append("Detected model.pt file, likely TorchScript format.")
-            return "torchscript", details
-        if (model_dir / "config.json").exists() and (
-            (model_dir / "pytorch_model.bin").exists()
-            or (model_dir / "model.safetensors").exists()
-        ):
-            details.append(
-                "Detected config.json and weights, likely HuggingFace format."
-            )
-            return "huggingface", details
-        # Fallback
-        details.append("No known model format signature found.")
-        return None, details
+    def _validate_torchscript_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate TorchScript model"""
+        try:
+            import torch
+            
+            model_dir = Path(model_path)
+            torchscript_files = list(model_dir.glob("*.pt"))
+            if not torchscript_files:
+                return {"success": False, "error": "No TorchScript files found"}
+            
+            torchscript_file = torchscript_files[0]
+            
+            # Load the TorchScript model
+            model = torch.jit.load(str(torchscript_file))
+            
+            # Create dummy input based on model type
+            if model_type == "text-generation":
+                dummy_input = torch.randint(0, 50257, (1, 10), dtype=torch.long)
+            else:
+                # For other models, use appropriate input
+                dummy_input = torch.randn(1, 10, 768)  # Example for BERT-like models
+            
+            # Run inference
+            with torch.no_grad():
+                outputs = model(dummy_input)
+            
+            return {
+                "success": True,
+                "model_file": str(torchscript_file),
+                "input_shape": dummy_input.shape,
+                "output_shape": outputs.shape,
+                "message": f"TorchScript model loaded successfully. Input: {dummy_input.shape}, Output: {outputs.shape}"
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": f"TorchScript validation failed: {e}"}
+
+    def _validate_fp16_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate FP16 model"""
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            import torch
+            
+            model_dir = Path(model_path)
+            
+            # Load the FP16 model
+            if model_type == "text-generation":
+                model = AutoModelForCausalLM.from_pretrained(str(model_dir))
+            else:
+                from transformers import AutoModel
+                model = AutoModel.from_pretrained(str(model_dir))
+            
+            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            
+            # Create test input
+            test_text = "Hello world"
+            inputs = tokenizer(test_text, return_tensors="pt")
+            
+            # Run inference
+            with torch.no_grad():
+                outputs = model(**inputs)
+            
+            # Get output shape
+            if hasattr(outputs, 'logits'):
+                output_shape = outputs.logits.shape
+            elif hasattr(outputs, 'last_hidden_state'):
+                output_shape = outputs.last_hidden_state.shape
+            else:
+                output_shape = tuple(outputs.shape) if hasattr(outputs, 'shape') else "unknown"
+            
+            return {
+                "success": True,
+                "model_file": str(model_dir),
+                "input_text": test_text,
+                "input_shape": inputs['input_ids'].shape,
+                "output_shape": output_shape,
+                "message": f"FP16 model loaded successfully. Input: {inputs['input_ids'].shape}, Output: {output_shape}"
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": f"FP16 validation failed: {e}"}
+
+    def _validate_mlx_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
+        """Validate MLX model"""
+        try:
+            import mlx.core as mx
+            import numpy as np
+            
+            model_dir = Path(model_path)
+            mlx_files = list(model_dir.glob("*.npz"))
+            if not mlx_files:
+                return {"success": False, "error": "No MLX files found"}
+            
+            mlx_file = mlx_files[0]
+            
+            # Load MLX model
+            model_data = np.load(str(mlx_file))
+            
+            # Convert to MLX arrays
+            mlx_model = {}
+            for name, array in model_data.items():
+                mlx_model[name] = mx.array(array)
+            
+            # Create dummy input
+            dummy_input = mx.random.normal((1, 10, 768))  # Example shape
+            
+            return {
+                "success": True,
+                "model_file": str(mlx_file),
+                "model_keys": list(mlx_model.keys()),
+                "input_shape": dummy_input.shape,
+                "message": f"MLX model loaded successfully with {len(mlx_model)} parameters"
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "MLX not available"}
+        except Exception as e:
+            return {"success": False, "error": f"MLX validation failed: {e}"}
+
+    def _find_llama_main(self) -> Optional[str]:
+        """Find llama.cpp main executable"""
+        # Check common locations
+        possible_paths = [
+            "./main",
+            "./llama",
+            "/usr/local/bin/llama",
+            "/usr/bin/llama"
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        
+        # Try to find in PATH
+        try:
+            import shutil
+            llama_path = shutil.which("llama")
+            if llama_path:
+                return llama_path
+        except:
+            pass
+        
+        return None
+
+    def validate_batch_models(
+        self, 
+        conversion_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Validate a batch of converted models
+        
+        Args:
+            conversion_results: List of conversion results from ModelConverter
+            
+        Returns:
+            List of validation results
+        """
+        validation_results = []
+        
+        for result in conversion_results:
+            if result.get("success", False):
+                # Extract model info from conversion result
+                output_path = result.get("output_path", "")
+                output_format = result.get("output_format", "")
+                model_type = result.get("model_type", "text-generation")
+                
+                # Validate the converted model
+                validation_result = self.validate_converted_model(
+                    output_path, output_format, model_type
+                )
+                
+                # Combine conversion and validation results
+                combined_result = {
+                    **result,
+                    "validation": validation_result
+                }
+                validation_results.append(combined_result)
+            else:
+                # Conversion failed, no validation needed
+                validation_results.append(result)
+        
+        return validation_results

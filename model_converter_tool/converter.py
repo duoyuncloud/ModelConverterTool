@@ -294,6 +294,7 @@ class ModelConverter:
         config: Optional[Dict[str, Any]] = None,
         offline_mode: bool = False,
         postprocess: Optional[str] = None,
+        validate: bool = True,
     ) -> dict:
         """
         Convert a model between formats.
@@ -388,18 +389,43 @@ class ModelConverter:
             else:
                 logger.error(f"Conversion to {output_format} not yet implemented")
                 return {"success": False, "error": "not implemented"}
+            
             validation_passed = False
+            model_validation_result = None
+            
             if success:
                 logger.info(f"Conversion completed successfully: {output_path}")
+                
+                # Basic output validation
                 if self._validate_output(output_path, output_format):
                     logger.info("Output validation passed")
                     validation_passed = True
                 else:
                     logger.warning("Output validation failed, but conversion completed")
+                
+                # Advanced model validation if requested
+                if validate and validation_passed:
+                    try:
+                        from .validator import ModelValidator
+                        validator = ModelValidator()
+                        model_validation_result = validator.validate_converted_model(
+                            output_path, output_format, model_type
+                        )
+                        if model_validation_result.get("success", False):
+                            logger.info("Model validation passed - model can be loaded and used")
+                        else:
+                            logger.warning(f"Model validation failed: {model_validation_result.get('error', 'Unknown error')}")
+                    except Exception as e:
+                        logger.warning(f"Model validation skipped: {e}")
+                
                 return {
                     "success": True,
                     "validation": validation_passed,
+                    "model_validation": model_validation_result,
                     "postprocess_result": postprocess_result,
+                    "output_path": output_path,
+                    "output_format": output_format,
+                    "model_type": model_type,
                 }
             else:
                 logger.error("Conversion failed")
@@ -1850,6 +1876,7 @@ for your framework.
                         config=task.get("config"),
                         offline_mode=task.get("offline_mode", False),
                         postprocess=task.get("postprocess"),
+                        validate=task.get("validate", True),
                     )
                     if result.get("success"):
                         return {**task, **result, "attempts": attempt + 1}
