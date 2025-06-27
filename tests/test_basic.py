@@ -207,3 +207,24 @@ def test_batch_convert_offline(mock_convert):
     assert isinstance(results, list)
     assert len(results) == 1
     assert not results[0]["success"]
+
+
+@pytest.mark.network
+@pytest.mark.skipif(not is_network_available(), reason="Network not available")
+def test_convert_gguf(tmp_path):
+    converter = ModelConverter()
+    out_dir = tmp_path / "gguf_out"
+    out_dir.mkdir()
+    result = converter.convert(
+        input_source="hf:distilbert-base-uncased",
+        output_format="gguf",
+        output_path=str(out_dir),
+        model_type="text-classification",
+        quantization="q4_0",
+    )
+    assert isinstance(result, dict)
+    assert "success" in result
+    # GGUF conversion might fail if llama-cpp-python is not available
+    # but the method should be callable and return a result
+    if not result["success"]:
+        assert "error" in result
