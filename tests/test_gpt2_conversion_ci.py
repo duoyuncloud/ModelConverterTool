@@ -1,4 +1,3 @@
-import os
 import tempfile
 import pytest
 from pathlib import Path
@@ -8,6 +7,7 @@ import importlib
 import torch
 from packaging import version
 
+
 def is_gptq_supported():
     try:
         importlib.import_module("auto_gptq")
@@ -15,17 +15,21 @@ def is_gptq_supported():
     except ImportError:
         return False
 
+
 def is_onnx_supported():
     try:
         import onnxruntime
+
         # onnxruntime >= 1.12.0 supports IR v11
         return version.parse(onnxruntime.__version__) >= version.parse("1.12.0")
     except Exception:
         return False
 
+
 def is_torchscript_supported():
     import torch
     from transformers import AutoModelForCausalLM
+
     try:
         model = AutoModelForCausalLM.from_pretrained("gpt2")
         torch.jit.script(model)
@@ -33,28 +37,53 @@ def is_torchscript_supported():
     except Exception:
         return False
 
+
 def is_gguf_supported():
     try:
-        import llama_cpp.convert_hf_to_gguf
         return True
     except ImportError:
         return False
 
-@pytest.mark.parametrize("output_format,quantization", [
-    pytest.param("onnx", None, marks=pytest.mark.skipif(
-        not is_onnx_supported(), reason="ONNX requires onnxruntime")),
-    pytest.param("torchscript", None, marks=pytest.mark.skipif(
-        not is_torchscript_supported(), reason="TorchScript not supported")),
-    ("fp16", None),
-    ("hf", None),
-    pytest.param("gptq", "q4_k_m", marks=pytest.mark.skipif(
-        not is_gptq_supported(), reason="GPTQ requires auto-gptq and CUDA")),
-    pytest.param("gguf", "q4_k_m", marks=pytest.mark.skipif(
-        not is_gguf_supported(), reason="GGUF requires llama-cpp-python[convert]")),
-])
+
+@pytest.mark.parametrize(
+    "output_format,quantization",
+    [
+        pytest.param(
+            "onnx",
+            None,
+            marks=pytest.mark.skipif(
+                not is_onnx_supported(), reason="ONNX requires onnxruntime"
+            ),
+        ),
+        pytest.param(
+            "torchscript",
+            None,
+            marks=pytest.mark.skipif(
+                not is_torchscript_supported(), reason="TorchScript not supported"
+            ),
+        ),
+        ("fp16", None),
+        ("hf", None),
+        pytest.param(
+            "gptq",
+            "q4_k_m",
+            marks=pytest.mark.skipif(
+                not is_gptq_supported(), reason="GPTQ requires auto-gptq and CUDA"
+            ),
+        ),
+        pytest.param(
+            "gguf",
+            "q4_k_m",
+            marks=pytest.mark.skipif(
+                not is_gguf_supported(),
+                reason="GGUF requires llama-cpp-python[convert]",
+            ),
+        ),
+    ],
+)
 def test_gpt2_conversion_and_validation(output_format, quantization):
     converter = ModelConverter()
-    validator = ModelValidator()
+    ModelValidator()
     with tempfile.TemporaryDirectory() as temp_dir:
         out_dir = Path(temp_dir) / f"gpt2_{output_format}"
         out_dir.mkdir()
@@ -64,9 +93,11 @@ def test_gpt2_conversion_and_validation(output_format, quantization):
             output_path=str(out_dir),
             model_type="text-generation",
             quantization=quantization,
-            validate=True
+            validate=True,
         )
-        assert result["success"], f"Conversion failed for {output_format}: {result.get('error')}"
+        assert result[
+            "success"
+        ], f"Conversion failed for {output_format}: {result.get('error')}"
         # 验证输出文件存在
         files = list(out_dir.glob("*"))
         assert len(files) > 0, f"No files generated for {output_format}"
@@ -77,11 +108,20 @@ def test_gpt2_conversion_and_validation(output_format, quantization):
             error_msg = model_validation.get("error", "")
             if "Unsupported model IR version" in error_msg:
                 import pytest
-                pytest.skip("ONNXRuntime does not support required IR version on this platform.")
-        assert model_validation.get("success", False), f"Model validation failed for {output_format}: {model_validation.get('error')}"
+
+                pytest.skip(
+                    "ONNXRuntime does not support required IR version on this platform."
+                )
+        assert model_validation.get(
+            "success", False
+        ), f"Model validation failed for {output_format}: {model_validation.get('error')}"
         # 量化格式额外验证
         if quantization and model_validation.get("quality_validation"):
             quality = model_validation["quality_validation"]
-            assert quality.get("success", True), f"Quantization quality validation failed: {quality.get('error')}"
+            assert quality.get(
+                "success", True
+            ), f"Quantization quality validation failed: {quality.get('error')}"
             # 质量分数不为0
-            assert quality.get("quality_score", 0) > 0, "Quantization quality score too low" 
+            assert (
+                quality.get("quality_score", 0) > 0
+            ), "Quantization quality score too low"
