@@ -11,3 +11,6 @@ model_converter_tool.egg-info/SOURCES.txt
 model_converter_tool.egg-info/dependency_links.txt
 model_converter_tool.egg-info/requires.txt
 model_converter_tool.egg-info/top_level.txt
+tests/test_basic.py
+tests/test_utils.py
+tests/test_validator.py

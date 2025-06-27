@@ -14,14 +14,8 @@ logger = logging.getLogger(__name__)
 
 def setup_directories() -> None:
     """Setup required directories for the tool"""
-    directories = [
-        "outputs",
-        "uploads", 
-        "model_cache",
-        "configs",
-        "temp"
-    ]
-    
+    directories = ["outputs", "uploads", "model_cache", "configs", "temp"]
+
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
         logger.debug(f"Created directory: {directory}")
@@ -51,13 +45,13 @@ def format_file_size(size_bytes: int) -> str:
     """Format file size in human readable format"""
     if size_bytes == 0:
         return "0B"
-    
+
     size_names = ["B", "KB", "MB", "GB", "TB"]
     i = 0
     while size_bytes >= 1024 and i < len(size_names) - 1:
         size_bytes /= 1024.0
         i += 1
-    
+
     return f"{size_bytes:.1f}{size_names[i]}"
 
 
@@ -72,7 +66,7 @@ def get_directory_size(directory: str) -> int:
                     total_size += os.path.getsize(file_path)
     except Exception as e:
         logger.warning(f"Could not calculate directory size: {e}")
-    
+
     return total_size
 
 
@@ -88,13 +82,13 @@ def safe_filename(filename: str) -> str:
     # Remove or replace unsafe characters
     unsafe_chars = '<>:"/\\|?*'
     for char in unsafe_chars:
-        filename = filename.replace(char, '_')
-    
+        filename = filename.replace(char, "_")
+
     # Limit length
     if len(filename) > 200:
         name, ext = os.path.splitext(filename)
-        filename = name[:200-len(ext)] + ext
-    
+        filename = name[: 200 - len(ext)] + ext
+
     return filename
 
 
@@ -102,11 +96,11 @@ def is_valid_model_path(path: str) -> bool:
     """Check if path is a valid model path"""
     if not path:
         return False
-    
+
     # Check if it's a HuggingFace model name
     if path.startswith("hf:"):
         return True
-    
+
     # Check if it's a valid local path
     try:
         return Path(path).exists()
@@ -117,7 +111,7 @@ def is_valid_model_path(path: str) -> bool:
 def get_model_name_from_path(path: str) -> str:
     """Extract model name from path"""
     if path.startswith("hf:"):
-        return path[3:].split('/')[-1]
+        return path[3:].split("/")[-1]
     else:
         return Path(path).name
 
@@ -134,19 +128,19 @@ def copy_with_progress(src: str, dst: str, description: str = "Copying") -> bool
     try:
         src_path = Path(src)
         dst_path = Path(dst)
-        
+
         if not src_path.exists():
             logger.error(f"Source file does not exist: {src}")
             return False
-        
+
         # Create destination directory if needed
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Copy file
         shutil.copy2(src_path, dst_path)
         logger.info(f"✅ {description}: {src} -> {dst}")
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ {description} failed: {e}")
         return False
@@ -161,4 +155,4 @@ def remove_directory_safely(directory: str) -> bool:
         return True
     except Exception as e:
         logger.warning(f"Could not remove directory {directory}: {e}")
-        return False 
+        return False

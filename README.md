@@ -17,7 +17,7 @@ A CLI and API tool for converting, validating, and managing machine learning mod
 
 ---
 
-## CI/CD and Testing
+## CI and Testing
 
 This project uses GitHub Actions for continuous integration with the following workflows:
 

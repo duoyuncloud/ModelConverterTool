@@ -22,9 +22,5 @@ setup(
     ],
     python_requires=">=3.8",
     include_package_data=True,
-    entry_points={
-        "console_scripts": [
-            "model-converter = model_converter:main"
-        ]
-    },
-) 
+    entry_points={"console_scripts": ["model-converter = model_converter:main"]},
+)
