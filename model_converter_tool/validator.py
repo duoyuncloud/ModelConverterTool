@@ -86,7 +86,8 @@ class ModelValidator:
                     details.append(f"🔎 Detected model format: {detected_format}")
                 elif model_type == "auto":
                     details.append(
-                        "⚠️ Could not confidently detect model format, fallback to HuggingFace."
+                        "⚠️ Could not confidently detect model format, "
+                        "fallback to HuggingFace."
                     )
                     effective_type = "huggingface"
                 # Check required files
@@ -150,12 +151,14 @@ class ModelValidator:
                     and (model_dir / "model.safetensors").exists()
                 ):
                     details.append(
-                        f"✅ Found required file: model.safetensors (alternative to {file_name})"
+                        f"✅ Found required file: model.safetensors "
+                        f"(alternative to {file_name})"
                     )
                 elif file_name == "pytorch_model.bin" and not is_hf:
                     # 非 huggingface 格式，缺失 pytorch_model.bin 只给 warning
                     warnings.append(
-                        f"⚠️ Missing optional file: {file_name} (not required for this format)"
+                        f"⚠️ Missing optional file: {file_name} "
+                        f"(not required for this format)"
                     )
                 else:
                     errors.append(f"❌ Missing required file: {file_name}")
@@ -175,7 +178,8 @@ class ModelValidator:
                 # For HuggingFace models, can't easily validate config without
                 # downloading
                 details.append(
-                    "ℹ️ HuggingFace model config validation skipped (requires download)"
+                    "ℹ️ HuggingFace model config validation skipped "
+                    "(requires download)"
                 )
                 return {"details": details, "errors": errors, "warnings": warnings}
 
@@ -216,7 +220,8 @@ class ModelValidator:
         try:
             if model_path.startswith("hf:"):
                 details.append(
-                    "ℹ️ HuggingFace model weights validation skipped (requires download)"
+                    "ℹ️ HuggingFace model weights validation skipped "
+                    "(requires download)"
                 )
                 return {"details": details, "errors": errors, "warnings": warnings}
 
@@ -274,7 +279,8 @@ class ModelValidator:
         return info
 
     def _detect_format(self, model_path: str):
-        """Detect model format based on files in the directory. Returns (format, details)"""
+        """Detect model format based on files in the directory.
+        Returns (format, details)"""
         details = []
         model_dir = Path(model_path)
         # Priority: onnx > gguf > mlx > torchscript > huggingface

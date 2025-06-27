@@ -213,7 +213,8 @@ def list_available_presets():
                 print(f"    Type: {preset.get('model_type', 'auto')}")
                 print(f"    Default Format: {preset.get('default_format', 'onnx')}")
                 print(
-                    f"    Supported Formats: {', '.join(preset.get('supported_formats', []))}"
+                    f"    Supported Formats: "
+                    f"{', '.join(preset.get('supported_formats', []))}"
                 )
                 if preset.get("quantization_options"):
                     print(
@@ -252,3 +253,33 @@ def create_batch_config_template():
 
     print(f"✅ Batch configuration template created: {config_path}")
     return config_path
+
+
+class PresetManager:
+    """Manages presets and their configurations"""
+
+    def __init__(self, presets: List[Dict[str, Any]]):
+        self.presets = presets
+        self.preset_map = {
+            preset["name"]: preset for preset in self.presets
+        }  # type: ignore
+        self.default_preset = self.presets[0] if self.presets else None
+        self.default_preset_name = (
+            self.default_preset["name"] if self.default_preset else None
+        )
+        self.default_preset_desc = (
+            self.default_preset["desc"] if self.default_preset else None
+        )
+
+    def get_preset(self, preset_name: str) -> Optional[Dict[str, Any]]:
+        """Get a specific preset by name"""
+        return self.preset_map.get(preset_name)
+
+    def list_presets(self) -> Dict[str, List[str]]:
+        """List all available presets by category"""
+        presets = self.load_presets()
+        return {category: list(models.keys()) for category, models in presets.items()}
+
+    def load_presets(self) -> Dict[str, Any]:
+        """Load model presets from file"""
+        return {preset["name"]: preset for preset in self.presets}

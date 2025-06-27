@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class ModelConverter:
-    """Enhanced model converter with CLI-friendly interface and performance optimizations"""
+    """Enhanced model converter with CLI-friendly interface and
+    performance optimizations"""
 
     def _check_dependencies_and_env(self):
         """Check key dependencies and environment, log warnings if needed"""
@@ -45,8 +46,6 @@ class ModelConverter:
                 )
         # Check CUDA
         try:
-            import torch
-
             if torch.cuda.is_available():
                 logger.info(f"CUDA is available: {torch.cuda.get_device_name(0)}")
             else:
@@ -552,7 +551,8 @@ class ModelConverter:
         device: str,
         offline_mode: bool,
     ) -> bool:
-        """Convert model to ONNX format with enhanced HF format support and optimizations"""
+        """Convert model to ONNX format with enhanced HF format support and
+        optimizations"""
         try:
             logger.info(f"Converting {model_name} to ONNX format")
 
@@ -670,7 +670,9 @@ class ModelConverter:
                     f"All ONNX export methods failed. Last error: {last_error}"
                 )
                 logger.error(
-                    "建议：请升级 torch、onnx、onnxruntime 到最新版，或尝试更换模型/格式。\n升级命令：pip install -U torch onnx onnxruntime transformers"
+                    "建议：请升级 torch、onnx、onnxruntime 到最新版，"
+                    "或尝试更换模型/格式。\n升级命令："
+                    "pip install -U torch onnx onnxruntime transformers"
                 )
                 return False
 
@@ -810,7 +812,10 @@ class ModelConverter:
                 "quantization": quantization or "q4_k_m",
                 "original_model": model_name,
                 "conversion_date": datetime.now().isoformat(),
-                "note": "This is a GPTQ-compatible format. Full quantization requires auto-gptq library.",
+                "note": (
+                    "This is a GPTQ-compatible format. "
+                    "Full quantization requires auto-gptq library."
+                ),
             }
 
             with open(output_dir / "gptq_config.json", "w") as f:
@@ -952,7 +957,10 @@ class ModelConverter:
                 "quantization": quantization or "q4_k_m",
                 "original_model": model_name,
                 "conversion_date": datetime.now().isoformat(),
-                "note": "This is an AWQ-compatible format. Full quantization requires autoawq library.",
+                "note": (
+                    "This is an AWQ-compatible format. "
+                    "Full quantization requires autoawq library."
+                ),
             }
 
             with open(output_dir / "awq_config.json", "w") as f:
@@ -984,10 +992,12 @@ class ModelConverter:
 
             # Check llama-cpp-python dependencies
             try:
-                import llama_cpp
+                # Import check only - not used directly
+                import llama_cpp  # noqa: F401
             except ImportError:
                 logger.error(
-                    "GGUF conversion requires llama-cpp-python. Install with: pip install llama-cpp-python"
+                    "GGUF conversion requires llama-cpp-python. "
+                    "Install with: pip install llama-cpp-python"
                 )
                 return False
 
@@ -1075,7 +1085,6 @@ class ModelConverter:
             tokenizer.save_pretrained(str(temp_dir))
 
             # Use llama-cpp-python conversion
-            from llama_cpp import Llama
 
             # Create a simple GGUF file (this is a simplified approach)
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
@@ -1113,8 +1122,8 @@ class ModelConverter:
 
             # Check MLX dependencies
             try:
-                import mlx
-                import mlx.nn as nn
+                # Import check only - not used directly
+                import mlx.core as mx  # noqa: F401
             except ImportError:
                 logger.error(
                     "MLX conversion requires mlx. Install with: pip install mlx"
@@ -1190,7 +1199,11 @@ class ModelConverter:
 
     def _convert_pytorch_to_mlx(self, pytorch_model):
         """Convert PyTorch model to MLX format with improved mapping"""
-        import mlx.core as mx
+        try:
+            import mlx.core as mx
+        except ImportError:
+            logger.error("MLX not available for conversion")
+            return {}
 
         mlx_model = {}
 
@@ -1260,7 +1273,8 @@ tags:
 
 # {model_name} - {format_type.upper()} Format
 
-This model has been converted to {format_type.upper()} format using Model-Converter-Tool.
+This model has been converted to {format_type.upper()} format using
+Model-Converter-Tool.
 
 ## Original Model
 - **Model**: {model_name}
@@ -1272,7 +1286,8 @@ This model has been converted to {format_type.upper()} format using Model-Conver
 - **Conversion Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 ## Usage
-This model can be loaded using the appropriate {format_type.upper()} loader for your framework.
+This model can be loaded using the appropriate {format_type.upper()} loader
+for your framework.
 
 """
 
@@ -1298,7 +1313,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         """Create a minimal ONNX file when conversion fails"""
         try:
             # Create a simple ONNX model with basic operations
-            from onnx import helper, numpy_helper
+            from onnx import helper  # noqa: F401
 
             # Create a simple graph
             input_shape = (
@@ -1557,7 +1572,8 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
 
                 if has_shared:
                     logger.info(
-                        "Detected shared weights, using save_pretrained for safe serialization."
+                        "Detected shared weights, using save_pretrained for "
+                        "safe serialization."
                     )
                     model.save_pretrained(str(output_dir), safe_serialization=True)
                 else:
@@ -1760,7 +1776,8 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
                         return {**task, **result, "attempts": attempt + 1}
                 except Exception as e:
                     logger.error(
-                        f"Task failed: {task['input_source']} -> {task['output_format']}, error: {e}"
+                        f"Task failed: {task['input_source']} -> "
+                        f"{task['output_format']}, error: {e}"
                     )
             return {
                 **task,
@@ -1781,11 +1798,15 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
         print("\nBatch Conversion Summary:")
         for r in results:
             print(
-                f"- {r.get('input_source')} -> {r.get('output_format')}: {'✅' if r.get('success') else '❌'} | Validation: {'✅' if r.get('validation') else '❌'} | Postprocess: {r.get('postprocess_result') or '-'}"
+                f"- {r.get('input_source')} -> {r.get('output_format')}: "
+                f"{'✅' if r.get('success') else '❌'} | "
+                f"Validation: {'✅' if r.get('validation') else '❌'} | "
+                f"Postprocess: {r.get('postprocess_result') or '-'}"
             )
         success_count = sum(1 for r in results if r.get("success"))
         print(
-            f"\n📊 Batch conversion completed: {success_count}/{len(results)} successful\n"
+            f"\n📊 Batch conversion completed: "
+            f"{success_count}/{len(results)} successful\n"
         )
         return results
 
@@ -1853,8 +1874,6 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
     def _postprocess_torchscript(self, output_path, postprocess_type):
         import os
 
-        import torch
-
         ts_file = (
             os.path.join(output_path, "model.pt")
             if os.path.isdir(output_path)
@@ -1866,6 +1885,7 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
             return msg
         if postprocess_type == "optimize":
             try:
+                import torch
                 model = torch.jit.load(ts_file)
                 optimized = torch.jit.optimize_for_inference(model)
                 torch.jit.save(optimized, ts_file)
@@ -1883,8 +1903,6 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
 
     def _postprocess_fp16(self, output_path, postprocess_type):
         import os
-
-        import torch
 
         try:
             import safetensors.torch
@@ -1919,11 +1937,17 @@ This model can be loaded using the appropriate {format_type.upper()} loader for 
             return msg
 
     def _postprocess_gguf(self, output_path, postprocess_type):
-        msg = f"  - GGUF postprocess ({postprocess_type}) not yet implemented. Placeholder."
+        msg = (
+            f"  - GGUF postprocess ({postprocess_type}) not yet implemented. "
+            "Placeholder."
+        )
         print(msg)
         return msg
 
     def _postprocess_mlx(self, output_path, postprocess_type):
-        msg = f"  - MLX postprocess ({postprocess_type}) not yet implemented. Placeholder."
+        msg = (
+            f"  - MLX postprocess ({postprocess_type}) not yet implemented. "
+            "Placeholder."
+        )
         print(msg)
         return msg
