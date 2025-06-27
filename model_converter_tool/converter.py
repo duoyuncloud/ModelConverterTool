@@ -1886,6 +1886,7 @@ for your framework.
         if postprocess_type == "optimize":
             try:
                 import torch
+
                 model = torch.jit.load(ts_file)
                 optimized = torch.jit.optimize_for_inference(model)
                 torch.jit.save(optimized, ts_file)
