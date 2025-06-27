@@ -155,7 +155,9 @@ def test_converter_config_loading():
     """Test that converter can load configuration without network access"""
     converter = ModelConverter()
     # This should not require network access
-    assert hasattr(converter, 'config')
+    assert hasattr(converter, 'supported_formats')
+    assert hasattr(converter, 'fast_models')
+    assert hasattr(converter, 'cache_dir')
 
 def test_converter_methods_exist():
     """Test that all expected methods exist on the converter"""
@@ -169,8 +171,8 @@ def test_converter_validation_methods():
     """Test validation methods work without network access"""
     converter = ModelConverter()
     # Test that validation methods exist and are callable
-    assert hasattr(converter, 'validate_input')
-    assert callable(converter.validate_input)
+    assert hasattr(converter, '_validate_conversion_inputs')
+    assert callable(converter._validate_conversion_inputs)
 
 @patch('model_converter_tool.converter.ModelConverter.convert')
 def test_batch_convert_offline(mock_convert):
