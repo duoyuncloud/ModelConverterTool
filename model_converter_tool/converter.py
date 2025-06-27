@@ -16,7 +16,6 @@ import numpy as np
 import onnx
 import torch
 from transformers import AutoConfig, AutoTokenizer
-from transformers.onnx import export
 
 logger = logging.getLogger(__name__)
 
@@ -396,12 +395,11 @@ class ModelConverter:
                 if ok and validate:
                     try:
                         from .validator import ModelValidator
+
                         validator = ModelValidator()
                         # llama-format本质是hf格式
                         model_validation_result = validator.validate_converted_model(
-                            output_path,
-                            "hf",
-                            "text-generation"
+                            output_path, "hf", "text-generation"
                         )
                     except Exception as e:
                         model_validation_result = {"success": False, "error": str(e)}
@@ -415,67 +413,83 @@ class ModelConverter:
             else:
                 logger.error(f"Conversion to {output_format} not yet implemented")
                 return {"success": False, "error": "not implemented"}
-            
+
             validation_passed = False
             model_validation_result = None
-            
+
             if success:
                 logger.info(f"Conversion completed successfully: {output_path}")
-                
+
                 # Basic output validation
                 if self._validate_output(output_path, output_format):
                     logger.info("Output validation passed")
                     validation_passed = True
                 else:
                     logger.warning("Output validation failed, but conversion completed")
-                
+
                 # Advanced model validation if requested
                 if validate and validation_passed:
                     try:
                         from .validator import ModelValidator
+
                         validator = ModelValidator()
-                        
+
                         # 确定量化类型
                         quantization_type = None
                         if quantization and output_format in ["gptq", "awq", "gguf"]:
                             quantization_type = output_format
-                        
+
                         # 执行模型验证
                         model_validation_result = validator.validate_converted_model(
-                            output_path, 
-                            output_format, 
-                            model_type,
-                            quantization_type
+                            output_path, output_format, model_type, quantization_type
                         )
-                        
+
                         if model_validation_result.get("success", False):
-                            logger.info("Model validation passed - model can be loaded and used")
-                            
+                            logger.info(
+                                "Model validation passed - model can be loaded and used"
+                            )
+
                             # 如果是量化转换，进行质量验证
                             if quantization_type:
                                 try:
-                                    quality_validation = validator.validate_quantization_quality(
-                                        model_name,
-                                        output_path,
-                                        quantization_type,
-                                        model_type
+                                    quality_validation = (
+                                        validator.validate_quantization_quality(
+                                            model_name,
+                                            output_path,
+                                            quantization_type,
+                                            model_type,
+                                        )
                                     )
-                                    model_validation_result["quality_validation"] = quality_validation
-                                    
+                                    model_validation_result[
+                                        "quality_validation"
+                                    ] = quality_validation
+
                                     if quality_validation.get("success"):
-                                        quality_score = quality_validation.get("quality_score", 0)
-                                        compression_ratio = quality_validation.get("compression_ratio", 1)
-                                        logger.info(f"Quantization quality: {quality_score}/10, Compression: {compression_ratio:.2f}x")
+                                        quality_score = quality_validation.get(
+                                            "quality_score", 0
+                                        )
+                                        compression_ratio = quality_validation.get(
+                                            "compression_ratio", 1
+                                        )
+                                        logger.info(
+                                            f"Quantization quality: {quality_score}/10, Compression: {compression_ratio:.2f}x"
+                                        )
                                     else:
-                                        logger.warning(f"Quantization quality validation failed: {quality_validation.get('error')}")
-                                        
+                                        logger.warning(
+                                            f"Quantization quality validation failed: {quality_validation.get('error')}"
+                                        )
+
                                 except Exception as e:
-                                    logger.warning(f"Quantization quality validation skipped: {e}")
+                                    logger.warning(
+                                        f"Quantization quality validation skipped: {e}"
+                                    )
                         else:
-                            logger.warning(f"Model validation failed: {model_validation_result.get('error', 'Unknown error')}")
+                            logger.warning(
+                                f"Model validation failed: {model_validation_result.get('error', 'Unknown error')}"
+                            )
                     except Exception as e:
                         logger.warning(f"Model validation skipped: {e}")
-                
+
                 return {
                     "success": True,
                     "validation": validation_passed,
@@ -615,30 +629,32 @@ class ModelConverter:
         try:
             # 检查onnxruntime支持的版本
             import onnxruntime as ort
+
             ort_version = ort.__version__
             logger.info(f"ONNX Runtime version: {ort_version}")
-            
+
             # 根据onnxruntime版本确定最大opset
-            if ort_version.startswith('1.15') or ort_version.startswith('1.16'):
+            if ort_version.startswith("1.15") or ort_version.startswith("1.16"):
                 max_opset = 18
-            elif ort_version.startswith('1.14'):
+            elif ort_version.startswith("1.14"):
                 max_opset = 17
-            elif ort_version.startswith('1.13'):
+            elif ort_version.startswith("1.13"):
                 max_opset = 16
             else:
                 max_opset = 15  # 保守的默认值
-                
+
         except Exception:
             max_opset = 15  # fallback
-            
+
         try:
             import onnx
+
             # 取较小值确保兼容性
             onnx_max = onnx.defs.onnx_opset_version()
             max_opset = min(max_opset, onnx_max)
         except Exception:
             pass
-            
+
         logger.info(f"Using ONNX opset: {max_opset}")
         return max_opset
 
@@ -680,10 +696,13 @@ class ModelConverter:
                 try:
                     logger.info(f"Trying torch.onnx export with opset {opset}...")
                     model.eval()
-                    
+
                     if model_type == "image-classification":
                         dummy_input = torch.randn(
-                            1, 3, 224, 224,
+                            1,
+                            3,
+                            224,
+                            224,
                             dtype=torch.float16 if device == "cuda" else torch.float32,
                         )
                         input_names = ["pixel_values"]
@@ -694,11 +713,13 @@ class ModelConverter:
                     else:
                         # 为文本生成模型创建更简单的输入
                         vocab_size = tokenizer.vocab_size if tokenizer else 50257
-                        dummy_input = torch.randint(0, vocab_size, (1, 8), dtype=torch.long)
-                        
+                        dummy_input = torch.randint(
+                            0, vocab_size, (1, 8), dtype=torch.long
+                        )
+
                         # 创建attention mask
                         dummy_mask = torch.ones_like(dummy_input)
-                        
+
                         # 使用元组输入
                         dummy_input = (dummy_input, dummy_mask)
                         input_names = ["input_ids", "attention_mask"]
@@ -707,7 +728,7 @@ class ModelConverter:
                             "attention_mask": {0: "batch_size", 1: "sequence"},
                             "logits": {0: "batch_size", 1: "sequence"},
                         }
-                    
+
                     # 使用更保守的导出设置
                     torch.onnx.export(
                         model,
@@ -724,7 +745,7 @@ class ModelConverter:
                         keep_initializers_as_inputs=False,
                         custom_opsets=None,
                     )
-                    
+
                     # 验证生成的ONNX文件
                     if self._validate_onnx_file(onnx_file, opset):
                         export_success = True
@@ -732,7 +753,7 @@ class ModelConverter:
                         break
                     else:
                         logger.warning(f"ONNX file validation failed for opset {opset}")
-                        
+
                 except Exception as e:
                     last_error = e
                     logger.warning(f"torch.onnx export failed (opset {opset}): {e}")
@@ -741,9 +762,12 @@ class ModelConverter:
             if not export_success:
                 try:
                     from transformers.onnx import export
+
                     for opset in range(max_opset, 10, -1):
                         try:
-                            logger.info(f"Trying transformers.onnx export with opset {opset}...")
+                            logger.info(
+                                f"Trying transformers.onnx export with opset {opset}..."
+                            )
                             export(
                                 model=model,
                                 config=config,
@@ -753,10 +777,14 @@ class ModelConverter:
                             )
                             if self._validate_onnx_file(onnx_file, opset):
                                 export_success = True
-                                logger.info(f"Transformers ONNX export successful (opset {opset})")
+                                logger.info(
+                                    f"Transformers ONNX export successful (opset {opset})"
+                                )
                                 break
                         except Exception as e:
-                            logger.warning(f"Transformers ONNX export failed (opset {opset}): {e}")
+                            logger.warning(
+                                f"Transformers ONNX export failed (opset {opset}): {e}"
+                            )
                 except ImportError:
                     logger.info("transformers.onnx not available, skipping")
 
@@ -764,7 +792,9 @@ class ModelConverter:
             if not export_success:
                 try:
                     logger.info("Attempting simplified ONNX export...")
-                    if self._export_simplified_onnx(model, tokenizer, onnx_file, model_type):
+                    if self._export_simplified_onnx(
+                        model, tokenizer, onnx_file, model_type
+                    ):
                         export_success = True
                         logger.info("Simplified ONNX export successful")
                 except Exception as e:
@@ -775,7 +805,9 @@ class ModelConverter:
             if not export_success:
                 try:
                     logger.info("Creating functional ONNX model...")
-                    self._create_functional_onnx(model_name, str(onnx_file), model_type, model, tokenizer)
+                    self._create_functional_onnx(
+                        model_name, str(onnx_file), model_type, model, tokenizer
+                    )
                     export_success = True
                     logger.info("Functional ONNX model created successfully")
                 except Exception as e:
@@ -783,16 +815,20 @@ class ModelConverter:
                     logger.warning(f"Functional ONNX creation failed: {e}")
 
             if not export_success:
-                logger.error(f"All ONNX export methods failed. Last error: {last_error}")
+                logger.error(
+                    f"All ONNX export methods failed. Last error: {last_error}"
+                )
                 return False
 
             # Save HF format files
-            self._save_hf_format_files(model_name, output_dir, tokenizer, config, "onnx")
+            self._save_hf_format_files(
+                model_name, output_dir, tokenizer, config, "onnx"
+            )
             self._create_model_card(output_dir, model_name, "onnx", model_type)
-            
+
             logger.info(f"ONNX conversion completed: {output_dir}")
             return True
-            
+
         except Exception as e:
             logger.error(f"ONNX conversion error: {e}")
             return False
@@ -801,148 +837,155 @@ class ModelConverter:
         """Validate ONNX file for compatibility"""
         try:
             import onnx
-            
+
             # 检查文件大小
             if onnx_file.stat().st_size < 1024:  # 小于1KB
                 return False
-                
+
             # 加载ONNX模型
             onnx_model = onnx.load(str(onnx_file))
-            
+
             # 检查IR版本
             if onnx_model.ir_version > 8:  # 使用更保守的IR版本
-                logger.warning(f"ONNX IR version {onnx_model.ir_version} may be too high")
+                logger.warning(
+                    f"ONNX IR version {onnx_model.ir_version} may be too high"
+                )
                 return False
-                
+
             # 检查opset版本
             if onnx_model.opset_import[0].version > opset:
-                logger.warning(f"ONNX opset version mismatch")
+                logger.warning("ONNX opset version mismatch")
                 return False
-                
+
             # 检查模型结构
             if len(onnx_model.graph.input) == 0 or len(onnx_model.graph.output) == 0:
                 return False
-                
+
             return True
-            
+
         except Exception as e:
             logger.warning(f"ONNX validation failed: {e}")
             return False
 
-    def _export_simplified_onnx(self, model, tokenizer, onnx_file: Path, model_type: str) -> bool:
+    def _export_simplified_onnx(
+        self, model, tokenizer, onnx_file: Path, model_type: str
+    ) -> bool:
         """Export a simplified ONNX model"""
         try:
             import onnx
             from onnx import helper, numpy_helper
             import numpy as np
-            
+
             model.eval()
-            
+
             # 创建简化的模型结构
             if model_type == "text-generation":
                 # 为GPT-2创建简化的ONNX模型
                 input_shape = [1, 8]  # batch_size, sequence_length
                 output_shape = [1, 8, 50257]  # batch_size, sequence_length, vocab_size
-                
+
                 # 创建输入
                 input_tensor = helper.make_tensor_value_info(
                     "input_ids", onnx.TensorProto.INT64, input_shape
                 )
-                
+
                 # 创建输出
                 output_tensor = helper.make_tensor_value_info(
                     "logits", onnx.TensorProto.FLOAT, output_shape
                 )
-                
+
                 # 创建简化的计算图
                 # 这里我们创建一个包含基本操作的图，而不是完整的GPT-2
                 nodes = []
-                
+
                 # 添加一个简化的embedding层
                 embedding_weight = np.random.randn(50257, 768).astype(np.float32)
-                embedding_tensor = numpy_helper.from_array(embedding_weight, "embedding_weight")
-                
+                embedding_tensor = numpy_helper.from_array(
+                    embedding_weight, "embedding_weight"
+                )
+
                 # 创建embedding节点
                 embedding_node = helper.make_node(
                     "Gather",
                     inputs=["embedding_weight", "input_ids"],
                     outputs=["embeddings"],
-                    name="embedding"
+                    name="embedding",
                 )
                 nodes.append(embedding_node)
-                
+
                 # 添加一个简化的线性层
                 linear_weight = np.random.randn(768, 50257).astype(np.float32)
                 linear_tensor = numpy_helper.from_array(linear_weight, "linear_weight")
-                
+
                 linear_node = helper.make_node(
                     "MatMul",
                     inputs=["embeddings", "linear_weight"],
                     outputs=["logits"],
-                    name="linear"
+                    name="linear",
                 )
                 nodes.append(linear_node)
-                
+
                 # 创建图
                 graph = helper.make_graph(
                     nodes,
                     "simplified_gpt2",
                     [input_tensor],
                     [output_tensor],
-                    initializer=[embedding_tensor, linear_tensor]
+                    initializer=[embedding_tensor, linear_tensor],
                 )
-                
+
                 # 创建模型
                 onnx_model = helper.make_model(
                     graph,
                     producer_name="model_converter",
-                    opset_imports=[helper.make_opsetid("", 11)]  # 使用保守的opset
+                    opset_imports=[helper.make_opsetid("", 11)],  # 使用保守的opset
                 )
-                
+
                 # 保存模型
                 onnx.save(onnx_model, str(onnx_file))
                 return True
-                
+
         except Exception as e:
             logger.error(f"Simplified ONNX export failed: {e}")
             return False
 
-    def _create_functional_onnx(self, model_name: str, output_path: str, model_type: str, model, tokenizer) -> None:
+    def _create_functional_onnx(
+        self, model_name: str, output_path: str, model_type: str, model, tokenizer
+    ) -> None:
         """Create a functional ONNX model that can actually run inference"""
         try:
             import onnx
             from onnx import helper, numpy_helper
             import numpy as np
-            import torch
-            
+
             # 获取模型的实际权重
             state_dict = model.state_dict()
-            
+
             # 创建输入输出
             input_shape = [1, 8]  # batch_size, sequence_length
             output_shape = [1, 8, 50257]  # batch_size, sequence_length, vocab_size
-            
+
             input_tensor = helper.make_tensor_value_info(
                 "input_ids", onnx.TensorProto.INT64, input_shape
             )
             output_tensor = helper.make_tensor_value_info(
                 "logits", onnx.TensorProto.FLOAT, output_shape
             )
-            
+
             nodes = []
             initializers = []
-            
+
             # 添加token embedding
             if "transformer.wte.weight" in state_dict:
                 wte_weight = state_dict["transformer.wte.weight"].cpu().numpy()
                 wte_tensor = numpy_helper.from_array(wte_weight, "wte_weight")
                 initializers.append(wte_tensor)
-                
+
                 wte_node = helper.make_node(
                     "Gather",
                     inputs=["wte_weight", "input_ids"],
                     outputs=["embeddings"],
-                    name="token_embedding"
+                    name="token_embedding",
                 )
                 nodes.append(wte_node)
             else:
@@ -950,40 +993,40 @@ class ModelConverter:
                 wte_weight = np.random.randn(50257, 768).astype(np.float32)
                 wte_tensor = numpy_helper.from_array(wte_weight, "wte_weight")
                 initializers.append(wte_tensor)
-                
+
                 wte_node = helper.make_node(
                     "Gather",
                     inputs=["wte_weight", "input_ids"],
                     outputs=["embeddings"],
-                    name="token_embedding"
+                    name="token_embedding",
                 )
                 nodes.append(wte_node)
-            
+
             # 添加position embedding
             if "transformer.wpe.weight" in state_dict:
                 wpe_weight = state_dict["transformer.wpe.weight"].cpu().numpy()
                 wpe_tensor = numpy_helper.from_array(wpe_weight, "wpe_weight")
                 initializers.append(wpe_tensor)
-                
+
                 # 创建position IDs
                 pos_ids = np.arange(8).reshape(1, -1).astype(np.int64)
                 pos_ids_tensor = numpy_helper.from_array(pos_ids, "position_ids")
                 initializers.append(pos_ids_tensor)
-                
+
                 wpe_node = helper.make_node(
                     "Gather",
                     inputs=["wpe_weight", "position_ids"],
                     outputs=["pos_embeddings"],
-                    name="position_embedding"
+                    name="position_embedding",
                 )
                 nodes.append(wpe_node)
-                
+
                 # 添加embedding
                 add_node = helper.make_node(
                     "Add",
                     inputs=["embeddings", "pos_embeddings"],
                     outputs=["combined_embeddings"],
-                    name="add_embeddings"
+                    name="add_embeddings",
                 )
                 nodes.append(add_node)
             else:
@@ -992,33 +1035,37 @@ class ModelConverter:
                     "Identity",
                     inputs=["embeddings"],
                     outputs=["combined_embeddings"],
-                    name="identity_embeddings"
+                    name="identity_embeddings",
                 )
                 nodes.append(add_node)
-            
+
             # 添加最终的线性层（LM head）
             if "lm_head.weight" in state_dict:
                 lm_weight = state_dict["lm_head.weight"].cpu().numpy()
                 lm_tensor = numpy_helper.from_array(lm_weight, "lm_head_weight")
                 initializers.append(lm_tensor)
-                
+
                 if "lm_head.bias" in state_dict:
                     lm_bias = state_dict["lm_head.bias"].cpu().numpy()
                     lm_bias_tensor = numpy_helper.from_array(lm_bias, "lm_head_bias")
                     initializers.append(lm_bias_tensor)
-                    
+
                     gemm_node = helper.make_node(
                         "Gemm",
-                        inputs=["combined_embeddings", "lm_head_weight", "lm_head_bias"],
+                        inputs=[
+                            "combined_embeddings",
+                            "lm_head_weight",
+                            "lm_head_bias",
+                        ],
                         outputs=["logits"],
-                        name="lm_head"
+                        name="lm_head",
                     )
                 else:
                     gemm_node = helper.make_node(
                         "Gemm",
                         inputs=["combined_embeddings", "lm_head_weight"],
                         outputs=["logits"],
-                        name="lm_head"
+                        name="lm_head",
                     )
                 nodes.append(gemm_node)
             else:
@@ -1026,34 +1073,34 @@ class ModelConverter:
                 lm_weight = wte_weight.T
                 lm_tensor = numpy_helper.from_array(lm_weight, "lm_head_weight")
                 initializers.append(lm_tensor)
-                
+
                 gemm_node = helper.make_node(
                     "Gemm",
                     inputs=["combined_embeddings", "lm_head_weight"],
                     outputs=["logits"],
-                    name="lm_head"
+                    name="lm_head",
                 )
                 nodes.append(gemm_node)
-            
+
             # 创建图
             graph = helper.make_graph(
                 nodes,
                 f"{model_name}_functional",
                 [input_tensor],
                 [output_tensor],
-                initializer=initializers
+                initializer=initializers,
             )
-            
+
             # 创建模型
             onnx_model = helper.make_model(
                 graph,
                 producer_name="model_converter",
-                opset_imports=[helper.make_opsetid("", 11)]  # 使用保守的opset
+                opset_imports=[helper.make_opsetid("", 11)],  # 使用保守的opset
             )
-            
+
             # 保存模型
             onnx.save(onnx_model, output_path)
-            
+
         except Exception as e:
             logger.error(f"Failed to create functional ONNX: {e}")
             # 创建占位符文件
@@ -1450,6 +1497,7 @@ class ModelConverter:
                 logger.error("llama-cpp-python not available for GGUF conversion")
                 return False
             from transformers import AutoModel, AutoTokenizer
+
             model = AutoModel.from_pretrained(model_name)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             temp_dir = output_dir / "temp_model"
@@ -1460,47 +1508,45 @@ class ModelConverter:
             try:
                 try:
                     from llama_cpp import convert_hf_to_gguf
+
                     logger.info("Using llama-cpp-python convert_hf_to_gguf")
                     convert_hf_to_gguf(
                         model_path=str(temp_dir),
                         output_path=str(gguf_file),
                         model_type="llama",  # Default type
-                        outtype=quantization or "f16"
+                        outtype=quantization or "f16",
                     )
                     logger.info(f"GGUF conversion successful: {gguf_file}")
                     shutil.rmtree(temp_dir, ignore_errors=True)
                     return True
                 except ImportError:
-                    logger.info(
-                        "convert_hf_to_gguf not available, trying subprocess"
-                    )
+                    logger.info("convert_hf_to_gguf not available, trying subprocess")
                     import subprocess
                     import sys
+
                     python_exe = sys.executable
                     conversion_commands = [
                         [python_exe, "-m", "llama_cpp.convert_hf_to_gguf"],
                         [python_exe, "-m", "llama_cpp.convert"],
                         ["llama-cpp-convert"],
-                        ["llama-cpp-convert-hf-to-gguf"]
+                        ["llama-cpp-convert-hf-to-gguf"],
                     ]
                     for cmd_base in conversion_commands:
                         try:
                             cmd = cmd_base + [
-                                "--outfile", str(gguf_file),
-                                "--model-dir", str(temp_dir),
+                                "--outfile",
+                                str(gguf_file),
+                                "--model-dir",
+                                str(temp_dir),
                             ]
                             if quantization:
                                 cmd.extend(["--outtype", quantization])
-                            logger.info(
-                                f"Trying conversion command: {' '.join(cmd)}"
-                            )
+                            logger.info(f"Trying conversion command: {' '.join(cmd)}")
                             result = subprocess.run(
                                 cmd, capture_output=True, text=True, timeout=300
                             )
                             if result.returncode == 0:
-                                logger.info(
-                                    f"GGUF conversion successful: {gguf_file}"
-                                )
+                                logger.info(f"GGUF conversion successful: {gguf_file}")
                                 shutil.rmtree(temp_dir, ignore_errors=True)
                                 return True
                             else:
@@ -1530,10 +1576,11 @@ class ModelConverter:
             logger.info("Attempting manual GGUF conversion")
             import struct
             import json
-            with open(gguf_file, 'wb') as f:
-                f.write(b'GGUF')
-                f.write(struct.pack('<I', 1))
-                f.write(struct.pack('<Q', 0))
+
+            with open(gguf_file, "wb") as f:
+                f.write(b"GGUF")
+                f.write(struct.pack("<I", 1))
+                f.write(struct.pack("<Q", 0))
                 metadata = {
                     "model.family": "llama",
                     "model.architecture": "llama",
@@ -1547,13 +1594,13 @@ class ModelConverter:
                         [1] * len(tokenizer.get_vocab())
                     ),
                 }
-                f.write(struct.pack('<Q', len(metadata)))
+                f.write(struct.pack("<Q", len(metadata)))
                 for key, value in metadata.items():
-                    key_bytes = key.encode('utf-8')
-                    value_bytes = value.encode('utf-8')
-                    f.write(struct.pack('<Q', len(key_bytes)))
+                    key_bytes = key.encode("utf-8")
+                    value_bytes = value.encode("utf-8")
+                    f.write(struct.pack("<Q", len(key_bytes)))
                     f.write(key_bytes)
-                    f.write(struct.pack('<Q', len(value_bytes)))
+                    f.write(struct.pack("<Q", len(value_bytes)))
                     f.write(value_bytes)
             logger.info(f"Manual GGUF conversion completed: {gguf_file}")
             return True
@@ -2423,7 +2470,7 @@ for your framework.
             True if conversion succeeded, else False.
         """
         import torch
-        from transformers import AutoModelForCausalLM, AutoConfig
+        from transformers import AutoModelForCausalLM
         import math
         import os
 
@@ -2442,7 +2489,9 @@ for your framework.
 
         # 读取关键参数
         scale_emb = getattr(config, "scale_emb", 1.0)
-        dim_model_base = getattr(config, "dim_model_base", getattr(config, "hidden_size", 1))
+        dim_model_base = getattr(
+            config, "dim_model_base", getattr(config, "hidden_size", 1)
+        )
         scale_depth = getattr(config, "scale_depth", 1.0)
         real_num_layers = getattr(config, "num_hidden_layers", 0)
         mup_num_layers = getattr(config, "mup_num_layers", real_num_layers)
@@ -2461,18 +2510,26 @@ for your framework.
         # 权重缩放
         # 1. embedding
         if "model.embed_tokens.weight" in state_dict:
-            state_dict["model.embed_tokens.weight"] = state_dict["model.embed_tokens.weight"] * scale_emb
+            state_dict["model.embed_tokens.weight"] = (
+                state_dict["model.embed_tokens.weight"] * scale_emb
+            )
         # 2. lm_head
         if "lm_head.weight" in state_dict:
-            state_dict["lm_head.weight"] = state_dict["lm_head.weight"] / (hidden_size / dim_model_base)
+            state_dict["lm_head.weight"] = state_dict["lm_head.weight"] / (
+                hidden_size / dim_model_base
+            )
         # 3. 层内参数
         for i in range(real_num_layers):
             attn_out_name = f"model.layers.{i}.self_attn.o_proj.weight"
             if attn_out_name in state_dict:
-                state_dict[attn_out_name] = state_dict[attn_out_name] * (scale_depth / math.sqrt(mup_num_layers))
+                state_dict[attn_out_name] = state_dict[attn_out_name] * (
+                    scale_depth / math.sqrt(mup_num_layers)
+                )
             ffn_down_proj_name = f"model.layers.{i}.mlp.down_proj.weight"
             if ffn_down_proj_name in state_dict:
-                state_dict[ffn_down_proj_name] = state_dict[ffn_down_proj_name] * (scale_depth / math.sqrt(mup_num_layers))
+                state_dict[ffn_down_proj_name] = state_dict[ffn_down_proj_name] * (
+                    scale_depth / math.sqrt(mup_num_layers)
+                )
 
         # 输出到output_path
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
