@@ -7,6 +7,9 @@ import os
 import shutil
 from pathlib import Path
 from typing import Optional
+import torch
+import json
+from transformers import PreTrainedTokenizerFast
 
 logger = logging.getLogger(__name__)
 
@@ -155,3 +158,70 @@ def remove_directory_safely(directory: str) -> bool:
     except Exception as e:
         logger.warning(f"Could not remove directory {directory}: {e}")
         return False
+
+
+def create_dummy_model(
+    output_dir: str,
+    hidden_size: int = 4096,
+    num_hidden_layers: int = 32,
+    num_attention_heads: int = 32,
+    vocab_size: int = 32000,
+    max_position_embeddings: int = 2048,
+    model_type: str = "llama",
+    intermediate_size: int = None,
+    **kwargs
+):
+    """
+    生成 HuggingFace 兼容的 dummy model（以 Llama 架构为例）。
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    if intermediate_size is None:
+        intermediate_size = hidden_size * 4
+
+    # 1. 生成 config.json
+    config = {
+        "architectures": ["LlamaForCausalLM"],
+        "model_type": model_type,
+        "hidden_size": hidden_size,
+        "intermediate_size": intermediate_size,
+        "num_attention_heads": num_attention_heads,
+        "num_hidden_layers": num_hidden_layers,
+        "vocab_size": vocab_size,
+        "max_position_embeddings": max_position_embeddings,
+        "bos_token_id": 1,
+        "eos_token_id": 2,
+        "pad_token_id": 0,
+        "torch_dtype": "float16",
+        **kwargs
+    }
+    with open(os.path.join(output_dir, "config.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    # 2. 生成随机权重的 state_dict
+    class DummyLlama(torch.nn.Module):
+        def __init__(self, config):
+            super().__init__()
+            self.embed_tokens = torch.nn.Embedding(config["vocab_size"], config["hidden_size"])
+            self.lm_head = torch.nn.Linear(config["hidden_size"], config["vocab_size"], bias=False)
+        def forward(self, input_ids):
+            x = self.embed_tokens(input_ids)
+            x = x.mean(dim=1)  # fake pooling
+            logits = self.lm_head(x)
+            return {"logits": logits}
+    model = DummyLlama(config)
+    state_dict = model.state_dict()
+    torch.save(state_dict, os.path.join(output_dir, "pytorch_model.bin"))
+
+    # 3. 生成简单tokenizer
+    vocab = {f"token{i}": i for i in range(vocab_size)}
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=None,
+        unk_token="<unk>",
+        pad_token="<pad>",
+        bos_token="<s>",
+        eos_token="</s>",
+    )
+    tokenizer.vocab = vocab
+    tokenizer.save_pretrained(output_dir)
+
+    print(f"✅ Dummy model generated at {output_dir}")
