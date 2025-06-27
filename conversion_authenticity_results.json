@@ -1,0 +1,160 @@
+{
+  "fp16": {
+    "success": true,
+    "conversion_time": 1.3130371570587158,
+    "validation": true,
+    "file_count": 10,
+    "key_files": [
+      {
+        "name": "model.safetensors",
+        "exists": true,
+        "size": 237.3643035888672,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp7cp210gp/gpt2_fp16/model.safetensors"
+      },
+      {
+        "name": "config.json",
+        "exists": true,
+        "size": 0.0008611679077148438,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp7cp210gp/gpt2_fp16/config.json"
+      },
+      {
+        "name": "tokenizer.json",
+        "exists": true,
+        "size": 3.3928680419921875,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp7cp210gp/gpt2_fp16/tokenizer.json"
+      }
+    ],
+    "model_validation": {
+      "success": true,
+      "model_file": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp7cp210gp/gpt2_fp16",
+      "input_text": "Hello world",
+      "input_shape": [
+        1,
+        2
+      ],
+      "output_shape": [
+        1,
+        2,
+        50257
+      ],
+      "message": "FP16 model loaded successfully. Input: torch.Size([1, 2]), Output: torch.Size([1, 2, 50257])"
+    },
+    "inference_test": {
+      "success": true,
+      "input_text": "Hello world",
+      "output_text": "Hello world, I'm not sure",
+      "output_shape": [
+        1,
+        2,
+        50257
+      ],
+      "vocab_size": 50257
+    }
+  },
+  "torchscript": {
+    "success": true,
+    "conversion_time": 1.9101231098175049,
+    "validation": false,
+    "file_count": 9,
+    "key_files": [
+      {
+        "name": "model.pt",
+        "exists": true,
+        "size": 486.9851713180542,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmpms7mb4od/gpt2_torchscript/model.pt"
+      },
+      {
+        "name": "config.json",
+        "exists": true,
+        "size": 0.0008602142333984375,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmpms7mb4od/gpt2_torchscript/config.json"
+      },
+      {
+        "name": "tokenizer.json",
+        "exists": true,
+        "size": 3.3928680419921875,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmpms7mb4od/gpt2_torchscript/tokenizer.json"
+      }
+    ],
+    "model_validation": null,
+    "inference_test": {
+      "success": false,
+      "error": "'dict' object has no attribute 'shape'"
+    }
+  },
+  "hf": {
+    "success": true,
+    "conversion_time": 0.5117440223693848,
+    "validation": true,
+    "file_count": 10,
+    "key_files": [
+      {
+        "name": "pytorch_model.bin",
+        "exists": false,
+        "size": 0,
+        "path": null
+      },
+      {
+        "name": "config.json",
+        "exists": true,
+        "size": 0.0008611679077148438,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp03n3m8on/gpt2_hf/config.json"
+      },
+      {
+        "name": "tokenizer.json",
+        "exists": true,
+        "size": 3.3928680419921875,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp03n3m8on/gpt2_hf/tokenizer.json"
+      }
+    ],
+    "model_validation": {
+      "success": false,
+      "error": "Unsupported format for validation: hf"
+    },
+    "inference_test": {
+      "success": true,
+      "input_text": "Hello world",
+      "output_text": "Hello world, I'm not sure",
+      "output_shape": [
+        1,
+        2,
+        50257
+      ],
+      "vocab_size": 50257
+    }
+  },
+  "onnx": {
+    "success": true,
+    "conversion_time": 0.471484899520874,
+    "validation": true,
+    "file_count": 9,
+    "key_files": [
+      {
+        "name": "model.onnx",
+        "exists": true,
+        "size": 0.0001354217529296875,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp3yg2rijf/gpt2_onnx/model.onnx"
+      },
+      {
+        "name": "config.json",
+        "exists": true,
+        "size": 0.0008602142333984375,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp3yg2rijf/gpt2_onnx/config.json"
+      },
+      {
+        "name": "tokenizer.json",
+        "exists": true,
+        "size": 3.3928680419921875,
+        "path": "/var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp3yg2rijf/gpt2_onnx/tokenizer.json"
+      }
+    ],
+    "model_validation": {
+      "success": false,
+      "error": "ONNX validation failed: [ONNXRuntimeError] : 1 : FAIL : Load model from /var/folders/mt/qxmrf1j12_53pctyblrvrvv80000gn/T/tmp3yg2rijf/gpt2_onnx/model.onnx failed:/Users/runner/work/1/s/onnxruntime/core/graph/model.cc:181 onnxruntime::Model::Model(onnx::ModelProto &&, const onnxruntime::PathString &, const onnxruntime::IOnnxRuntimeOpSchemaRegistryList *, const logging::Logger &, const onnxruntime::ModelOptions &) Unsupported model IR version: 11, max supported IR version: 10\n"
+    },
+    "inference_test": {
+      "success": false,
+      "error": "ONNX file too small, likely a placeholder"
+    }
+  }
+}
