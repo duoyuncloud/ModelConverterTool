@@ -31,7 +31,7 @@ flake8>=6.0.0
 # - llama-cpp-python>=0.2.0 (optional)
 # - mlx>=0.0.8 (Apple Silicon only)
 
-# Added from the code block
-auto-gptq
-llama-cpp-python
+# Added from the code block (commented out for CI)
+# auto-gptq  # CUDA only, excluded from CI
+# llama-cpp-python  # Optional, excluded from CI
 tiktoken 
