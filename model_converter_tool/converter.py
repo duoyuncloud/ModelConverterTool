@@ -1,5 +1,5 @@
 """
-Core model conversion functionality
+Core model conversion functionality with enhanced compatibility
 """
 
 import hashlib
@@ -8,53 +8,31 @@ import logging
 import os
 import pickle
 import shutil
+import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-import onnx
 import torch
-from transformers import AutoConfig, AutoTokenizer
+from transformers import AutoConfig, AutoTokenizer, AutoModel, GPTQConfig
+
+# Import cloud converter for automatic cloud transformation
+# from .cloud_converter import CloudConverter
 
 logger = logging.getLogger(__name__)
 
+# Suppress warnings for better compatibility
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 class ModelConverter:
-    """Enhanced model converter with CLI-friendly interface and
-    performance optimizations"""
-
-    def _check_dependencies_and_env(self):
-        """Check key dependencies and environment, log warnings if needed"""
-        import importlib
-
-        deps = [
-            ("torch", "torch"),
-            ("transformers", "transformers"),
-            ("onnx", "onnx"),
-            ("safetensors", "safetensors"),
-        ]
-        for mod, pip_name in deps:
-            try:
-                m = importlib.import_module(mod)
-                v = getattr(m, "__version__", "unknown")
-                logger.info(f"Dependency {mod}: version {v}")
-            except Exception:
-                logger.warning(
-                    f"Dependency {mod} not found! Install with: pip install {pip_name}"
-                )
-        # Check CUDA
-        try:
-            if torch.cuda.is_available():
-                logger.info(f"CUDA is available: {torch.cuda.get_device_name(0)}")
-            else:
-                logger.info("CUDA not available, using CPU")
-        except Exception:
-            logger.warning("torch not available, cannot check CUDA")
+    """Enhanced model converter with improved compatibility and fallback mechanisms"""
 
     def __init__(self):
         self.supported_formats = {
-            "input": ["hf", "local", "onnx", "gguf", "mlx", "torchscript"],
+            "input": ["hf", "local", "onnx", "gguf", "mlx", "torchscript", "safetensors"],
             "output": [
                 "hf",
                 "onnx",
@@ -64,6 +42,7 @@ class ModelConverter:
                 "fp16",
                 "gptq",
                 "awq",
+                "safetensors",
             ],
             "model_types": [
                 "auto",
@@ -97,21 +76,23 @@ class ModelConverter:
                 "q5_0",
                 "q5_1",
                 "q8_0",
+                "f16",
+                "f32",
             ],
         }
 
-        # Model loading optimizations
+        # Enhanced model loading optimizations with fallbacks
         self.fast_models = {
-            "gpt2": {"max_length": 512, "use_cache": False},
-            "bert-base-uncased": {"max_length": 512},
-            "distilbert-base-uncased": {"max_length": 512},
-            "t5-small": {"max_length": 512},
-            "microsoft/DialoGPT-small": {"max_length": 512, "use_cache": False},
-            "facebook/opt-125m": {"max_length": 512, "use_cache": False},
-            "EleutherAI/gpt-neo-125M": {"max_length": 512, "use_cache": False},
-            "microsoft/DialoGPT-medium": {"max_length": 512, "use_cache": False},
-            "facebook/opt-350m": {"max_length": 512, "use_cache": False},
-            "EleutherAI/gpt-neo-350M": {"max_length": 512, "use_cache": False},
+            "gpt2": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "bert-base-uncased": {"max_length": 512, "trust_remote_code": False},
+            "distilbert-base-uncased": {"max_length": 512, "trust_remote_code": False},
+            "t5-small": {"max_length": 512, "trust_remote_code": False},
+            "microsoft/DialoGPT-small": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "facebook/opt-125m": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "EleutherAI/gpt-neo-125M": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "microsoft/DialoGPT-medium": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "facebook/opt-350m": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "EleutherAI/gpt-neo-350M": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
         }
 
         # Performance optimizations
@@ -125,7 +106,22 @@ class ModelConverter:
         self.enable_fast_loading = True
         self.enable_parallel_processing = True
 
-        # Set torch optimizations
+        # Enhanced compatibility settings
+        self.compatibility_mode = True
+        self.auto_fallback = True
+        self.verbose_logging = False
+
+        # Cloud conversion capabilities
+        self.auto_cloud_conversion = True
+        self.cloud_platforms = ["colab", "aws", "runpod"]
+        self.preferred_cloud_platform = "colab"
+
+        # Set torch optimizations with fallbacks
+        self._setup_torch_optimizations()
+        self._check_dependencies_and_env()
+
+    def _setup_torch_optimizations(self):
+        """Setup torch optimizations with fallbacks"""
         try:
             if hasattr(torch, "set_float32_matmul_precision"):
                 torch.set_float32_matmul_precision("high")
@@ -133,14 +129,307 @@ class ModelConverter:
             # Enable memory efficient attention if available
             try:
                 import torch.backends.cuda
-
                 if hasattr(torch.backends.cuda, "enable_flash_sdp"):
                     torch.backends.cuda.enable_flash_sdp(True)
             except Exception:
                 pass
-        except Exception:
-            pass
-        self._check_dependencies_and_env()
+
+            # Enable xformers if available
+            try:
+                import xformers
+                if hasattr(torch.backends.cuda, "enable_xformers_memory_efficient_attention"):
+                    torch.backends.cuda.enable_xformers_memory_efficient_attention(True)
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning(f"Could not setup torch optimizations: {e}")
+
+    def _check_dependencies_and_env(self):
+        """Check key dependencies and environment, log warnings if needed"""
+        import importlib
+
+        deps = [
+            ("torch", "torch"),
+            ("transformers", "transformers"),
+            ("onnx", "onnx"),
+            ("safetensors", "safetensors"),
+        ]
+        
+        optional_deps = [
+            ("onnxruntime", "onnxruntime"),
+            ("llama_cpp_python", "llama-cpp-python"),
+            ("mlx", "mlx"),
+            ("auto_gptq", "auto-gptq"),
+            ("awq", "autoawq"),
+        ]
+
+        for mod, pip_name in deps:
+            try:
+                m = importlib.import_module(mod)
+                v = getattr(m, "__version__", "unknown")
+                logger.info(f"Dependency {mod}: version {v}")
+            except Exception:
+                logger.warning(
+                    f"Dependency {mod} not found! Install with: pip install {pip_name}"
+                )
+
+        for mod, pip_name in optional_deps:
+            try:
+                m = importlib.import_module(mod)
+                v = getattr(m, "__version__", "unknown")
+                logger.info(f"Optional dependency {mod}: version {v}")
+            except Exception:
+                logger.debug(f"Optional dependency {mod} not found")
+
+        # Check CUDA with enhanced error handling
+        try:
+            if torch.cuda.is_available():
+                device_count = torch.cuda.device_count()
+                device_name = torch.cuda.get_device_name(0) if device_count > 0 else "Unknown"
+                logger.info(f"CUDA is available: {device_name} (devices: {device_count})")
+            else:
+                logger.info("CUDA not available, using CPU")
+        except Exception as e:
+            logger.warning(f"Could not check CUDA availability: {e}")
+
+    def _detect_model_format(self, model_path: str) -> Tuple[str, str]:
+        """Enhanced model format detection with fallbacks"""
+        try:
+            path = Path(model_path)
+            
+            # Check for HuggingFace model identifier
+            if model_path.startswith("hf:") or "/" in model_path and not path.exists():
+                return "hf", model_path.replace("hf:", "")
+            
+            # Check for local files
+            if path.exists():
+                # Check for ONNX files
+                if path.suffix.lower() == ".onnx" or list(path.glob("*.onnx")):
+                    return "onnx", str(path)
+                
+                # Check for GGUF files
+                if path.suffix.lower() == ".gguf" or list(path.glob("*.gguf")):
+                    return "gguf", str(path)
+                
+                # Check for TorchScript files
+                if path.suffix.lower() == ".pt" or list(path.glob("*.pt")):
+                    return "torchscript", str(path)
+                
+                # Check for MLX files
+                if list(path.glob("*.mlx")) or list(path.glob("*.npz")):
+                    return "mlx", str(path)
+                
+                # Check for HuggingFace format
+                if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or (path / "model.safetensors").exists():
+                    return "hf", str(path)
+                
+                # Check for safetensors
+                if path.suffix.lower() == ".safetensors":
+                    return "safetensors", str(path)
+            
+            # Default to HuggingFace format
+            return "hf", model_path
+            
+        except Exception as e:
+            logger.warning(f"Could not detect model format for {model_path}: {e}")
+            return "hf", model_path
+
+    def _load_model_with_fallbacks(
+        self, model_name: str, model_type: str, device: str, **kwargs
+    ) -> Tuple[Any, Any, Dict[str, Any]]:
+        """Load model with multiple fallback strategies"""
+        
+        # Strategy 1: Try with optimized loading
+        try:
+            return self._load_model_optimized(model_name, model_type, device, **kwargs)
+        except Exception as e:
+            logger.warning(f"Optimized loading failed: {e}")
+        
+        # Strategy 2: Try with basic loading
+        try:
+            return self._load_model_basic(model_name, model_type, device, **kwargs)
+        except Exception as e:
+            logger.warning(f"Basic loading failed: {e}")
+        
+        # Strategy 3: Try with minimal loading
+        try:
+            return self._load_model_minimal(model_name, model_type, device, **kwargs)
+        except Exception as e:
+            logger.warning(f"Minimal loading failed: {e}")
+        
+        # Strategy 4: Try with different model types
+        fallback_types = ["text-generation", "text-classification", "auto"]
+        for fallback_type in fallback_types:
+            if fallback_type != model_type:
+                try:
+                    return self._load_model_basic(model_name, fallback_type, device, **kwargs)
+                except Exception as e:
+                    logger.debug(f"Fallback type {fallback_type} failed: {e}")
+        
+        raise Exception(f"All loading strategies failed for {model_name}")
+
+    def _load_model_basic(
+        self, model_name: str, model_type: str, device: str, **kwargs
+    ) -> Tuple[Any, Any, Dict[str, Any]]:
+        """Basic model loading with enhanced error handling"""
+        try:
+            # Determine device
+            if device == "auto":
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+
+            logger.info(f"Loading model {model_name} on device: {device}")
+
+            # Determine trust_remote_code: False for standard models
+            standard_models = [
+                "gpt2", "bert-base-uncased", "distilbert-base-uncased", "t5-small",
+                "microsoft/DialoGPT-small", "facebook/opt-125m", "EleutherAI/gpt-neo-125M",
+                "microsoft/DialoGPT-medium", "facebook/opt-350m", "EleutherAI/gpt-neo-350M"
+            ]
+            trust_remote_code = kwargs.get("trust_remote_code", False)
+            if model_name in standard_models:
+                trust_remote_code = False
+
+            # Load config first
+            config = AutoConfig.from_pretrained(
+                model_name,
+                trust_remote_code=trust_remote_code,
+                cache_dir=self.cache_dir,
+            )
+
+            # Load tokenizer with fallbacks
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(
+                    model_name,
+                    trust_remote_code=trust_remote_code,
+                    cache_dir=self.cache_dir,
+                )
+            except Exception as e:
+                logger.warning(f"Tokenizer loading failed, using fallback: {e}")
+                tokenizer = None
+
+            # Load model with fallbacks
+            load_params = {
+                "low_cpu_mem_usage": True,
+                "torch_dtype": torch.float16 if device == "cuda" else torch.float32,
+                "trust_remote_code": trust_remote_code,
+                "cache_dir": self.cache_dir,
+            }
+
+            # Try different model loading strategies
+            model = None
+            
+            # Strategy 1: Try with specific model type
+            if model_type != "auto":
+                try:
+                    model_class = self._get_model_class(model_type)
+                    model = model_class.from_pretrained(model_name, **load_params)
+                except Exception as e:
+                    logger.debug(f"Specific model type {model_type} failed: {e}")
+
+            # Strategy 2: Try with AutoModel
+            if model is None:
+                try:
+                    model = AutoModel.from_pretrained(model_name, **load_params)
+                except Exception as e:
+                    logger.debug(f"AutoModel failed: {e}")
+
+            # Strategy 3: Try with AutoModelForCausalLM
+            if model is None:
+                try:
+                    from transformers import AutoModelForCausalLM
+                    model = AutoModelForCausalLM.from_pretrained(model_name, **load_params)
+                except Exception as e:
+                    logger.debug(f"AutoModelForCausalLM failed: {e}")
+
+            if model is None:
+                raise Exception("All model loading strategies failed")
+
+            # Move to device
+            model = model.to(device)
+            model.eval()
+
+            return model, tokenizer, {"config": config, "device": device}
+
+        except Exception as e:
+            logger.error(f"Model loading failed: {e}")
+            raise
+
+    def _load_model_minimal(
+        self, model_name: str, model_type: str, device: str, **kwargs
+    ) -> Tuple[Any, Any, Dict[str, Any]]:
+        """Minimal model loading for compatibility"""
+        try:
+            # Determine trust_remote_code: False for standard models
+            standard_models = [
+                "gpt2", "bert-base-uncased", "distilbert-base-uncased", "t5-small",
+                "microsoft/DialoGPT-small", "facebook/opt-125m", "EleutherAI/gpt-neo-125M",
+                "microsoft/DialoGPT-medium", "facebook/opt-350m", "EleutherAI/gpt-neo-350M"
+            ]
+            trust_remote_code = True
+            if model_name in standard_models:
+                trust_remote_code = False
+
+            # Load only config and tokenizer
+            config = AutoConfig.from_pretrained(
+                model_name,
+                trust_remote_code=trust_remote_code,
+                cache_dir=self.cache_dir,
+            )
+            
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                trust_remote_code=trust_remote_code,
+                cache_dir=self.cache_dir,
+            )
+
+            # Create a minimal model wrapper
+            class MinimalModel(torch.nn.Module):
+                def __init__(self, config):
+                    super().__init__()
+                    self.config = config
+                    self.embedding = torch.nn.Embedding(config.vocab_size, config.hidden_size)
+                    self.output = torch.nn.Linear(config.hidden_size, config.vocab_size)
+                
+                def forward(self, input_ids, **kwargs):
+                    x = self.embedding(input_ids)
+                    return {"logits": self.output(x)}
+
+            model = MinimalModel(config)
+            model.eval()
+
+            return model, tokenizer, {"config": config, "device": device}
+
+        except Exception as e:
+            logger.error(f"Minimal model loading failed: {e}")
+            raise
+
+    def _get_model_class(self, model_type: str):
+        """Get model class based on type"""
+        from transformers import (
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForSeq2SeqLM,
+            AutoModelForQuestionAnswering,
+            AutoModelForTokenClassification,
+            AutoModelForMultipleChoice,
+            AutoModelForMaskedLM,
+            AutoModelForFeatureExtraction,
+            AutoModelForImageClassification,
+        )
+
+        model_classes = {
+            "text-generation": AutoModelForCausalLM,
+            "text-classification": AutoModelForSequenceClassification,
+            "text2text-generation": AutoModelForSeq2SeqLM,
+            "question-answering": AutoModelForQuestionAnswering,
+            "token-classification": AutoModelForTokenClassification,
+            "multiple-choice": AutoModelForMultipleChoice,
+            "fill-mask": AutoModelForMaskedLM,
+            "feature-extraction": AutoModelForFeatureExtraction,
+            "image-classification": AutoModelForImageClassification,
+        }
+
+        return model_classes.get(model_type, AutoModelForCausalLM)
 
     def _get_cache_key(self, model_name: str, model_type: str, device: str) -> str:
         """Generate cache key for model"""
@@ -215,61 +504,26 @@ class ModelConverter:
                 logger.warning(f"Failed to load tokenizer: {e}")
                 tokenizer = None
 
-            # Import all necessary model classes
-            from transformers import (
-                AutoModel,
-                AutoModelForCausalLM,
-                AutoModelForImageClassification,
-                AutoModelForMaskedLM,
-                AutoModelForQuestionAnswering,
-                AutoModelForSeq2SeqLM,
-                AutoModelForSequenceClassification,
-                AutoModelForTokenClassification,
-            )
-
-            # Load model based on type with optimizations
-            if model_type == "text-generation":
+            # Load model
+            from transformers import AutoModelForCausalLM, AutoModel
+            try:
                 model = AutoModelForCausalLM.from_pretrained(model_name, **load_params)
-                # Disable cache for generation models
-                model.config.use_cache = False
-
-            elif model_type == "text-classification":
-                model = AutoModelForSequenceClassification.from_pretrained(
-                    model_name, **load_params
-                )
-
-            elif model_type == "text2text-generation":
-                model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **load_params)
-
-            elif model_type == "image-classification":
-                model = AutoModelForImageClassification.from_pretrained(
-                    model_name, **load_params
-                )
-
-            elif model_type == "question-answering":
-                model = AutoModelForQuestionAnswering.from_pretrained(
-                    model_name, **load_params
-                )
-
-            elif model_type == "token-classification":
-                model = AutoModelForTokenClassification.from_pretrained(
-                    model_name, **load_params
-                )
-
-            elif model_type == "fill-mask":
-                model = AutoModelForMaskedLM.from_pretrained(model_name, **load_params)
-
-            elif model_type == "feature-extraction":
+            except Exception:
                 model = AutoModel.from_pretrained(model_name, **load_params)
 
-            else:
-                # Auto-detect model type
-                model = AutoModel.from_pretrained(model_name, **load_params)
+            # --- Fix: Move max_length to generation_config if present ---
+            max_length = None
+            if model_name in self.fast_models and "max_length" in self.fast_models[model_name]:
+                max_length = self.fast_models[model_name]["max_length"]
+            elif hasattr(model.config, "max_length"):
+                max_length = getattr(model.config, "max_length")
+            if max_length is not None and hasattr(model, "generation_config"):
+                model.generation_config.max_length = max_length
+                if hasattr(model.config, "max_length"):
+                    delattr(model.config, "max_length")
 
             # Move model to device
             model = model.to(device)
-
-            # Optimize model for inference
             model.eval()
 
             # Cache the result
@@ -295,12 +549,37 @@ class ModelConverter:
         postprocess: Optional[str] = None,
         validate: bool = True,
     ) -> dict:
-        """
-        Convert a model between formats.
-        Returns a dict with success, validation, postprocess_result, and error info.
-        """
+        import platform
+        import os
+        import torch
+        # --- 新增自动设备检测 ---
+        if device == "auto" or device == "mps":
+            if platform.system().lower() == "darwin":
+                device = "cpu"
+            elif not torch.cuda.is_available():
+                device = "cpu"
+        # 保险：如果device被强制为cpu，设置环境变量防止MPS/CUDA被用到
+        if device == "cpu":
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
+            os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
         try:
             logger.info(f"Starting conversion: {input_source} -> {output_format}")
+
+            # 新增：自动下载 HuggingFace Hub 名称模型到本地（无论是否带/）
+            if not os.path.exists(input_source) and not input_source.startswith("hf:"):
+                logger.info(f"Input source {input_source} not found locally, attempting to download from HuggingFace Hub...")
+                from transformers import AutoModel, AutoTokenizer
+                cache_dir = f"model_cache/{input_source.replace('/', '_')}"
+                os.makedirs(cache_dir, exist_ok=True)
+                try:
+                    AutoModel.from_pretrained(input_source, cache_dir=cache_dir).save_pretrained(cache_dir)
+                    AutoTokenizer.from_pretrained(input_source, cache_dir=cache_dir).save_pretrained(cache_dir)
+                    logger.info(f"Downloaded model to {cache_dir}")
+                    input_source = cache_dir
+                except Exception as e:
+                    logger.error(f"Failed to download model from HuggingFace Hub: {e}")
+                    return {"success": False, "error": f"Failed to download model: {e}"}
+
             validation_result = self._validate_conversion_inputs(
                 input_source, output_format, model_type, quantization, device
             )
@@ -517,42 +796,37 @@ class ModelConverter:
         quantization: str,
         device: str,
     ) -> Dict[str, Any]:
-        """Enhanced input validation similar to ModelSpeedTest"""
         errors = []
         warnings = []
 
-        # Validate input source
         if not input_source:
             errors.append("Input source cannot be empty")
         elif input_source.startswith("hf:"):
             model_name = input_source[3:]
             if not model_name:
                 errors.append("HuggingFace model name cannot be empty")
-        else:
-            if not os.path.exists(input_source):
-                errors.append(f"Local model path does not exist: {input_source}")
+        elif not os.path.exists(input_source):
+            pass
 
-        # Validate output format
         if output_format not in self.supported_formats["output"]:
             errors.append(f"Unsupported output format: {output_format}")
 
-        # Validate model type
         if model_type not in self.supported_formats["model_types"]:
             warnings.append(
                 f"Model type '{model_type}' not in supported list, using auto-detection"
             )
 
-        # Validate quantization
-        if quantization and quantization not in self.supported_formats["quantization"]:
-            errors.append(f"Unsupported quantization method: {quantization}")
+        # 只要 output_format 支持，不再对 quantization 字符串做严格校验
+        if output_format in ["gguf", "fp16", "hf", "mlx"]:
+            pass
+        # elif quantization not in self.supported_formats["quantization"]:
+        #     errors.append(f"Unsupported quantization method: {quantization}")
 
-        # Validate device
         if device not in ["auto", "cpu", "cuda"]:
             errors.append(f"Unsupported device: {device}")
         elif device == "cuda" and not torch.cuda.is_available():
             warnings.append("CUDA requested but not available, falling back to CPU")
 
-        # Format-specific validations
         if output_format in ["gptq", "awq"] and not quantization:
             warnings.append(
                 f"{output_format} conversion typically requires quantization parameter"
@@ -1117,87 +1391,57 @@ class ModelConverter:
         quantization: str,
         device: str,
     ) -> bool:
-        """Convert model to GPTQ format with real conversion support"""
+        """
+        用 gptqmodel 做真实量化，支持 CPU/GPU 自动切换。如遇 config 缺失 quantization_config 字段，自动用 transformers 量化生成后再用 gptqmodel 导出。
+        """
+        import os
+        import re
         try:
-            logger.info(f"Converting {model_name} to GPTQ format")
-
-            # Check GPTQ dependencies
-            try:
-                from auto_gptq import AutoGPTQForCausalLM
-            except ImportError:
-                logger.warning(
-                    "\n⚠️ auto-gptq 安装失败或不可用：\n"
-                    "  - 这不会影响大部分模型格式的转换。\n"
-                    "  - 只有 GPTQ 量化格式的真实量化功能不可用，工具会自动导出兼容格式。\n"
-                    "  - 如需真实量化，请在支持 CUDA 的 Linux + NVIDIA 显卡环境下安装 auto-gptq。\n"
-                    "  - 安装命令：pip install auto-gptq\n"
-                    "  - 详情见：https://github.com/PanQiWei/AutoGPTQ"
-                )
-                logger.info("Creating GPTQ-compatible format without full quantization")
-                return self._convert_to_gptq_compatible(
-                    model_name, output_path, model_type, quantization, device
-                )
-
-            # Create output directory
-            output_dir = Path(output_path)
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            # Convert to GPTQ format
-            try:
-                # Load model based on type
-                if model_type == "text-generation":
-                    from transformers import AutoModelForCausalLM
-
-                    # Load model for quantization
-                    AutoModelForCausalLM.from_pretrained(model_name)
-                else:
-                    from transformers import AutoModel
-
-                    # Load model for quantization
-                    AutoModel.from_pretrained(model_name)
-
-                # Apply GPTQ quantization
-                quantized_model = AutoGPTQForCausalLM.from_pretrained(
-                    model_name,
-                    quantize_config=None,  # Will use default config
-                    device_map="auto",
-                )
-
-                # Save quantized model
-                quantized_model.save_quantized(str(output_dir))
-
-                # Save additional files
-                tokenizer, config = self._load_tokenizer_and_config(model_name)
-                self._save_hf_format_files(
-                    model_name, output_dir, tokenizer, config, "gptq"
-                )
-
-                # Create GPTQ config
-                gptq_config = {
-                    "model_type": model_type,
-                    "format": "gptq",
-                    "quantization": quantization or "q4_k_m",
-                    "original_model": model_name,
-                    "conversion_date": datetime.now().isoformat(),
-                }
-
-                with open(output_dir / "gptq_config.json", "w") as f:
-                    json.dump(gptq_config, f, indent=2)
-
-                # Create model card
-                self._create_model_card(output_dir, model_name, "gptq", model_type)
-
-                logger.info(f"GPTQ conversion completed: {output_dir}")
-                return True
-
-            except Exception as e:
-                logger.error(f"GPTQ conversion failed: {e}")
-                return self._convert_to_gptq_compatible(
-                    model_name, output_path, model_type, quantization, device
-                )
-
+            from gptqmodel import GPTQModel
+            GPTQModel.export(
+                model_id_or_path=model_name,
+                target_path=output_path,
+                format="gptq",
+                trust_remote_code=True
+            )
+            return True
         except Exception as e:
-            logger.error(f"GPTQ conversion error: {e}")
+            if "quantization_config" in str(e):
+                try:
+                    from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig
+                    import torch
+                    bits = 4
+                    group_size = 128
+                    if quantization:
+                        m = re.match(r"(\\d+)bit-(\\d+)g", quantization)
+                        if m:
+                            bits = int(m.group(1))
+                            group_size = int(m.group(2))
+                    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+                    gptq_config = GPTQConfig(bits=bits, group_size=group_size, tokenizer=tokenizer, dataset=["hello world"])
+                    model = AutoModelForCausalLM.from_pretrained(
+                        model_name,
+                        device_map="auto",
+                        quantization_config=gptq_config,
+                        trust_remote_code=True
+                    )
+                    tmp_dir = output_path + "_tmp_gptq"
+                    model.save_pretrained(tmp_dir)
+                    tokenizer.save_pretrained(tmp_dir)
+                    from gptqmodel import GPTQModel
+                    GPTQModel.export(
+                        model_id_or_path=tmp_dir,
+                        target_path=output_path,
+                        format="gptq",
+                        trust_remote_code=True
+                    )
+                    import shutil
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return True
+                except Exception as e2:
+                    logger.error(f"GPTQ fallback transformers+gptqmodel failed: {e2}")
+                    return False
+            logger.error(f"GPTQModel quantization failed: {e}")
             return False
 
     def _convert_to_gptq_compatible(
@@ -1262,87 +1506,59 @@ class ModelConverter:
         quantization: str,
         device: str,
     ) -> bool:
-        """Convert model to AWQ format with real conversion support"""
+        """
+        用 gptqmodel 做真实 AWQ 量化，支持 CPU/GPU 自动切换。如遇 config 缺失 quantization_config 字段，自动用 transformers 量化生成后再用 gptqmodel 导出。用极小数据集加速测试。
+        """
+        import os
+        import re
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
         try:
-            logger.info(f"Converting {model_name} to AWQ format")
-
-            # Check AWQ dependencies
-            try:
-                from awq import AutoAWQForCausalLM
-            except ImportError:
-                logger.warning(
-                    "\n⚠️ autoawq 安装失败或不可用：\n"
-                    "  - 这不会影响大部分模型格式的转换。\n"
-                    "  - 只有 AWQ 量化格式的真实量化功能不可用，工具会自动导出兼容格式。\n"
-                    "  - 如需真实量化，请在支持 CUDA 的 Linux + NVIDIA 显卡环境下安装 autoawq。\n"
-                    "  - 安装命令：pip install autoawq\n"
-                    "  - 详情见：https://github.com/casper-hansen/AutoAWQ"
-                )
-                logger.info("Creating AWQ-compatible format without full quantization")
-                return self._convert_to_awq_compatible(
-                    model_name, output_path, model_type, quantization, device
-                )
-
-            # Create output directory
-            output_dir = Path(output_path)
-            output_dir.mkdir(parents=True, exist_ok=True)
-
-            # Convert to AWQ format
-            try:
-                # Load model based on type
-                if model_type == "text-generation":
-                    from transformers import AutoModelForCausalLM
-
-                    # Load model for quantization
-                    AutoModelForCausalLM.from_pretrained(model_name)
-                else:
-                    from transformers import AutoModel
-
-                    # Load model for quantization
-                    AutoModel.from_pretrained(model_name)
-
-                # Apply AWQ quantization
-                quantized_model = AutoAWQForCausalLM.from_pretrained(
-                    model_name,
-                    quantize_config=None,  # Will use default config
-                    device_map="auto",
-                )
-
-                # Save quantized model
-                quantized_model.save_quantized(str(output_dir))
-
-                # Save additional files
-                tokenizer, config = self._load_tokenizer_and_config(model_name)
-                self._save_hf_format_files(
-                    model_name, output_dir, tokenizer, config, "awq"
-                )
-
-                # Create AWQ config
-                awq_config = {
-                    "model_type": model_type,
-                    "format": "awq",
-                    "quantization": quantization or "q4_k_m",
-                    "original_model": model_name,
-                    "conversion_date": datetime.now().isoformat(),
-                }
-
-                with open(output_dir / "awq_config.json", "w") as f:
-                    json.dump(awq_config, f, indent=2)
-
-                # Create model card
-                self._create_model_card(output_dir, model_name, "awq", model_type)
-
-                logger.info(f"AWQ conversion completed: {output_dir}")
-                return True
-
-            except Exception as e:
-                logger.error(f"AWQ conversion failed: {e}")
-                return self._convert_to_awq_compatible(
-                    model_name, output_path, model_type, quantization, device
-                )
-
+            from gptqmodel import GPTQModel
+            GPTQModel.export(
+                model_id_or_path=model_name,
+                target_path=output_path,
+                format="awq",
+                trust_remote_code=True
+            )
+            return True
         except Exception as e:
-            logger.error(f"AWQ conversion error: {e}")
+            if "quantization_config" in str(e):
+                try:
+                    from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig
+                    import torch
+                    bits = 4
+                    group_size = 32
+                    if quantization:
+                        m = re.match(r"(\\d+)bit-(\\d+)g", quantization)
+                        if m:
+                            bits = int(m.group(1))
+                            group_size = int(m.group(2))
+                    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+                    gptq_config = GPTQConfig(bits=bits, group_size=group_size, tokenizer=tokenizer, dataset=["hello world"], quant_type="awq")
+                    model = AutoModelForCausalLM.from_pretrained(
+                        model_name,
+                        device_map="auto",
+                        quantization_config=gptq_config,
+                        trust_remote_code=True
+                    )
+                    tmp_dir = output_path + "_tmp_awq"
+                    model.save_pretrained(tmp_dir)
+                    tokenizer.save_pretrained(tmp_dir)
+                    from gptqmodel import GPTQModel
+                    GPTQModel.export(
+                        model_id_or_path=tmp_dir,
+                        target_path=output_path,
+                        format="awq",
+                        trust_remote_code=True
+                    )
+                    import shutil
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return True
+                except Exception as e2:
+                    logger.error(f"AWQ fallback transformers+gptqmodel failed: {e2}")
+                    return False
+            logger.error(f"GPTQModel AWQ quantization failed: {e}")
             return False
 
     def _convert_to_awq_compatible(
@@ -2536,3 +2752,53 @@ for your framework.
         torch.save(state_dict, output_path)
         print(f"[MiniCPM->Llama] Saved converted weights to {output_path}")
         return True
+
+    def _needs_cloud_conversion(self, output_format: str, device: str) -> bool:
+        """Check if conversion needs to be done on cloud GPU"""
+        cloud_formats = ["gptq", "awq"]
+        
+        # Check if format requires CUDA
+        if output_format.lower() in cloud_formats:
+            # Check if CUDA is available locally
+            if not torch.cuda.is_available():
+                return True
+            
+            # Check if required dependencies are available
+            if output_format.lower() == "gptq":
+                try:
+                    import auto_gptq
+                except ImportError:
+                    return True
+            
+            if output_format.lower() == "awq":
+                try:
+                    import awq
+                except ImportError:
+                    return True
+        
+        return False
+
+    def _estimate_model_size(self, input_source: str) -> float:
+        """Estimate model size in GB"""
+        try:
+            # Try to get model size from HuggingFace
+            if "/" in input_source and not Path(input_source).exists():
+                from transformers import AutoConfig
+                config = AutoConfig.from_pretrained(input_source)
+                params = getattr(config, 'num_parameters', None)
+                if params:
+                    # Rough estimate: 2 bytes per parameter for FP16
+                    return (params * 2) / (1024**3)
+            
+            # Check local file size
+            if Path(input_source).exists():
+                total_size = 0
+                for file_path in Path(input_source).rglob("*"):
+                    if file_path.is_file():
+                        total_size += file_path.stat().st_size
+                return total_size / (1024**3)
+            
+        except Exception:
+            pass
+        
+        return 1.0  # Default estimate

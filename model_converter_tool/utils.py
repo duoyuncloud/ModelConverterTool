@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Optional
 import torch
 import json
-from transformers import PreTrainedTokenizerFast
 
 logger = logging.getLogger(__name__)
 

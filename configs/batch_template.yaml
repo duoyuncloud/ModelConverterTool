@@ -1,6 +1,19 @@
 # Batch conversion configuration template
 # Use this file to convert multiple models at once
 # You can specify device, quantization, and postprocess for each model (all optional)
+#
+# Fields:
+#   input:         (required) Model source, e.g. 'hf:gpt2' or local path
+#   output_format: (required) Output format, e.g. 'onnx', 'gptq', 'awq', 'gguf', 'fp16', etc.
+#   output_path:   (required) Output directory or file path
+#   model_type:    (required) Model type, e.g. 'text-generation', 'text-classification', 'auto', etc.
+#   device:        (optional) 'cpu', 'cuda', or 'auto' (default: auto)
+#   quantization:  (optional) Quantization method, e.g. 'q4_k_m', 'fp16', etc.
+#   postprocess:   (optional) Post-processing, e.g. 'strip_unused_nodes', 'optimize', etc.
+#   platform:      (optional) 'colab', 'aws', 'runpod', or omit for local
+#
+# You can load this YAML in the CLI and override any field interactively per model.
+# Example: python3 model_converter.py → Batch Conversion (Interactive) → YAML option
 
 models:
   gpt2_to_onnx:
@@ -11,6 +24,7 @@ models:
     device: "cpu"           # optional, e.g. 'cpu', 'cuda', 'auto'
     quantization: "q4_k_m"  # optional, e.g. 'q4_k_m', 'fp16', etc.
     postprocess: "strip_unused_nodes" # optional, placeholder for future use
+    # platform: "colab"     # optional, for cloud conversion
   
   bert_to_fp16:
     input: "hf:bert-base-uncased"
@@ -18,10 +32,11 @@ models:
     output_path: "outputs/bert_fp16"
     model_type: "text-classification"
     device: "auto"
+    # quantization, postprocess, platform can be omitted
   
   distilbert_to_onnx:
     input: "hf:distilbert-base-uncased"
     output_format: "onnx"
     output_path: "outputs/distilbert.onnx"
     model_type: "text-classification"
-    # device, quantization, postprocess can be omitted if not needed 
+    # device, quantization, postprocess, platform can be omitted if not needed 
