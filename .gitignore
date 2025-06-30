@@ -18,4 +18,5 @@ __pycache__/
 
 # 其他常见忽略
 .env
-.env.* venv311/
+.env.*
+venv311/
