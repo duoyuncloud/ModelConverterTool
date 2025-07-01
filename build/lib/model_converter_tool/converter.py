@@ -994,17 +994,14 @@ class ModelConverter:
                         # 创建attention mask
                         dummy_mask = torch.ones_like(dummy_input)
 
-                                            # 使用字典输入而不是元组
-                    dummy_input = {
-                        "input_ids": dummy_input,
-                        "attention_mask": dummy_mask
-                    }
-                    input_names = ["input_ids", "attention_mask"]
-                    dynamic_axes = {
-                        "input_ids": {0: "batch_size", 1: "sequence"},
-                        "attention_mask": {0: "batch_size", 1: "sequence"},
-                        "logits": {0: "batch_size", 1: "sequence"},
-                    }
+                        # 使用元组输入
+                        dummy_input = (dummy_input, dummy_mask)
+                        input_names = ["input_ids", "attention_mask"]
+                        dynamic_axes = {
+                            "input_ids": {0: "batch_size", 1: "sequence"},
+                            "attention_mask": {0: "batch_size", 1: "sequence"},
+                            "logits": {0: "batch_size", 1: "sequence"},
+                        }
 
                     # 使用更保守的导出设置
                     torch.onnx.export(
@@ -1038,36 +1035,30 @@ class ModelConverter:
             # Step 2: Try transformers.onnx export (if available)
             if not export_success:
                 try:
-                    # 检查 transformers 版本兼容性
-                    import transformers
-                    if hasattr(transformers, 'onnx') and hasattr(transformers.onnx, 'export'):
-                        from transformers.onnx import export
+                    from transformers.onnx import export
 
-                        for opset in range(max_opset, 10, -1):
-                            try:
+                    for opset in range(max_opset, 10, -1):
+                        try:
+                            logger.info(
+                                f"Trying transformers.onnx export with opset {opset}..."
+                            )
+                            export(
+                                model=model,
+                                config=config,
+                                preprocessor=tokenizer,
+                                opset=opset,
+                                output=onnx_file,
+                            )
+                            if self._validate_onnx_file(onnx_file, opset):
+                                export_success = True
                                 logger.info(
-                                    f"Trying transformers.onnx export with opset {opset}..."
+                                    f"Transformers ONNX export successful (opset {opset})"
                                 )
-                                # 使用更兼容的调用方式
-                                export(
-                                    model=model,
-                                    config=config,
-                                    preprocessor=tokenizer,
-                                    opset=opset,
-                                    output=onnx_file,
-                                )
-                                if self._validate_onnx_file(onnx_file, opset):
-                                    export_success = True
-                                    logger.info(
-                                        f"Transformers ONNX export successful (opset {opset})"
-                                    )
-                                    break
-                            except Exception as e:
-                                logger.warning(
-                                    f"Transformers ONNX export failed (opset {opset}): {e}"
-                                )
-                    else:
-                        logger.info("transformers.onnx export not available in this version")
+                                break
+                        except Exception as e:
+                            logger.warning(
+                                f"Transformers ONNX export failed (opset {opset}): {e}"
+                            )
                 except ImportError:
                     logger.info("transformers.onnx not available, skipping")
 
@@ -1121,14 +1112,8 @@ class ModelConverter:
         try:
             import onnx
 
-            # 检查文件是否存在
-            if not onnx_file.exists():
-                logger.warning(f"ONNX file does not exist: {onnx_file}")
-                return False
-
             # 检查文件大小
             if onnx_file.stat().st_size < 1024:  # 小于1KB
-                logger.warning(f"ONNX file too small: {onnx_file.stat().st_size} bytes")
                 return False
 
             # 加载ONNX模型

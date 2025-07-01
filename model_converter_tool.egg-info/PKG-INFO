@@ -1,0 +1,38 @@
+Metadata-Version: 2.4
+Name: model-converter-tool
+Version: 1.0.0
+Summary: A CLI and API tool for converting machine learning models between formats.
+Home-page: https://github.com/duoyuncloud/ModelConverterTool
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: torch
+Requires-Dist: transformers
+Requires-Dist: onnx
+Requires-Dist: onnxruntime
+Requires-Dist: safetensors
+Requires-Dist: click
+Dynamic: home-page
+Dynamic: requires-python
+
+# Model Converter Tool
+
+A CLI and API tool for converting machine learning models between formats.
+
+## Installation
+
+```bash
+pip install .
+```
+
+## Usage
+
+```bash
+model-converter --help
+```
+
+## Features
+
+- Convert models between different formats
+- Support for various model types
+- Command-line interface
+- API support 
