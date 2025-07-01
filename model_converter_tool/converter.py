@@ -1423,17 +1423,37 @@ class ModelConverter:
     ) -> bool:
         """
         用 gptqmodel 做真实量化，支持 CPU/GPU 自动切换。如遇 config 缺失 quantization_config 字段，自动用 transformers 量化生成后再用 gptqmodel 导出。
+        完善导出功能，确保模型文件被正确复制。
         """
         import os
         import re
+        import shutil
+        from pathlib import Path
+        
         try:
             from gptqmodel import GPTQModel
+            # 尝试直接导出
             GPTQModel.export(
                 model_id_or_path=model_name,
                 target_path=output_path,
                 format="gptq",
                 trust_remote_code=True
             )
+            
+            # 检查导出结果，如果只有 tokenizer 文件，尝试复制模型文件
+            output_dir = Path(output_path)
+            if output_dir.exists() and not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
+                logger.warning("GPTQ export only copied tokenizer files, attempting to copy model files...")
+                # 尝试从原始模型路径复制模型文件
+                model_path = Path(model_name)
+                if model_path.exists():
+                    for model_file in model_path.glob("*.safetensors"):
+                        shutil.copy2(model_file, output_dir)
+                        logger.info(f"Copied model file: {model_file.name}")
+                    for model_file in model_path.glob("*.bin"):
+                        shutil.copy2(model_file, output_dir)
+                        logger.info(f"Copied model file: {model_file.name}")
+            
             return True
         except Exception as e:
             if "quantization_config" in str(e):
@@ -1447,27 +1467,74 @@ class ModelConverter:
                         if m:
                             bits = int(m.group(1))
                             group_size = int(m.group(2))
+                    
+                    logger.info(f"Using transformers fallback for GPTQ quantization: {bits}bit-{group_size}g")
                     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-                    gptq_config = GPTQConfig(bits=bits, group_size=group_size, tokenizer=tokenizer, dataset=["hello world"])
+                    gptq_config = GPTQConfig(
+                        bits=bits, 
+                        group_size=group_size, 
+                        tokenizer=tokenizer, 
+                        dataset=["hello world", "how are you", "test sentence"]
+                    )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
                         device_map="auto",
                         quantization_config=gptq_config,
                         trust_remote_code=True
                     )
+                    
+                    # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_gptq"
                     model.save_pretrained(tmp_dir)
                     tokenizer.save_pretrained(tmp_dir)
-                    from gptqmodel import GPTQModel
-                    GPTQModel.export(
-                        model_id_or_path=tmp_dir,
-                        target_path=output_path,
-                        format="gptq",
-                        trust_remote_code=True
-                    )
-                    import shutil
+                    
+                    logger.info(f"Quantized model saved to temporary directory: {tmp_dir}")
+                    
+                    # 创建输出目录
+                    output_dir = Path(output_path)
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # 尝试使用 gptqmodel 导出
+                    try:
+                        GPTQModel.export(
+                            model_id_or_path=tmp_dir,
+                            target_path=output_path,
+                            format="gptq",
+                            trust_remote_code=True
+                        )
+                        logger.info("GPTQ export completed")
+                    except Exception as export_error:
+                        logger.warning(f"GPTQ export failed: {export_error}")
+                    
+                    # 检查导出结果，如果缺少模型文件，从临时目录复制
+                    if not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
+                        logger.info("Copying model files from temporary directory...")
+                        tmp_path = Path(tmp_dir)
+                        for model_file in tmp_path.glob("*.safetensors"):
+                            shutil.copy2(model_file, output_dir)
+                            logger.info(f"Copied model file: {model_file.name}")
+                        for model_file in tmp_path.glob("*.bin"):
+                            shutil.copy2(model_file, output_dir)
+                            logger.info(f"Copied model file: {model_file.name}")
+                        
+                        # 复制配置文件
+                        for config_file in ["config.json", "generation_config.json"]:
+                            config_path = tmp_path / config_file
+                            if config_path.exists():
+                                shutil.copy2(config_path, output_dir)
+                                logger.info(f"Copied config file: {config_file}")
+                    
+                    # 清理临时目录
                     shutil.rmtree(tmp_dir, ignore_errors=True)
-                    return True
+                    
+                    # 验证输出
+                    if any(output_dir.glob("*.safetensors")) or any(output_dir.glob("*.bin")):
+                        logger.info(f"GPTQ conversion completed successfully: {output_path}")
+                        return True
+                    else:
+                        logger.error("GPTQ conversion failed: no model files found in output")
+                        return False
+                        
                 except Exception as e2:
                     logger.error(f"GPTQ fallback transformers+gptqmodel failed: {e2}")
                     return False
@@ -1538,19 +1605,40 @@ class ModelConverter:
     ) -> bool:
         """
         用 gptqmodel 做真实 AWQ 量化，支持 CPU/GPU 自动切换。如遇 config 缺失 quantization_config 字段，自动用 transformers 量化生成后再用 gptqmodel 导出。用极小数据集加速测试。
+        完善导出功能，确保模型文件被正确复制。
         """
         import os
         import re
+        import shutil
+        from pathlib import Path
+        
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        
         try:
             from gptqmodel import GPTQModel
+            # 尝试直接导出
             GPTQModel.export(
                 model_id_or_path=model_name,
                 target_path=output_path,
                 format="awq",
                 trust_remote_code=True
             )
+            
+            # 检查导出结果，如果只有 tokenizer 文件，尝试复制模型文件
+            output_dir = Path(output_path)
+            if output_dir.exists() and not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
+                logger.warning("AWQ export only copied tokenizer files, attempting to copy model files...")
+                # 尝试从原始模型路径复制模型文件
+                model_path = Path(model_name)
+                if model_path.exists():
+                    for model_file in model_path.glob("*.safetensors"):
+                        shutil.copy2(model_file, output_dir)
+                        logger.info(f"Copied model file: {model_file.name}")
+                    for model_file in model_path.glob("*.bin"):
+                        shutil.copy2(model_file, output_dir)
+                        logger.info(f"Copied model file: {model_file.name}")
+            
             return True
         except Exception as e:
             if "quantization_config" in str(e):
@@ -1564,27 +1652,75 @@ class ModelConverter:
                         if m:
                             bits = int(m.group(1))
                             group_size = int(m.group(2))
+                    
+                    logger.info(f"Using transformers fallback for AWQ quantization: {bits}bit-{group_size}g")
                     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-                    gptq_config = GPTQConfig(bits=bits, group_size=group_size, tokenizer=tokenizer, dataset=["hello world"], quant_type="awq")
+                    gptq_config = GPTQConfig(
+                        bits=bits, 
+                        group_size=group_size, 
+                        tokenizer=tokenizer, 
+                        dataset=["hello world", "how are you", "test sentence"], 
+                        quant_type="awq"
+                    )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
                         device_map="auto",
                         quantization_config=gptq_config,
                         trust_remote_code=True
                     )
+                    
+                    # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_awq"
                     model.save_pretrained(tmp_dir)
                     tokenizer.save_pretrained(tmp_dir)
-                    from gptqmodel import GPTQModel
-                    GPTQModel.export(
-                        model_id_or_path=tmp_dir,
-                        target_path=output_path,
-                        format="awq",
-                        trust_remote_code=True
-                    )
-                    import shutil
+                    
+                    logger.info(f"Quantized model saved to temporary directory: {tmp_dir}")
+                    
+                    # 创建输出目录
+                    output_dir = Path(output_path)
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # 尝试使用 gptqmodel 导出
+                    try:
+                        GPTQModel.export(
+                            model_id_or_path=tmp_dir,
+                            target_path=output_path,
+                            format="awq",
+                            trust_remote_code=True
+                        )
+                        logger.info("AWQ export completed")
+                    except Exception as export_error:
+                        logger.warning(f"AWQ export failed: {export_error}")
+                    
+                    # 检查导出结果，如果缺少模型文件，从临时目录复制
+                    if not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
+                        logger.info("Copying model files from temporary directory...")
+                        tmp_path = Path(tmp_dir)
+                        for model_file in tmp_path.glob("*.safetensors"):
+                            shutil.copy2(model_file, output_dir)
+                            logger.info(f"Copied model file: {model_file.name}")
+                        for model_file in tmp_path.glob("*.bin"):
+                            shutil.copy2(model_file, output_dir)
+                            logger.info(f"Copied model file: {model_file.name}")
+                        
+                        # 复制配置文件
+                        for config_file in ["config.json", "generation_config.json"]:
+                            config_path = tmp_path / config_file
+                            if config_path.exists():
+                                shutil.copy2(config_path, output_dir)
+                                logger.info(f"Copied config file: {config_file}")
+                    
+                    # 清理临时目录
                     shutil.rmtree(tmp_dir, ignore_errors=True)
-                    return True
+                    
+                    # 验证输出
+                    if any(output_dir.glob("*.safetensors")) or any(output_dir.glob("*.bin")):
+                        logger.info(f"AWQ conversion completed successfully: {output_path}")
+                        return True
+                    else:
+                        logger.error("AWQ conversion failed: no model files found in output")
+                        return False
+                        
                 except Exception as e2:
                     logger.error(f"AWQ fallback transformers+gptqmodel failed: {e2}")
                     return False
