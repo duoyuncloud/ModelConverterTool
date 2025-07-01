@@ -228,15 +228,21 @@ def create_dummy_model(
                 param.data.zero_()
 
         # Save the model
-        model.save_pretrained(output_dir)
+        model.save_pretrained(output_dir, safe_serialization=False)
 
     except Exception as e:
-        logger.warning(f"Failed to create LlamaForCausalLM: {e}, falling back to simple model")
+        logger.warning(
+            f"Failed to create LlamaForCausalLM: {e}, falling back to simple model"
+        )
 
         # Fallback: create minimal state dict manually
         state_dict = {
-            "model.embed_tokens.weight": torch.randn(config["vocab_size"], config["hidden_size"]) * 0.02,
-            "lm_head.weight": torch.randn(config["vocab_size"], config["hidden_size"]) * 0.02,
+            "model.embed_tokens.weight": torch.randn(
+                config["vocab_size"], config["hidden_size"]
+            )
+            * 0.02,
+            "lm_head.weight": torch.randn(config["vocab_size"], config["hidden_size"])
+            * 0.02,
         }
 
         # Add transformer layers
@@ -244,22 +250,40 @@ def create_dummy_model(
             prefix = f"model.layers.{layer_idx}"
             state_dict.update(
                 {
-                    f"{prefix}.self_attn.q_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"])
+                    f"{prefix}.self_attn.q_proj.weight": torch.randn(
+                        config["hidden_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.self_attn.k_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"])
+                    f"{prefix}.self_attn.k_proj.weight": torch.randn(
+                        config["hidden_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.self_attn.v_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"])
+                    f"{prefix}.self_attn.v_proj.weight": torch.randn(
+                        config["hidden_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.self_attn.o_proj.weight": torch.randn(config["hidden_size"], config["hidden_size"])
+                    f"{prefix}.self_attn.o_proj.weight": torch.randn(
+                        config["hidden_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.mlp.gate_proj.weight": torch.randn(config["intermediate_size"], config["hidden_size"])
+                    f"{prefix}.mlp.gate_proj.weight": torch.randn(
+                        config["intermediate_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.mlp.up_proj.weight": torch.randn(config["intermediate_size"], config["hidden_size"])
+                    f"{prefix}.mlp.up_proj.weight": torch.randn(
+                        config["intermediate_size"], config["hidden_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.mlp.down_proj.weight": torch.randn(config["hidden_size"], config["intermediate_size"])
+                    f"{prefix}.mlp.down_proj.weight": torch.randn(
+                        config["hidden_size"], config["intermediate_size"]
+                    )
                     * 0.02,
-                    f"{prefix}.input_layernorm.weight": torch.ones(config["hidden_size"]),
-                    f"{prefix}.post_attention_layernorm.weight": torch.ones(config["hidden_size"]),
+                    f"{prefix}.input_layernorm.weight": torch.ones(
+                        config["hidden_size"]
+                    ),
+                    f"{prefix}.post_attention_layernorm.weight": torch.ones(
+                        config["hidden_size"]
+                    ),
                 }
             )
 
@@ -278,7 +302,9 @@ def create_dummy_model(
         "unk_token": "<unk>",
         "model_max_length": max_position_embeddings,
     }
-    with open(os.path.join(output_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(output_dir, "tokenizer_config.json"), "w", encoding="utf-8"
+    ) as f:
         json.dump(tokenizer_config, f, indent=2)
 
     # Create simple vocabulary

@@ -24,52 +24,28 @@ Example usage:
 
 import os
 
-# 在模块导入前就禁用 MPS/CUDA
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["MPS_VISIBLE_DEVICES"] = ""
-os.environ["TRANSFORMERS_NO_MPS"] = "1"
-os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
-os.environ["USE_CPU_ONLY"] = "1"
-
-# 强制设置 PyTorch 相关环境变量
-os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
-os.environ["PYTORCH_MPS_LOW_WATERMARK_RATIO"] = "0.0"
-
-# 禁用所有可能的 GPU 后端
-os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:0"
+from . import disable_mps
+from .cli import cli, detect_model_format, load_model_with_fallbacks, validate_conversion_compatibility
+from .config import ConfigManager, ConversionConfig, list_available_presets, load_config_preset
 
 # Import main classes and functions
 from .converter import ModelConverter
-from .validator import ModelValidator
-from .config import (
-    ConfigManager,
-    ConversionConfig,
-    load_config_preset,
-    list_available_presets,
-)
-from .cli import (
-    cli,
-    detect_model_format,
-    load_model_with_fallbacks,
-    validate_conversion_compatibility,
-)
 from .utils import (
-    setup_directories,
     cleanup_temp_files,
-    get_file_size,
+    copy_with_progress,
+    create_dummy_model,
+    create_temp_directory,
+    ensure_output_directory,
     format_file_size,
     get_directory_size,
-    create_temp_directory,
-    safe_filename,
-    is_valid_model_path,
+    get_file_size,
     get_model_name_from_path,
-    ensure_output_directory,
-    copy_with_progress,
+    is_valid_model_path,
     remove_directory_safely,
-    create_dummy_model,
+    safe_filename,
+    setup_directories,
 )
+from .validator import ModelValidator
 
 # Version information
 __version__ = "1.0.0"
@@ -155,7 +131,9 @@ def batch_convert(tasks: list, **kwargs):
 __all__.append("batch_convert")
 
 
-def validate_model(model_path: str, output_format: str, model_type: str = "text-generation", **kwargs):
+def validate_model(
+    model_path: str, output_format: str, model_type: str = "text-generation", **kwargs
+):
     """
     Quick validation function for converted models.
 

@@ -1,0 +1,52 @@
+# Batch conversion configuration for gpt2
+# Tests all supported output formats using gpt2 as input
+
+models:
+  gpt2_to_onnx:
+    input: "gpt2"
+    output_format: "onnx"
+    output_path: "outputs/gpt2.onnx"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_gguf:
+    input: "gpt2"
+    output_format: "gguf"
+    output_path: "outputs/gpt2.gguf"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_mlx:
+    input: "gpt2"
+    output_format: "mlx"
+    output_path: "outputs/gpt2.mlx"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_fp16:
+    input: "gpt2"
+    output_format: "fp16"
+    output_path: "outputs/gpt2_fp16"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_torchscript:
+    input: "gpt2"
+    output_format: "torchscript"
+    output_path: "outputs/gpt2.pt"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_safetensors:
+    input: "gpt2"
+    output_format: "safetensors"
+    output_path: "outputs/gpt2_safetensors"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_hf:
+    input: "gpt2"
+    output_format: "hf"
+    output_path: "outputs/gpt2_hf"
+    model_type: "text-generation"
+    device: "cpu" 

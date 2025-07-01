@@ -1,12 +1,15 @@
-from setuptools import setup, find_packages
 import os
+
+from setuptools import find_packages, setup
 
 # Try to read README.md, fallback to description if not found
 try:
     with open("README.md", "r", encoding="utf-8") as f:
         long_description = f.read()
 except FileNotFoundError:
-    long_description = "A CLI and API tool for converting machine learning models between formats."
+    long_description = (
+        "A CLI and API tool for converting machine learning models between formats."
+    )
 
 setup(
     name="model-converter-tool",
@@ -26,5 +29,7 @@ setup(
     ],
     python_requires=">=3.8",
     include_package_data=True,
-    entry_points={"console_scripts": ["model-converter = click_cli_example:cli"]},
+    entry_points={
+        "console_scripts": ["model-converter = model_converter_tool.cli:cli"]
+    },
 )

@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest before commit
+        entry: pytest -v tests/test_quantization.py -k 'test_gptq_quantization or test_awq_quantization or test_cli_equivalent_quantization' --tb=short --maxfail=2
+        language: system
+        pass_filenames: false
+        always_run: true 

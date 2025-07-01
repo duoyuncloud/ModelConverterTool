@@ -1,105 +1,108 @@
 # ModelConverterTool
 
-A powerful, flexible CLI and API tool for converting machine learning models between different formats. Supports a wide range of model types including text generation, classification, vision, and audio models.
+A powerful, flexible tool for converting machine learning models between different formats. Supports text generation, classification, vision, and audio models with comprehensive format coverage.
 
 ## 🚀 Features
 
-- **Multi-Format Support**: Convert between HuggingFace, ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, and SafeTensors formats
-- **Model Type Coverage**: Text generation, classification, vision, audio, and more
-- **Quantization Support**: Built-in support for GPTQ, AWQ, and GGUF quantization
-- **Cross-Platform**: Works on CPU and GPU (CUDA/MPS) with automatic device detection
-- **Batch Processing**: Convert multiple models at once using YAML configuration
+- **Multi-Format Support**: ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace
+- **Quantization**: Built-in GPTQ, AWQ, and GGUF quantization support
+- **Batch Processing**: Convert multiple models using YAML configuration
+- **Cross-Platform**: CPU and GPU (CUDA/MPS) with automatic device detection
 - **Validation**: Built-in model validation and compatibility checking
-- **Performance Optimized**: Caching, parallel processing, and memory-efficient loading
+- **API & CLI**: Both programmatic and command-line interfaces
 
 ## 📦 Installation
 
-### Quick Install (Recommended)
-
 ```bash
-# Clone the repository
+# Clone and install
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-
-# Install dependencies in the correct order
-./install_dependencies.sh
-
-# Install the package
-pip install -e .
-```
-
-### Manual Installation
-
-```bash
-# 1. Install core dependencies first
-pip install -r requirements-core.txt
-
-# 2. Install optional dependencies
-pip install -r requirements-optional.txt
-
-# 3. Install the package
 pip install -e .
 ```
 
 ## 🎯 Quick Start
 
-### Basic Usage
+### 1. Basic Model Format Conversion
 
 ```bash
-# Convert a model to ONNX format
-model-converter convert gpt2 onnx --output-path ./outputs/gpt2.onnx
+# bert-base-uncased → onnx
+model-converter convert bert-base-uncased onnx --output-path ./outputs/bert.onnx
 
-# Convert with quantization
-model-converter convert meta-llama/Llama-2-7b-hf gguf --output-path ./outputs/llama2-7b.gguf
+# gpt2 → gguf
+model-converter convert gpt2 gguf --output-path ./outputs/gpt2.gguf
 
-# Convert to MLX format (for Apple Silicon)
-model-converter convert bert-base-uncased mlx --output-path ./outputs/bert.mlx
+# gpt2 → mlx
+model-converter convert gpt2 mlx --output-path ./outputs/gpt2.mlx
+
+# tiny-gpt2 → fp16
+model-converter convert sshleifer/tiny-gpt2 fp16 --output-path ./outputs/tiny_gpt2_fp16
+
+# gpt2 → torchscript
+model-converter convert gpt2 torchscript --output-path ./outputs/gpt2.pt
+
+# gpt2 → safetensors
+model-converter convert gpt2 safetensors --output-path ./outputs/gpt2_safetensors
+
+# gpt2 → hf (HuggingFace format)
+model-converter convert gpt2 hf --output-path ./outputs/gpt2_hf
 ```
 
-### Supported Formats
+### 2. Quantization
 
-| Input Formats | Output Formats |
-|---------------|----------------|
-| HuggingFace (`hf:`) | HuggingFace (`hf`) |
-| Local models | ONNX (`onnx`) |
-| ONNX models | GGUF (`gguf`) |
-| GGUF models | MLX (`mlx`) |
-| MLX models | TorchScript (`torchscript`) |
-| TorchScript | FP16 (`fp16`) |
-| SafeTensors | GPTQ (`gptq`) |
-| | AWQ (`awq`) |
-| | SafeTensors (`safetensors`) |
+Using `sshleifer/tiny-gpt2` for faster testing:
 
-### Model Types
+```bash
+# GPTQ quantization
+model-converter convert sshleifer/tiny-gpt2 gptq --output-path ./outputs/tiny_gpt2_gptq
 
-- **Text Generation**: GPT-2, Llama, DialoGPT, etc.
-- **Text Classification**: BERT, DistilBERT, etc.
-- **Vision**: ViT, ResNet, etc.
-- **Audio**: Speech recognition, classification
-- **Multimodal**: Vision-language models
+# AWQ quantization
+model-converter convert sshleifer/tiny-gpt2 gptq --output-path ./outputs/tiny_gpt2_gptq
 
-## 🔧 Advanced Usage
+# GGUF with quantization
+model-converter convert sshleifer/tiny-gpt2 gguf --output-path ./outputs/tiny_gpt2_q4.gguf
+```
 
-### Batch Conversion
+### 3. Batch Conversion
 
 Create a YAML configuration file:
 
 ```yaml
-# configs/my_batch.yaml
+# configs/gpt2_batch.yaml
 models:
   gpt2_to_onnx:
-    input: "hf:gpt2"
+    input: "gpt2"
     output_format: "onnx"
     output_path: "outputs/gpt2.onnx"
     model_type: "text-generation"
     device: "cpu"
   
-  bert_to_gguf:
-    input: "hf:bert-base-uncased"
+  gpt2_to_gguf:
+    input: "gpt2"
     output_format: "gguf"
-    output_path: "outputs/bert.gguf"
-    model_type: "text-classification"
-    quantization: "q4_k_m"
+    output_path: "outputs/gpt2.gguf"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_fp16:
+    input: "gpt2"
+    output_format: "fp16"
+    output_path: "outputs/gpt2_fp16"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_torchscript:
+    input: "gpt2"
+    output_format: "torchscript"
+    output_path: "outputs/gpt2.pt"
+    model_type: "text-generation"
+    device: "cpu"
+  
+  gpt2_to_hf:
+    input: "gpt2"
+    output_format: "hf"
+    output_path: "outputs/gpt2_hf"
+    model_type: "text-generation"
+    device: "cpu"
 ```
 
 Run batch conversion:
@@ -108,18 +111,19 @@ Run batch conversion:
 from model_converter_tool.converter import ModelConverter
 
 converter = ModelConverter()
-converter.batch_convert_from_yaml("configs/my_batch.yaml")
+converter.batch_convert_from_yaml("configs/gpt2_batch.yaml")
 ```
 
-### API Usage
+### 4. API Usage
+
+#### ModelConverter().convert
 
 ```python
 from model_converter_tool.converter import ModelConverter
 
-# Initialize converter
 converter = ModelConverter()
 
-# Convert model
+# Basic conversion
 result = converter.convert(
     input_source="gpt2",
     output_format="onnx",
@@ -129,50 +133,60 @@ result = converter.convert(
     validate=True
 )
 
-print(f"Conversion successful: {result['success']}")
+# All formats
+formats = ["onnx", "gguf", "fp16", "torchscript", "hf"]
+for fmt in formats:
+    result = converter.convert(
+        input_source="gpt2",
+        output_format=fmt,
+        output_path=f"./outputs/gpt2.{fmt}",
+        model_type="text-generation",
+        device="cpu",
+        validate=True
+    )
 ```
 
-### Quantization Options
+#### ModelConverter().batch_convert
 
-```bash
-# GPTQ quantization (4-bit, 128 group size)
-model-converter convert llama2 gguf --output-path ./llama2-q4.gguf
+```python
+# Batch conversion with gpt2
+tasks = [
+    {
+        "input_source": "gpt2",
+        "output_format": "onnx",
+        "output_path": "./outputs/batch_gpt2.onnx",
+        "model_type": "text-generation",
+        "device": "cpu"
+    },
+    {
+        "input_source": "gpt2",
+        "output_format": "gguf",
+        "output_path": "./outputs/batch_gpt2.gguf",
+        "model_type": "text-generation",
+        "device": "cpu"
+    },
+    {
+        "input_source": "gpt2",
+        "output_format": "fp16",
+        "output_path": "./outputs/batch_gpt2_fp16",
+        "model_type": "text-generation",
+        "device": "cpu"
+    },
+    {
+        "input_source": "gpt2",
+        "output_format": "torchscript",
+        "output_path": "./outputs/batch_gpt2.pt",
+        "model_type": "text-generation",
+        "device": "cpu"
+    },
+    {
+        "input_source": "gpt2",
+        "output_format": "hf",
+        "output_path": "./outputs/batch_gpt2_hf",
+        "model_type": "text-generation",
+        "device": "cpu"
+    }
+]
 
-# AWQ quantization
-model-converter convert model awq --output-path ./model-awq
-
-# Custom quantization
-model-converter convert model gguf --output-path ./model-custom.gguf
+results = converter.batch_convert(tasks, max_workers=2)
 ```
-
-## 📋 Examples
-
-### Convert GPT-2 to ONNX
-```bash
-model-converter convert gpt2 onnx --output-path ./gpt2.onnx
-```
-
-### Convert BERT to GGUF with Quantization
-```bash
-model-converter convert bert-base-uncased gguf --output-path ./bert-q4.gguf
-```
-
-### Convert Vision Model to MLX
-```bash
-model-converter convert google/vit-base-patch16-224 mlx --output-path ./vit.mlx
-```
-
-### Convert Large Language Model to FP16
-```bash
-model-converter convert meta-llama/Llama-2-7b-hf fp16 --output-path ./llama2-fp16
-```
-
-## 🏗️ Architecture
-
-The tool is built with modularity and extensibility in mind:
-
-- **Core Converter**: Handles format-specific conversion logic
-- **Model Loader**: Intelligent model loading with fallback strategies
-- **Validator**: Model validation and compatibility checking
-- **CLI Interface**: User-friendly command-line interface
-- **Configuration System**: YAML-based configuration management

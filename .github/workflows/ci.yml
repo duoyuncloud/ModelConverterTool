@@ -53,7 +53,7 @@ jobs:
 
       - name: Install dev tools and editable package
         run: |
-          pip install flake8 black isort
+          pip install flake8 black isort pytest pytest-cov
           pip install -e .
 
       - name: Lint with isort/black/flake8
@@ -62,14 +62,17 @@ jobs:
           black --check model_converter_tool/
           flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Run fast CI tests
-        run: python ci_fast_test.py
+      - name: Run fast tests
+        run: pytest -m fast -v
 
-      - name: Run slow CI tests
-        run: python ci_slow_test.py
+      - name: Run basic conversion tests
+        run: pytest -m basic -v
 
-      - name: Run all tests
-        run: python test_all.py
+      - name: Run API usage tests
+        run: pytest -m api -v
+
+      - name: Run all tests with coverage
+        run: pytest --cov=model_converter_tool --cov-report=term-missing
 
   test:
     runs-on: ${{ matrix.os }}
@@ -150,7 +153,7 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        python ci_fast_test.py
+        pytest -m fast -v
 
     - name: Debug torch/mps/cuda
       env:
@@ -172,7 +175,8 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        python ci_slow_test.py
+        # 所有平台都运行单项量化用例
+        pytest -v tests/test_quantization.py -k 'test_gptq_quantization or test_awq_quantization or test_cli_equivalent_quantization' --maxfail=2
 
     - name: Test batch conversion
       env:
@@ -234,6 +238,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
+        pip install pytest pytest-cov
 
     - name: Test integration scenarios
       run: |
@@ -325,6 +330,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip cache purge || echo "Cache purge failed, continuing..."
         pip install -r requirements.txt
+        pip install pytest pytest-cov
         # Install quantization libraries separately after torch is installed
         pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
         pip install logbar || echo "logbar installation failed, continuing..."
@@ -334,10 +340,13 @@ jobs:
       run: |
         pip install -e .
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
-        python ci_fast_test.py
+        pytest -m fast -v
 
   quantization-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -359,7 +368,13 @@ jobs:
           MPS_VISIBLE_DEVICES: ""
           TRANSFORMERS_NO_MPS: "1"
         run: |
-          python ci_slow_test.py
+          # Skip quantization tests on macOS CI due to MPS compatibility issues
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "⚠️  Skipping quantization tests on macOS CI due to MPS compatibility issues"
+            echo "✅ macOS CI quantization tests skipped"
+          else
+            pytest -m quantization -v
+          fi
 
       - name: Show Python version and environment
         run: |

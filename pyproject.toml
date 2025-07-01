@@ -33,6 +33,7 @@ dev = [
     "bandit>=1.7.0",
     "safety>=2.0.0",
 ]
+test = ["pytest"]
 
 [project.scripts]
 model-converter = "model_converter_tool.cli:cli"
@@ -84,8 +85,8 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
+addopts = "-v"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short" 
+python_functions = ["test_*"] 
