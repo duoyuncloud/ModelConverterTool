@@ -13,6 +13,14 @@ dependencies = [
     "transformers",
     "onnx",
     "onnxruntime",
-    "safetensors"
+    "safetensors",
+    "click"
     # 其他依赖...
-] 
+]
+
+[project.scripts]
+model-converter = "model_converter_tool.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["model_converter_tool*"] 
