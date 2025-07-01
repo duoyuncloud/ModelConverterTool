@@ -57,7 +57,7 @@ peft
 # triton  # OpenAI Triton，仅限部分Linux+Python3.8~3.10环境需要
 lm-eval
 evalplus
-intel-extension-for-pytorch
+# intel-extension-for-pytorch  # 仅限Linux+Intel XPU/CPU优化环境需要
 bitblas
 
 # For testing
