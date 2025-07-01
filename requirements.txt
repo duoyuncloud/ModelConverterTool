@@ -15,8 +15,9 @@ llama-cpp-python>=0.2.0
 mlx>=0.0.8
 
 # Optional: Quantization libraries
-auto-gptq>=0.4.0  # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错
-# awq>=0.1.0  # Not available on PyPI, install manually if needed
+gptqmodel>=0.1.0  # 主要量化转换库
+auto-gptq>=0.4.0  # 可选，仅用于验证已转换的模型
+# awq>=0.1.0  # 已弃用，使用 gptqmodel 替代
 
 # Configuration and utilities
 pyyaml>=6.0
@@ -33,7 +34,7 @@ pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
 
-autoawq>=0.2.0    # ⚠️ 仅支持Linux+NVIDIA显卡环境，macOS/无CUDA环境下可忽略安装报错
+# autoawq>=0.2.0    # 已弃用，使用 gptqmodel 替代
 
 # Optional dependencies for advanced features/postprocess:
 # onnxsim: ONNX model simplification (for postprocess:simplify)

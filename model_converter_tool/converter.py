@@ -123,6 +123,7 @@ class ModelConverter:
     def _setup_torch_optimizations(self):
         """Setup torch optimizations with fallbacks"""
         try:
+            import torch
             if hasattr(torch, "set_float32_matmul_precision"):
                 torch.set_float32_matmul_precision("high")
 
@@ -159,8 +160,9 @@ class ModelConverter:
             ("onnxruntime", "onnxruntime"),
             ("llama_cpp_python", "llama-cpp-python"),
             ("mlx", "mlx"),
+            ("gptqmodel", "gptqmodel"),
             ("auto_gptq", "auto-gptq"),
-            ("awq", "autoawq"),
+            # ("awq", "autoawq"),  # 已弃用
         ]
 
         for mod, pip_name in deps:
