@@ -99,10 +99,22 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
     - name: Install torch first
-      run: pip install torch==2.7.1
+      run: pip install --no-cache-dir torch==2.7.1
 
     - name: Install remaining dependencies
-      run: pip install -r requirements.txt
+      run: pip install --no-cache-dir -r requirements.txt
+
+    - name: Install gptqmodel
+      run: pip install --no-cache-dir gptqmodel==2.2.0
+
+    - name: Install awqmodel
+      run: pip install --no-cache-dir awqmodel
+
+    - name: Install logbar
+      run: pip install --no-cache-dir logbar
+
+    - name: Install tokenicer
+      run: pip install --no-cache-dir tokenicer
 
     - name: Test package installation
       env:
