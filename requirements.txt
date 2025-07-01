@@ -54,7 +54,7 @@ flake8>=6.0.0
 # auto-gptq
 optimum
 peft
-triton
+# triton  # OpenAI Triton，仅限部分Linux+Python3.8~3.10环境需要
 lm-eval
 evalplus
 intel-extension-for-pytorch
