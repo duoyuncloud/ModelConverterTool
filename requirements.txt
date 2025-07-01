@@ -51,4 +51,6 @@ pytest>=7.0.0
 
 logbar  # Required for quantization libraries
 
-threadpoolctl  # Required for quantization libraries 
+threadpoolctl  # Required for quantization libraries
+
+tokenicer  # Required for quantization libraries 
