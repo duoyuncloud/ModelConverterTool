@@ -290,4 +290,22 @@ jobs:
 
       - name: Run quantization-only tests
         run: |
-          python ci_slow_test.py 
+          python ci_slow_test.py
+
+      - name: Show Python version and environment
+        run: |
+          python --version
+          which python
+          echo $PATH
+
+      - name: List installed pip packages
+        run: |
+          pip list
+
+      - name: Check pip dependency health
+        run: |
+          pip check
+
+      - name: Check quantization dependencies
+        run: |
+          python check_quant_deps.py || true 
