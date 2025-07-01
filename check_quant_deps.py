@@ -1,3 +1,11 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["MPS_VISIBLE_DEVICES"] = ""
+os.environ["TRANSFORMERS_NO_MPS"] = "1"
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+os.environ["USE_CPU_ONLY"] = "1"
+
 import importlib
 
 quant_deps = [

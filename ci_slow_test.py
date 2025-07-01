@@ -4,6 +4,9 @@ Slow conversion tests for CI
 Tests quantization formats that may take longer
 """
 
+# 强制禁用 MPS/CUDA 后端（必须在任何其他 import 之前）
+import disable_mps
+
 import sys
 import os
 import time
@@ -11,6 +14,7 @@ import platform
 from pathlib import Path
 from model_converter_tool.converter import ModelConverter
 
+# 额外的环境变量设置（兜底）
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["MPS_VISIBLE_DEVICES"] = ""
 os.environ["TRANSFORMERS_NO_MPS"] = "1"

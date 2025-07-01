@@ -22,6 +22,23 @@ Example usage:
     )
 """
 
+import os
+# 在模块导入前就禁用 MPS/CUDA
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["MPS_VISIBLE_DEVICES"] = ""
+os.environ["TRANSFORMERS_NO_MPS"] = "1"
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+os.environ["USE_CPU_ONLY"] = "1"
+
+# 强制设置 PyTorch 相关环境变量
+os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+os.environ["PYTORCH_MPS_LOW_WATERMARK_RATIO"] = "0.0"
+
+# 禁用所有可能的 GPU 后端
+os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:0"
+
 # Import main classes and functions
 from .converter import ModelConverter
 from .validator import ModelValidator

@@ -8,6 +8,14 @@ from model_converter_tool.converter import ModelConverter
 # Global ModelConverter instance
 converter = ModelConverter()
 
+# Dynamically set help text based on hardware
+if torch.cuda.is_available():
+    CLI_HELP = "Model Converter CLI (GPU & CPU supported, all formats)"
+    CONVERT_HELP = "Convert a model to the specified format (GPU/CPU supported)."
+else:
+    CLI_HELP = "Model Converter CLI (CPU supported, all formats)"
+    CONVERT_HELP = "Convert a model to the specified format (CPU supported)."
+
 
 def detect_model_format(input_model):
     """Detect the format of input model."""
@@ -34,19 +42,18 @@ def validate_conversion_compatibility(in_fmt, output_format, model_type):
     }
 
 
-@click.group()
+@click.group(help=CLI_HELP)
 def cli():
-    """Model Converter CLI (CPU-only, supports all formats)"""
     pass
 
 
-@cli.command()
+@cli.command(help=CONVERT_HELP)
 @click.argument("input_model")
 @click.argument("output_format")
 @click.option("--output-path", default=None, help="Path to save the converted model")
 @click.option("--model-type", default="auto", help="Model type (auto/text-generation/...)")
 def convert(input_model, output_format, output_path, model_type):
-    """Convert a model to the specified format (CPU-only)."""
+    """Convert a model to the specified format."""
     click.echo(f"[INFO] Detecting input model format for: {input_model}")
     in_fmt, norm_path, meta = detect_model_format(input_model)
     click.echo(f"Fmt: {in_fmt}")
@@ -72,7 +79,7 @@ def convert(input_model, output_format, output_path, model_type):
 
     # Special handling for quantized models like GPTQ/AWQ
     if output_format in ["gptq", "awq"]:
-        click.echo(f"[INFO] Attempting quantized conversion ({output_format}) " f"on CPU...")
+        click.echo(f"[INFO] Attempting quantized conversion ({output_format}) " f"on {device}...")
         # Check if related libraries support CPU
         try:
             if output_format == "gptq":
@@ -103,7 +110,7 @@ def convert(input_model, output_format, output_path, model_type):
     click.echo(
         f"[INFO] (DEMO) Would convert model to {output_format} " f"and save to {output_path or '[not specified]'}"
     )
-    click.echo("[SUCCESS] Conversion pipeline completed (CPU-only mode).")
+    click.echo(f"[SUCCESS] Conversion pipeline completed ({device} mode).")
 
 
 if __name__ == "__main__":
