@@ -23,6 +23,7 @@ Example usage:
 """
 
 import os
+
 # 在模块导入前就禁用 MPS/CUDA
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["MPS_VISIBLE_DEVICES"] = ""
