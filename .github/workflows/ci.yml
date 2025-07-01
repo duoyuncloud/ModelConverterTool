@@ -90,6 +90,13 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
     - name: Install dependencies
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip cache purge || echo "Cache purge failed, continuing..."
@@ -100,15 +107,36 @@ jobs:
         pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
     - name: Test package installation
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
       run: |
         pip install -e .
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
 
     - name: Test CLI help
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
       run: |
         model-converter --help
 
     - name: Test fast conversions
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
       run: |
         python ci_fast_test.py
 
@@ -135,6 +163,13 @@ jobs:
         python ci_slow_test.py
 
     - name: Test batch conversion
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
       run: |
         python -c "
         from model_converter_tool.converter import ModelConverter
