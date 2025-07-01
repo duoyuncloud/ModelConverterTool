@@ -52,13 +52,13 @@ flake8>=6.0.0
 
 # Optional/advanced quantization dependencies
 # auto-gptq
-# optimum
-# peft
-# triton
-# lm-eval
-# evalplus
-# ipex
-# bitblas
+optimum
+peft
+triton
+lm-eval
+evalplus
+ipex
+bitblas
 
 # For testing
 pytest>=7.0.0 
