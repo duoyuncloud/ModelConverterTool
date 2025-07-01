@@ -53,4 +53,6 @@ logbar  # Required for quantization libraries
 
 threadpoolctl  # Required for quantization libraries
 
-tokenicer  # Required for quantization libraries 
+tokenicer  # Required for quantization libraries
+
+device_smi  # Required for quantization libraries 
