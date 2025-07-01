@@ -24,7 +24,11 @@ jobs:
         pip install -r requirements.txt
 
     - name: Test fast conversions with gpt2
-      run: python ci_fast_test.py
+      run: |
+        export TOKENIZERS_PARALLELISM=false
+        python ci_fast_test.py
 
     - name: Test slow conversions (gptq/awq) with tiny model and validation
-      run: python ci_slow_test.py 
+      run: |
+        export TOKENIZERS_PARALLELISM=false
+        python ci_slow_test.py 
