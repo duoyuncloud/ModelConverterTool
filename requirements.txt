@@ -47,4 +47,6 @@ flake8>=6.0.0
 # pip install onnxsim torch-optimizer
 
 # For testing
-pytest>=7.0.0 
+pytest>=7.0.0
+
+logbar>=0.2.0  # Required for quantization libraries 
