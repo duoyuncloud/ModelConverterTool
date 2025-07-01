@@ -289,6 +289,10 @@ jobs:
           pip install datasets logbar gptqmodel device_smi tokenicer threadpoolctl
 
       - name: Run quantization-only tests
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+          MPS_VISIBLE_DEVICES: ""
+          TRANSFORMERS_NO_MPS: "1"
         run: |
           python ci_slow_test.py
 
