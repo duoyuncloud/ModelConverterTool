@@ -57,7 +57,7 @@ peft
 triton
 lm-eval
 evalplus
-ipex
+intel-extension-for-pytorch
 bitblas
 
 # For testing
