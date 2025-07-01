@@ -49,4 +49,4 @@ flake8>=6.0.0
 # For testing
 pytest>=7.0.0
 
-logbar>=0.2.0  # Required for quantization libraries 
+logbar>=0.0.2  # Required for quantization libraries 
