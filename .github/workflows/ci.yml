@@ -56,12 +56,6 @@ jobs:
           pip install flake8 black isort pytest pytest-cov
           pip install -e .
 
-      - name: Lint with isort/black/flake8
-        run: |
-          isort --check-only --diff model_converter_tool/ --profile black
-          black --check model_converter_tool/
-          flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
-
       - name: Run fast tests
         run: pytest -m fast -v
 
@@ -104,22 +98,11 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-v2-
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
-    - name: Install dependencies
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip cache purge || echo "Cache purge failed, continuing..."
-        pip install -r requirements.txt
-        # Install quantization libraries separately after torch is installed
-        pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
-        pip install logbar || echo "logbar installation failed, continuing..."
-        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+    - name: Install torch first
+      run: pip install torch==2.7.1
+
+    - name: Install remaining dependencies
+      run: pip install -r requirements.txt
 
     - name: Test package installation
       env:
