@@ -1407,6 +1407,12 @@ class ModelConverter:
         完善导出功能，确保模型文件被正确复制。
         """
         import os
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        os.environ["MPS_VISIBLE_DEVICES"] = ""
+        os.environ["TRANSFORMERS_NO_MPS"] = "1"
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+        os.environ["USE_CPU_ONLY"] = "1"
         import re
         import shutil
         from pathlib import Path
@@ -1590,6 +1596,12 @@ class ModelConverter:
         完善导出功能，确保模型文件被正确复制。
         """
         import os
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        os.environ["MPS_VISIBLE_DEVICES"] = ""
+        os.environ["TRANSFORMERS_NO_MPS"] = "1"
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
+        os.environ["USE_CPU_ONLY"] = "1"
         import re
         import shutil
         from pathlib import Path
