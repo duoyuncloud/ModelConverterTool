@@ -58,7 +58,7 @@ peft
 lm-eval
 evalplus
 # intel-extension-for-pytorch  # 仅限Linux+Intel XPU/CPU优化环境需要
-bitblas
+# bitblas  # 仅部分高级量化/推理开发者需要，普通用户可忽略
 
 # For testing
 pytest>=7.0.0 
