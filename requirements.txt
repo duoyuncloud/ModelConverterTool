@@ -55,4 +55,6 @@ threadpoolctl  # Required for quantization libraries
 
 tokenicer  # Required for quantization libraries
 
-device_smi  # Required for quantization libraries 
+device_smi  # Required for quantization libraries
+
+Pillow  # Required for quantization libraries 
