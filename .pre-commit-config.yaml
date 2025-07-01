@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: pytest
         name: Run pytest before commit
-        entry: pytest -v tests/test_quantization.py -k 'test_gptq_quantization or test_awq_quantization or test_cli_equivalent_quantization' --tb=short --maxfail=2
+        entry: pytest -v tests/test_basic_conversions.py tests/test_quantization.py tests/test_api_usage.py tests/test_batch_conversion.py --tb=short --maxfail=3
         language: system
         pass_filenames: false
         always_run: true 

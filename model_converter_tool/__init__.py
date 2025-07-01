@@ -131,9 +131,7 @@ def batch_convert(tasks: list, **kwargs):
 __all__.append("batch_convert")
 
 
-def validate_model(
-    model_path: str, output_format: str, model_type: str = "text-generation", **kwargs
-):
+def validate_model(model_path: str, output_format: str, model_type: str = "text-generation", **kwargs):
     """
     Quick validation function for converted models.
 

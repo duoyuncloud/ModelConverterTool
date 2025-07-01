@@ -41,9 +41,7 @@ class ModelValidator:
         try:
             # 处理量化模型
             if quantization_type:
-                return self._validate_quantized_model(
-                    model_path, model_type, quantization_type
-                )
+                return self._validate_quantized_model(model_path, model_type, quantization_type)
 
             # 处理标准格式
             if output_format.lower() == "onnx":
@@ -117,9 +115,7 @@ class ModelValidator:
                 input_types = [inp.type for inp in session.get_inputs()]
                 input_feed = {}
                 for name, shape, typ in zip(input_names, input_shapes, input_types):
-                    shape = tuple(
-                        1 if isinstance(x, str) or x is None else x for x in shape
-                    )
+                    shape = tuple(1 if isinstance(x, str) or x is None else x for x in shape)
                     if "int" in typ:
                         arr = np.ones(shape, dtype=np.int64)
                     else:
@@ -197,9 +193,7 @@ class ModelValidator:
                         "1",
                         "--no-display-prompt",
                     ]
-                    result = subprocess.run(
-                        cmd, capture_output=True, text=True, timeout=30
-                    )
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
                     if result.returncode == 0:
                         return {
@@ -242,9 +236,7 @@ class ModelValidator:
             # macOS 或无 CUDA 环境下仅做基础验证
             if sys.platform == "darwin" or not torch.cuda.is_available():
                 try:
-                    model = AutoGPTQForCausalLM.from_quantized(
-                        str(model_dir), device="cpu"
-                    )
+                    model = AutoGPTQForCausalLM.from_quantized(str(model_dir), device="cpu")
                     tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
                     return {
                         "success": True,
@@ -277,9 +269,7 @@ class ModelValidator:
         except Exception as e:
             return {"success": False, "error": f"GPTQ validation failed: {e}"}
 
-    def _validate_torchscript_model(
-        self, model_path: str, model_type: str
-    ) -> Dict[str, Any]:
+    def _validate_torchscript_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate TorchScript model"""
         try:
             import torch
@@ -357,9 +347,7 @@ class ModelValidator:
             elif isinstance(outputs, dict) and "logits" in outputs:
                 output_shape = outputs["logits"].shape
             else:
-                output_shape = (
-                    tuple(outputs.shape) if hasattr(outputs, "shape") else "unknown"
-                )
+                output_shape = tuple(outputs.shape) if hasattr(outputs, "shape") else "unknown"
 
             return {
                 "success": True,
@@ -448,9 +436,7 @@ class ModelValidator:
 
         return None
 
-    def validate_batch_models(
-        self, conversion_results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def validate_batch_models(self, conversion_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Validate a batch of converted models
 
@@ -470,9 +456,7 @@ class ModelValidator:
                 model_type = result.get("model_type", "text-generation")
 
                 # Validate the converted model
-                validation_result = self.validate_converted_model(
-                    output_path, output_format, model_type
-                )
+                validation_result = self.validate_converted_model(output_path, output_format, model_type)
 
                 # Combine conversion and validation results
                 combined_result = {**result, "validation": validation_result}
@@ -483,9 +467,7 @@ class ModelValidator:
 
         return validation_results
 
-    def _validate_quantized_model(
-        self, model_path: str, model_type: str, quantization_type: str
-    ) -> Dict[str, Any]:
+    def _validate_quantized_model(self, model_path: str, model_type: str, quantization_type: str) -> Dict[str, Any]:
         """Validate quantized models (GPTQ, AWQ, etc.)"""
         try:
             Path(model_path)
@@ -524,9 +506,7 @@ class ModelValidator:
             # macOS 或无 CUDA 环境下仅做基础验证
             if sys.platform == "darwin" or not torch.cuda.is_available():
                 try:
-                    model = AutoAWQForCausalLM.from_pretrained(
-                        str(model_dir), device_map="cpu"
-                    )
+                    model = AutoAWQForCausalLM.from_pretrained(str(model_dir), device_map="cpu")
                     tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
                     return {
                         "success": True,
@@ -569,9 +549,7 @@ class ModelValidator:
             model_dir = Path(model_path)
 
             # 检查模型文件
-            model_files = list(model_dir.glob("*.safetensors")) + list(
-                model_dir.glob("*.bin")
-            )
+            model_files = list(model_dir.glob("*.safetensors")) + list(model_dir.glob("*.bin"))
             if not model_files:
                 return {"success": False, "error": "No model files found"}
 
@@ -608,9 +586,7 @@ class ModelValidator:
         except Exception as e:
             return {"success": False, "error": f"HF validation failed: {e}"}
 
-    def _validate_safetensors_model(
-        self, model_path: str, model_type: str
-    ) -> Dict[str, Any]:
+    def _validate_safetensors_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate safetensors model using transformers (same as hf)"""
         try:
             import traceback
@@ -627,12 +603,8 @@ class ModelValidator:
 
             # 尝试用 transformers 加载
             try:
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_dir, trust_remote_code=True
-                )
-                tokenizer = AutoTokenizer.from_pretrained(
-                    model_dir, trust_remote_code=True
-                )
+                model = AutoModelForCausalLM.from_pretrained(model_dir, trust_remote_code=True)
+                tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
             except Exception as e:
                 return {
                     "success": False,
@@ -694,19 +666,13 @@ class ModelValidator:
             if quantization_type.lower() == "gptq":
                 from auto_gptq import AutoGPTQForCausalLM
 
-                quantized_model = AutoGPTQForCausalLM.from_quantized(
-                    quantized_model_path
-                )
+                quantized_model = AutoGPTQForCausalLM.from_quantized(quantized_model_path)
             elif quantization_type.lower() == "awq":
                 from awq import AutoAWQForCausalLM
 
-                quantized_model = AutoAWQForCausalLM.from_pretrained(
-                    quantized_model_path
-                )
+                quantized_model = AutoAWQForCausalLM.from_pretrained(quantized_model_path)
             else:
-                quantized_model = AutoModelForCausalLM.from_pretrained(
-                    quantized_model_path
-                )
+                quantized_model = AutoModelForCausalLM.from_pretrained(quantized_model_path)
 
             # 测试用例
             test_cases = [
@@ -749,9 +715,7 @@ class ModelValidator:
                         orig_probs = torch.softmax(original_logits, dim=-1)
                         quant_probs = torch.softmax(quantized_logits, dim=-1)
 
-                        perplexity_diff = (
-                            torch.abs(orig_probs - quant_probs).mean().item()
-                        )
+                        perplexity_diff = torch.abs(orig_probs - quant_probs).mean().item()
                         quality_metrics["perplexity_diff"].append(perplexity_diff)
 
                 except Exception as e:
@@ -759,26 +723,16 @@ class ModelValidator:
 
             # 计算平均指标
             avg_similarity = (
-                np.mean(quality_metrics["output_similarity"])
-                if quality_metrics["output_similarity"]
-                else 0
+                np.mean(quality_metrics["output_similarity"]) if quality_metrics["output_similarity"] else 0
             )
             avg_perplexity_diff = (
-                np.mean(quality_metrics["perplexity_diff"])
-                if quality_metrics["perplexity_diff"]
-                else 0
+                np.mean(quality_metrics["perplexity_diff"]) if quality_metrics["perplexity_diff"] else 0
             )
 
             # 计算模型大小差异
-            original_size = sum(
-                p.numel() * p.element_size() for p in original_model.parameters()
-            )
-            quantized_size = sum(
-                p.numel() * p.element_size() for p in quantized_model.parameters()
-            )
-            compression_ratio = (
-                original_size / quantized_size if quantized_size > 0 else 1
-            )
+            original_size = sum(p.numel() * p.element_size() for p in original_model.parameters())
+            quantized_size = sum(p.numel() * p.element_size() for p in quantized_model.parameters())
+            compression_ratio = original_size / quantized_size if quantized_size > 0 else 1
 
             # 质量评分 (0-10)
             quality_score = 0

@@ -34,9 +34,7 @@ def load_model_with_fallbacks(norm_path, model_type, device):
 def validate_conversion_compatibility(in_fmt, output_format, model_type):
     """Validate conversion compatibility."""
     # Simple compatibility validation
-    result = converter._validate_conversion_inputs(
-        in_fmt, output_format, model_type, quantization="", device="auto"
-    )
+    result = converter._validate_conversion_inputs(in_fmt, output_format, model_type, quantization="", device="auto")
     return {
         "compatible": result["valid"],
         "errors": result["errors"],
@@ -54,9 +52,7 @@ def cli():
 @click.argument("input_model")
 @click.argument("output_format")
 @click.option("--output-path", default=None, help="Path to save the converted model")
-@click.option(
-    "--model-type", default="auto", help="Model type (auto/text-generation/...)"
-)
+@click.option("--model-type", default="auto", help="Model type (auto/text-generation/...)")
 def convert(input_model, output_format, output_path, model_type):
     """Convert a model to the specified format."""
     click.echo(f"[INFO] Detecting input model format for: {input_model}")
@@ -89,9 +85,7 @@ def convert(input_model, output_format, output_path, model_type):
 
     # Special handling for quantized models like GPTQ/AWQ
     if output_format in ["gptq", "awq"]:
-        click.echo(
-            f"[INFO] Attempting quantized conversion ({output_format}) on {device_str}..."
-        )
+        click.echo(f"[INFO] Attempting quantized conversion ({output_format}) on {device_str}...")
         # Check if related libraries support CPU
         try:
             if output_format == "gptq":
@@ -115,9 +109,7 @@ def convert(input_model, output_format, output_path, model_type):
             sys.exit(1)
     # Load model
     click.echo("[INFO] Loading model with fallback strategies...")
-    model, tokenizer, load_meta = load_model_with_fallbacks(
-        norm_path, model_type, device
-    )
+    model, tokenizer, load_meta = load_model_with_fallbacks(norm_path, model_type, device)
     click.echo(
         f"[INFO] Model loaded. Device: {getattr(load_meta, 'device', 'unknown')}, Format: {getattr(load_meta, 'format', 'unknown')}"
     )
@@ -129,9 +121,7 @@ def convert(input_model, output_format, output_path, model_type):
         else:
             output_path = f"./outputs/{input_model.replace('/', '_')}_{output_format}"
 
-    click.echo(
-        f"[INFO] Converting model to {output_format} and saving to {output_path}"
-    )
+    click.echo(f"[INFO] Converting model to {output_format} and saving to {output_path}")
 
     try:
         result = converter.convert(
@@ -148,9 +138,7 @@ def convert(input_model, output_format, output_path, model_type):
             if result.get("validation", True):
                 click.echo(f"[INFO] Model validation passed")
             else:
-                click.echo(
-                    f"[WARN] Model validation failed: {result.get('warning', 'Unknown issue')}"
-                )
+                click.echo(f"[WARN] Model validation failed: {result.get('warning', 'Unknown issue')}")
 
             # 验证导出文件是否存在
             if not os.path.exists(output_path):
@@ -185,14 +173,10 @@ def convert(input_model, output_format, output_path, model_type):
                 )
                 click.echo("[INFO] 如需详细推理验证，请参考官方文档或使用 pytest/validator 工具。")
             else:
-                click.echo(
-                    f"[WARN] Output file generated, but failed to load: {load_error}"
-                )
+                click.echo(f"[WARN] Output file generated, but failed to load: {load_error}")
                 click.echo("[INFO] 请检查模型格式或使用 validator 进行详细验证。")
         else:
-            click.echo(
-                f"[ERROR] Conversion failed: {result.get('error', 'Unknown error')}"
-            )
+            click.echo(f"[ERROR] Conversion failed: {result.get('error', 'Unknown error')}")
             sys.exit(1)
 
     except Exception as e:
