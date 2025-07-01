@@ -1,4 +1,4 @@
-name: Model Converter CI
+name: CI
 
 on:
   push:
@@ -6,48 +6,68 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  TOKENIZERS_PARALLELISM: false
-  PYTHONUNBUFFERED: 1
-
 jobs:
-  lint:
+  lint-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.11]
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install flake8 black isort
-    
-    - name: Lint with flake8
-      run: |
-        flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 model_converter_tool/ --count --exit-zero --max-complexity=10 --max-line-length=120 --extend-ignore=E203,W503,E501,F401,F811 --statistics
-    
-    - name: Check code formatting with black
-      run: |
-        black --check --diff --line-length=120 model_converter_tool/
-    
-    - name: Check import sorting with isort
-      run: |
-        isort --check-only --diff model_converter_tool/
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install core dependencies
+        run: |
+          pip install torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
+
+      - name: Install remaining dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Install quantization libraries (optional)
+        run: |
+          pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+      - name: Install dev tools and editable package
+        run: |
+          pip install flake8 black isort
+          pip install -e .
+
+      - name: Lint with isort/black/flake8
+        run: |
+          isort --check-only --diff model_converter_tool/ --profile black
+          black --check model_converter_tool/
+          flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run fast CI tests
+        run: python ci_fast_test.py
+
+      - name: Run slow CI tests
+        run: python ci_slow_test.py
+
+      - name: Run all tests
+        run: python test_all.py
 
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.11']
         exclude:
           - os: macos-latest
             python-version: '3.9'
+
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v4
@@ -56,6 +76,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+
 
     - name: Cache pip dependencies
       uses: actions/cache@v4
@@ -69,6 +90,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
+        # Install quantization libraries separately after torch is installed
+        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
     - name: Test package installation
       run: |
@@ -212,4 +235,29 @@ jobs:
         path: |
           bandit-report.json
           safety-report.json
-        retention-days: 7 
+        retention-days: 7
+
+  critical-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+        # Install quantization libraries separately after torch is installed
+        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+    - name: Test critical functionality
+      run: |
+        pip install -e .
+        python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
+        python ci_fast_test.py 
