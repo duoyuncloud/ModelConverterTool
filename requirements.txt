@@ -17,8 +17,13 @@ mlx>=0.0.8
 
 # Quantization libraries (install after torch)
 # These are optional and may fail if torch is not properly installed
-# gptqmodel>=0.1.0  # 主要量化转换库 - 暂时注释掉，在CI中单独处理
-# auto-gptq>=0.4.0  # 可选，仅用于验证已转换的模型 - 暂时注释掉，在CI中单独处理
+gptqmodel
+logbar
+tokenicer
+device_smi
+threadpoolctl
+Pillow
+safetensors
 
 # Configuration and utilities
 pyyaml>=6.0
@@ -30,7 +35,6 @@ tqdm>=4.65.0
 sentencepiece>=0.1.99
 protobuf>=3.20.0
 datasets>=2.0.0  # Required for quantization libraries
-safetensors>=0.3.0  # Fast model saving/loading
 
 # Development dependencies
 pytest>=7.0.0
@@ -46,15 +50,15 @@ flake8>=6.0.0
 # To install all optional features:
 # pip install onnxsim torch-optimizer
 
+# Optional/advanced quantization dependencies
+# auto-gptq
+# optimum
+# peft
+# triton
+# lm-eval
+# evalplus
+# ipex
+# bitblas
+
 # For testing
-pytest>=7.0.0
-
-logbar  # Required for quantization libraries
-
-threadpoolctl  # Required for quantization libraries
-
-tokenicer  # Required for quantization libraries
-
-device_smi  # Required for quantization libraries
-
-Pillow  # Required for quantization libraries 
+pytest>=7.0.0 
