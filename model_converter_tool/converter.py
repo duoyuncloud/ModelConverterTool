@@ -1407,6 +1407,7 @@ class ModelConverter:
         完善导出功能，确保模型文件被正确复制。
         """
         import os
+
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         os.environ["MPS_VISIBLE_DEVICES"] = ""
         os.environ["TRANSFORMERS_NO_MPS"] = "1"
@@ -1596,6 +1597,7 @@ class ModelConverter:
         完善导出功能，确保模型文件被正确复制。
         """
         import os
+
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         os.environ["MPS_VISIBLE_DEVICES"] = ""
         os.environ["TRANSFORMERS_NO_MPS"] = "1"
