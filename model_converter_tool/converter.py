@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-from transformers import AutoConfig, AutoTokenizer, AutoModel
+from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 # Import cloud converter for automatic cloud transformation
 # from .cloud_converter import CloudConverter
@@ -461,14 +461,14 @@ class ModelConverter:
         """Get model class based on type"""
         from transformers import (
             AutoModelForCausalLM,
-            AutoModelForSequenceClassification,
-            AutoModelForSeq2SeqLM,
-            AutoModelForQuestionAnswering,
-            AutoModelForTokenClassification,
-            AutoModelForMultipleChoice,
-            AutoModelForMaskedLM,
             AutoModelForFeatureExtraction,
             AutoModelForImageClassification,
+            AutoModelForMaskedLM,
+            AutoModelForMultipleChoice,
+            AutoModelForQuestionAnswering,
+            AutoModelForSeq2SeqLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
         )
 
         model_classes = {
@@ -555,7 +555,7 @@ class ModelConverter:
                 tokenizer = None
 
             # Load model
-            from transformers import AutoModelForCausalLM, AutoModel
+            from transformers import AutoModel, AutoModelForCausalLM
 
             try:
                 model = AutoModelForCausalLM.from_pretrained(model_name, **load_params)
@@ -600,8 +600,9 @@ class ModelConverter:
         postprocess: Optional[str] = None,
         validate: bool = True,
     ) -> dict:
-        import platform
         import os
+        import platform
+
         import torch
 
         # --- 新增自动设备检测 ---
@@ -1168,9 +1169,9 @@ class ModelConverter:
     def _export_simplified_onnx(self, model, tokenizer, onnx_file: Path, model_type: str) -> bool:
         """Export a simplified ONNX model"""
         try:
+            import numpy as np
             import onnx
             from onnx import helper, numpy_helper
-            import numpy as np
 
             model.eval()
 
@@ -1242,9 +1243,9 @@ class ModelConverter:
     def _create_functional_onnx(self, model_name: str, output_path: str, model_type: str, model, tokenizer) -> None:
         """Create a functional ONNX model that can actually run inference"""
         try:
+            import numpy as np
             import onnx
             from onnx import helper, numpy_helper
-            import numpy as np
 
             # 获取模型的实际权重
             state_dict = model.state_dict()
@@ -1439,12 +1440,12 @@ class ModelConverter:
         except Exception as e:
             if "quantization_config" in str(e):
                 try:
+                    import torch
                     from transformers import (
                         AutoModelForCausalLM,
                         AutoTokenizer,
                         GPTQConfig,
                     )
-                    import torch
 
                     bits = 4
                     group_size = 128
@@ -1625,12 +1626,12 @@ class ModelConverter:
         except Exception as e:
             if "quantization_config" in str(e):
                 try:
+                    import torch
                     from transformers import (
                         AutoModelForCausalLM,
                         AutoTokenizer,
                         GPTQConfig,
                     )
-                    import torch
 
                     bits = 4
                     group_size = 32
@@ -1917,8 +1918,8 @@ class ModelConverter:
         """Manual GGUF conversion using llama-cpp-python API"""
         try:
             logger.info("Attempting manual GGUF conversion")
-            import struct
             import json
+            import struct
 
             with open(gguf_file, "wb") as f:
                 f.write(b"GGUF")
@@ -2728,10 +2729,11 @@ for your framework.
         Returns:
             True if conversion succeeded, else False.
         """
-        import torch
-        from transformers import AutoModelForCausalLM
         import math
         import os
+
+        import torch
+        from transformers import AutoModelForCausalLM
 
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"

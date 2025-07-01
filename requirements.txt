@@ -15,11 +15,10 @@ llama-cpp-python>=0.2.0
 # Optional: MLX for Apple Silicon
 mlx>=0.0.8
 
-# Optional: Quantization libraries
-# NOTE: These require torch to be installed first. Use install_dependencies.sh for proper installation order.
-gptqmodel>=0.1.0  # 主要量化转换库
-auto-gptq>=0.4.0  # 可选，仅用于验证已转换的模型
-# awq>=0.1.0  # 已弃用，使用 gptqmodel 替代
+# Quantization libraries (install after torch)
+# These are optional and may fail if torch is not properly installed
+# gptqmodel>=0.1.0  # 主要量化转换库 - 暂时注释掉，在CI中单独处理
+# auto-gptq>=0.4.0  # 可选，仅用于验证已转换的模型 - 暂时注释掉，在CI中单独处理
 
 # Configuration and utilities
 pyyaml>=6.0

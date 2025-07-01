@@ -2,13 +2,14 @@
 Utility functions for model conversion
 """
 
+import json
 import logging
 import os
 import shutil
 from pathlib import Path
 from typing import Optional
+
 import torch
-import json
 
 logger = logging.getLogger(__name__)
 

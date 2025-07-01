@@ -2,12 +2,13 @@
 Model validation utilities for testing converted models
 """
 
+import logging
 import os
 import subprocess
-import numpy as np
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import logging
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -182,9 +183,9 @@ class ModelValidator:
     def _validate_gptq_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate GPTQ model"""
         try:
+            import torch
             from auto_gptq import AutoGPTQForCausalLM
             from transformers import AutoTokenizer
-            import torch
 
             model_dir = Path(model_path)
 
@@ -306,8 +307,8 @@ class ModelValidator:
     def _validate_fp16_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate FP16 model"""
         try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             model_dir = Path(model_path)
 
@@ -466,9 +467,9 @@ class ModelValidator:
     def _validate_awq_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate AWQ model"""
         try:
+            import torch
             from awq import AutoAWQForCausalLM
             from transformers import AutoTokenizer
-            import torch
 
             model_dir = Path(model_path)
 
@@ -512,8 +513,8 @@ class ModelValidator:
     def _validate_hf_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
         """Validate Hugging Face model"""
         try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             model_dir = Path(model_path)
 
@@ -575,9 +576,9 @@ class ModelValidator:
             Dict with quantization quality metrics
         """
         try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-            import torch
             import numpy as np
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
 
             # 加载原始模型
             original_model = AutoModelForCausalLM.from_pretrained(original_model_path)

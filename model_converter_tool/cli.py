@@ -1,6 +1,8 @@
+import sys
+
 import click
 import torch
-import sys
+
 from model_converter_tool.converter import ModelConverter
 
 # Global ModelConverter instance
