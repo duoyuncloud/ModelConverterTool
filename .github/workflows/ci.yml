@@ -36,6 +36,7 @@ jobs:
       - name: Install quantization libraries (optional)
         run: |
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+          pip install logbar || echo "logbar installation failed, continuing..."
           pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
       - name: Install dev tools and editable package
@@ -95,6 +96,7 @@ jobs:
         pip install -r requirements.txt
         # Install quantization libraries separately after torch is installed
         pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+        pip install logbar || echo "logbar installation failed, continuing..."
         pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
     - name: Test package installation
@@ -260,6 +262,7 @@ jobs:
         pip install -r requirements.txt
         # Install quantization libraries separately after torch is installed
         pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+        pip install logbar || echo "logbar installation failed, continuing..."
         pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
     - name: Test critical functionality
