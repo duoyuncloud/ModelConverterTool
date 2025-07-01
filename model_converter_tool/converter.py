@@ -11,11 +11,11 @@ import shutil
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-from transformers import AutoConfig, AutoTokenizer, AutoModel, GPTQConfig
+from transformers import AutoConfig, AutoTokenizer, AutoModel
 
 # Import cloud converter for automatic cloud transformation
 # from .cloud_converter import CloudConverter
@@ -32,7 +32,15 @@ class ModelConverter:
 
     def __init__(self):
         self.supported_formats = {
-            "input": ["hf", "local", "onnx", "gguf", "mlx", "torchscript", "safetensors"],
+            "input": [
+                "hf",
+                "local",
+                "onnx",
+                "gguf",
+                "mlx",
+                "torchscript",
+                "safetensors",
+            ],
             "output": [
                 "hf",
                 "onnx",
@@ -87,12 +95,36 @@ class ModelConverter:
             "bert-base-uncased": {"max_length": 512, "trust_remote_code": False},
             "distilbert-base-uncased": {"max_length": 512, "trust_remote_code": False},
             "t5-small": {"max_length": 512, "trust_remote_code": False},
-            "microsoft/DialoGPT-small": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
-            "facebook/opt-125m": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
-            "EleutherAI/gpt-neo-125M": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
-            "microsoft/DialoGPT-medium": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
-            "facebook/opt-350m": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
-            "EleutherAI/gpt-neo-350M": {"max_length": 512, "use_cache": False, "trust_remote_code": False},
+            "microsoft/DialoGPT-small": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
+            "facebook/opt-125m": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
+            "EleutherAI/gpt-neo-125M": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
+            "microsoft/DialoGPT-medium": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
+            "facebook/opt-350m": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
+            "EleutherAI/gpt-neo-350M": {
+                "max_length": 512,
+                "use_cache": False,
+                "trust_remote_code": False,
+            },
         }
 
         # Performance optimizations
@@ -124,12 +156,14 @@ class ModelConverter:
         """Setup torch optimizations with fallbacks"""
         try:
             import torch
+
             if hasattr(torch, "set_float32_matmul_precision"):
                 torch.set_float32_matmul_precision("high")
 
             # Enable memory efficient attention if available
             try:
                 import torch.backends.cuda
+
                 if hasattr(torch.backends.cuda, "enable_flash_sdp"):
                     torch.backends.cuda.enable_flash_sdp(True)
             except Exception:
@@ -138,6 +172,7 @@ class ModelConverter:
             # Enable xformers if available
             try:
                 import xformers
+
                 if hasattr(torch.backends.cuda, "enable_xformers_memory_efficient_attention"):
                     torch.backends.cuda.enable_xformers_memory_efficient_attention(True)
             except Exception:
@@ -155,7 +190,7 @@ class ModelConverter:
             ("onnx", "onnx"),
             ("safetensors", "safetensors"),
         ]
-        
+
         optional_deps = [
             ("onnxruntime", "onnxruntime"),
             ("llama_cpp_python", "llama-cpp-python"),
@@ -171,9 +206,7 @@ class ModelConverter:
                 v = getattr(m, "__version__", "unknown")
                 logger.info(f"Dependency {mod}: version {v}")
             except Exception:
-                logger.warning(
-                    f"Dependency {mod} not found! Install with: pip install {pip_name}"
-                )
+                logger.warning(f"Dependency {mod} not found! Install with: pip install {pip_name}")
 
         for mod, pip_name in optional_deps:
             try:
@@ -198,40 +231,44 @@ class ModelConverter:
         """Enhanced model format detection with fallbacks"""
         try:
             path = Path(model_path)
-            
+
             # Check for HuggingFace model identifier
             if model_path.startswith("hf:") or "/" in model_path and not path.exists():
                 return "hf", model_path.replace("hf:", "")
-            
+
             # Check for local files
             if path.exists():
                 # Check for ONNX files
                 if path.suffix.lower() == ".onnx" or list(path.glob("*.onnx")):
                     return "onnx", str(path)
-                
+
                 # Check for GGUF files
                 if path.suffix.lower() == ".gguf" or list(path.glob("*.gguf")):
                     return "gguf", str(path)
-                
+
                 # Check for TorchScript files
                 if path.suffix.lower() == ".pt" or list(path.glob("*.pt")):
                     return "torchscript", str(path)
-                
+
                 # Check for MLX files
                 if list(path.glob("*.mlx")) or list(path.glob("*.npz")):
                     return "mlx", str(path)
-                
+
                 # Check for HuggingFace format
-                if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or (path / "model.safetensors").exists():
+                if (
+                    (path / "config.json").exists()
+                    or (path / "pytorch_model.bin").exists()
+                    or (path / "model.safetensors").exists()
+                ):
                     return "hf", str(path)
-                
+
                 # Check for safetensors
                 if path.suffix.lower() == ".safetensors":
                     return "safetensors", str(path)
-            
+
             # Default to HuggingFace format
             return "hf", model_path
-            
+
         except Exception as e:
             logger.warning(f"Could not detect model format for {model_path}: {e}")
             return "hf", model_path
@@ -240,25 +277,25 @@ class ModelConverter:
         self, model_name: str, model_type: str, device: str, **kwargs
     ) -> Tuple[Any, Any, Dict[str, Any]]:
         """Load model with multiple fallback strategies"""
-        
+
         # Strategy 1: Try with optimized loading
         try:
             return self._load_model_optimized(model_name, model_type, device, **kwargs)
         except Exception as e:
             logger.warning(f"Optimized loading failed: {e}")
-        
+
         # Strategy 2: Try with basic loading
         try:
             return self._load_model_basic(model_name, model_type, device, **kwargs)
         except Exception as e:
             logger.warning(f"Basic loading failed: {e}")
-        
+
         # Strategy 3: Try with minimal loading
         try:
             return self._load_model_minimal(model_name, model_type, device, **kwargs)
         except Exception as e:
             logger.warning(f"Minimal loading failed: {e}")
-        
+
         # Strategy 4: Try with different model types
         fallback_types = ["text-generation", "text-classification", "auto"]
         for fallback_type in fallback_types:
@@ -267,7 +304,7 @@ class ModelConverter:
                     return self._load_model_basic(model_name, fallback_type, device, **kwargs)
                 except Exception as e:
                     logger.debug(f"Fallback type {fallback_type} failed: {e}")
-        
+
         raise Exception(f"All loading strategies failed for {model_name}")
 
     def _load_model_basic(
@@ -283,9 +320,16 @@ class ModelConverter:
 
             # Determine trust_remote_code: False for standard models
             standard_models = [
-                "gpt2", "bert-base-uncased", "distilbert-base-uncased", "t5-small",
-                "microsoft/DialoGPT-small", "facebook/opt-125m", "EleutherAI/gpt-neo-125M",
-                "microsoft/DialoGPT-medium", "facebook/opt-350m", "EleutherAI/gpt-neo-350M"
+                "gpt2",
+                "bert-base-uncased",
+                "distilbert-base-uncased",
+                "t5-small",
+                "microsoft/DialoGPT-small",
+                "facebook/opt-125m",
+                "EleutherAI/gpt-neo-125M",
+                "microsoft/DialoGPT-medium",
+                "facebook/opt-350m",
+                "EleutherAI/gpt-neo-350M",
             ]
             trust_remote_code = kwargs.get("trust_remote_code", False)
             if model_name in standard_models:
@@ -319,7 +363,7 @@ class ModelConverter:
 
             # Try different model loading strategies
             model = None
-            
+
             # Strategy 1: Try with specific model type
             if model_type != "auto":
                 try:
@@ -339,6 +383,7 @@ class ModelConverter:
             if model is None:
                 try:
                     from transformers import AutoModelForCausalLM
+
                     model = AutoModelForCausalLM.from_pretrained(model_name, **load_params)
                 except Exception as e:
                     logger.debug(f"AutoModelForCausalLM failed: {e}")
@@ -363,9 +408,16 @@ class ModelConverter:
         try:
             # Determine trust_remote_code: False for standard models
             standard_models = [
-                "gpt2", "bert-base-uncased", "distilbert-base-uncased", "t5-small",
-                "microsoft/DialoGPT-small", "facebook/opt-125m", "EleutherAI/gpt-neo-125M",
-                "microsoft/DialoGPT-medium", "facebook/opt-350m", "EleutherAI/gpt-neo-350M"
+                "gpt2",
+                "bert-base-uncased",
+                "distilbert-base-uncased",
+                "t5-small",
+                "microsoft/DialoGPT-small",
+                "facebook/opt-125m",
+                "EleutherAI/gpt-neo-125M",
+                "microsoft/DialoGPT-medium",
+                "facebook/opt-350m",
+                "EleutherAI/gpt-neo-350M",
             ]
             trust_remote_code = True
             if model_name in standard_models:
@@ -377,7 +429,7 @@ class ModelConverter:
                 trust_remote_code=trust_remote_code,
                 cache_dir=self.cache_dir,
             )
-            
+
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
                 trust_remote_code=trust_remote_code,
@@ -391,7 +443,7 @@ class ModelConverter:
                     self.config = config
                     self.embedding = torch.nn.Embedding(config.vocab_size, config.hidden_size)
                     self.output = torch.nn.Linear(config.hidden_size, config.vocab_size)
-                
+
                 def forward(self, input_ids, **kwargs):
                     x = self.embedding(input_ids)
                     return {"logits": self.output(x)}
@@ -466,9 +518,7 @@ class ModelConverter:
         except Exception as e:
             logger.warning(f"Failed to save to cache: {e}")
 
-    def _load_model_optimized(
-        self, model_name: str, model_type: str, device: str
-    ) -> tuple:
+    def _load_model_optimized(self, model_name: str, model_type: str, device: str) -> tuple:
         """Load model with enhanced optimizations and caching"""
         try:
             # Check cache first
@@ -486,9 +536,7 @@ class ModelConverter:
             # Apply fast model optimizations if available
             load_params = {
                 "low_cpu_mem_usage": True,  # Reduce memory usage
-                "torch_dtype": torch.float16
-                if device == "cuda"
-                else torch.float32,  # Use FP16 on GPU
+                "torch_dtype": (torch.float16 if device == "cuda" else torch.float32),  # Use FP16 on GPU
             }
 
             if model_name in self.fast_models:
@@ -508,6 +556,7 @@ class ModelConverter:
 
             # Load model
             from transformers import AutoModelForCausalLM, AutoModel
+
             try:
                 model = AutoModelForCausalLM.from_pretrained(model_name, **load_params)
             except Exception:
@@ -554,6 +603,7 @@ class ModelConverter:
         import platform
         import os
         import torch
+
         # --- 新增自动设备检测 ---
         if device == "auto" or device == "mps":
             if platform.system().lower() == "darwin":
@@ -569,8 +619,11 @@ class ModelConverter:
 
             # 新增：自动下载 HuggingFace Hub 名称模型到本地（无论是否带/）
             if not os.path.exists(input_source) and not input_source.startswith("hf:"):
-                logger.info(f"Input source {input_source} not found locally, attempting to download from HuggingFace Hub...")
+                logger.info(
+                    f"Input source {input_source} not found locally, attempting to download from HuggingFace Hub..."
+                )
                 from transformers import AutoModel, AutoTokenizer
+
                 cache_dir = f"model_cache/{input_source.replace('/', '_')}"
                 os.makedirs(cache_dir, exist_ok=True)
                 try:
@@ -612,57 +665,33 @@ class ModelConverter:
                 logger.info("Offline mode enabled")
             postprocess_result = None
             if output_format == "hf":
-                success = self._convert_to_hf(
-                    model_name, output_path, model_type, device, offline_mode
-                )
+                success = self._convert_to_hf(model_name, output_path, model_type, device, offline_mode)
             elif output_format == "onnx":
-                success = self._convert_to_onnx(
-                    model_name, output_path, model_type, device, offline_mode
-                )
+                success = self._convert_to_onnx(model_name, output_path, model_type, device, offline_mode)
                 if success and postprocess:
                     logger.info(f"Running ONNX postprocess: {postprocess}")
-                    postprocess_result = self._postprocess_onnx(
-                        output_path, postprocess
-                    )
+                    postprocess_result = self._postprocess_onnx(output_path, postprocess)
             elif output_format == "torchscript":
-                success = self._convert_to_torchscript(
-                    model_name, output_path, model_type, device, offline_mode
-                )
+                success = self._convert_to_torchscript(model_name, output_path, model_type, device, offline_mode)
                 if success and postprocess:
                     logger.info(f"Running TorchScript postprocess: {postprocess}")
-                    postprocess_result = self._postprocess_torchscript(
-                        output_path, postprocess
-                    )
+                    postprocess_result = self._postprocess_torchscript(output_path, postprocess)
             elif output_format == "fp16":
-                success = self._convert_to_fp16(
-                    model_name, output_path, model_type, device, offline_mode
-                )
+                success = self._convert_to_fp16(model_name, output_path, model_type, device, offline_mode)
                 if success and postprocess:
                     logger.info(f"Running FP16 postprocess: {postprocess}")
-                    postprocess_result = self._postprocess_fp16(
-                        output_path, postprocess
-                    )
+                    postprocess_result = self._postprocess_fp16(output_path, postprocess)
             elif output_format == "gptq":
-                success = self._convert_to_gptq(
-                    model_name, output_path, model_type, quantization, device
-                )
+                success = self._convert_to_gptq(model_name, output_path, model_type, quantization, device)
             elif output_format == "awq":
-                success = self._convert_to_awq(
-                    model_name, output_path, model_type, quantization, device
-                )
+                success = self._convert_to_awq(model_name, output_path, model_type, quantization, device)
             elif output_format == "gguf":
-                success = self._convert_to_gguf(
-                    model_name, output_path, model_type, quantization, device
-                )
+                success = self._convert_to_gguf(model_name, output_path, model_type, quantization, device)
                 if success and postprocess:
                     logger.info(f"Running GGUF postprocess: {postprocess}")
-                    postprocess_result = self._postprocess_gguf(
-                        output_path, postprocess
-                    )
+                    postprocess_result = self._postprocess_gguf(output_path, postprocess)
             elif output_format == "mlx":
-                success = self._convert_to_mlx(
-                    model_name, output_path, model_type, quantization, device
-                )
+                success = self._convert_to_mlx(model_name, output_path, model_type, quantization, device)
                 if success and postprocess:
                     logger.info(f"Running MLX postprocess: {postprocess}")
                     postprocess_result = self._postprocess_mlx(output_path, postprocess)
@@ -726,32 +755,22 @@ class ModelConverter:
                         )
 
                         if model_validation_result.get("success", False):
-                            logger.info(
-                                "Model validation passed - model can be loaded and used"
-                            )
+                            logger.info("Model validation passed - model can be loaded and used")
 
                             # 如果是量化转换，进行质量验证
                             if quantization_type:
                                 try:
-                                    quality_validation = (
-                                        validator.validate_quantization_quality(
-                                            model_name,
-                                            output_path,
-                                            quantization_type,
-                                            model_type,
-                                        )
+                                    quality_validation = validator.validate_quantization_quality(
+                                        model_name,
+                                        output_path,
+                                        quantization_type,
+                                        model_type,
                                     )
-                                    model_validation_result[
-                                        "quality_validation"
-                                    ] = quality_validation
+                                    model_validation_result["quality_validation"] = quality_validation
 
                                     if quality_validation.get("success"):
-                                        quality_score = quality_validation.get(
-                                            "quality_score", 0
-                                        )
-                                        compression_ratio = quality_validation.get(
-                                            "compression_ratio", 1
-                                        )
+                                        quality_score = quality_validation.get("quality_score", 0)
+                                        compression_ratio = quality_validation.get("compression_ratio", 1)
                                         logger.info(
                                             f"Quantization quality: {quality_score}/10, Compression: {compression_ratio:.2f}x"
                                         )
@@ -761,9 +780,7 @@ class ModelConverter:
                                         )
 
                                 except Exception as e:
-                                    logger.warning(
-                                        f"Quantization quality validation skipped: {e}"
-                                    )
+                                    logger.warning(f"Quantization quality validation skipped: {e}")
                         else:
                             logger.warning(
                                 f"Model validation failed: {model_validation_result.get('error', 'Unknown error')}"
@@ -814,9 +831,7 @@ class ModelConverter:
             errors.append(f"Unsupported output format: {output_format}")
 
         if model_type not in self.supported_formats["model_types"]:
-            warnings.append(
-                f"Model type '{model_type}' not in supported list, using auto-detection"
-            )
+            warnings.append(f"Model type '{model_type}' not in supported list, using auto-detection")
 
         # 只要 output_format 支持，不再对 quantization 字符串做严格校验
         if output_format in ["gguf", "fp16", "hf", "mlx"]:
@@ -830,9 +845,7 @@ class ModelConverter:
             warnings.append("CUDA requested but not available, falling back to CPU")
 
         if output_format in ["gptq", "awq"] and not quantization:
-            warnings.append(
-                f"{output_format} conversion typically requires quantization parameter"
-            )
+            warnings.append(f"{output_format} conversion typically requires quantization parameter")
 
         return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
 
@@ -854,12 +867,12 @@ class ModelConverter:
                 # Validate ONNX file - check if directory contains model.onnx
                 if not output_path.exists():
                     return False
-                onnx_file = (
-                    output_path / "model.onnx" if output_path.is_dir() else output_path
-                )
+                onnx_file = output_path / "model.onnx" if output_path.is_dir() else output_path
                 if not onnx_file.exists():
                     return False
                 try:
+                    import onnx
+
                     onnx_model = onnx.load(str(onnx_file))
                     onnx.checker.check_model(onnx_model)
                     return True
@@ -952,9 +965,7 @@ class ModelConverter:
             logger.info(f"Converting {model_name} to ONNX format")
 
             # Load model and tokenizer
-            model, tokenizer, config = self._load_model_optimized(
-                model_name, model_type, device
-            )
+            model, tokenizer, config = self._load_model_optimized(model_name, model_type, device)
             if model is None:
                 return False
 
@@ -994,17 +1005,15 @@ class ModelConverter:
                     else:
                         # 为文本生成模型创建更简单的输入
                         vocab_size = tokenizer.vocab_size if tokenizer else 50257
-                        dummy_input = torch.randint(
-                            0, vocab_size, (1, 8), dtype=torch.long
-                        )
+                        dummy_input = torch.randint(0, vocab_size, (1, 8), dtype=torch.long)
 
                         # 创建attention mask
                         dummy_mask = torch.ones_like(dummy_input)
 
-                                            # 使用字典输入而不是元组
+                        # 使用字典输入而不是元组
                     dummy_input = {
                         "input_ids": dummy_input,
-                        "attention_mask": dummy_mask
+                        "attention_mask": dummy_mask,
                     }
                     input_names = ["input_ids", "attention_mask"]
                     dynamic_axes = {
@@ -1047,14 +1056,13 @@ class ModelConverter:
                 try:
                     # 检查 transformers 版本兼容性
                     import transformers
-                    if hasattr(transformers, 'onnx') and hasattr(transformers.onnx, 'export'):
+
+                    if hasattr(transformers, "onnx") and hasattr(transformers.onnx, "export"):
                         from transformers.onnx import export
 
                         for opset in range(max_opset, 10, -1):
                             try:
-                                logger.info(
-                                    f"Trying transformers.onnx export with opset {opset}..."
-                                )
+                                logger.info(f"Trying transformers.onnx export with opset {opset}...")
                                 # 使用更兼容的调用方式
                                 export(
                                     model=model,
@@ -1065,14 +1073,10 @@ class ModelConverter:
                                 )
                                 if self._validate_onnx_file(onnx_file, opset):
                                     export_success = True
-                                    logger.info(
-                                        f"Transformers ONNX export successful (opset {opset})"
-                                    )
+                                    logger.info(f"Transformers ONNX export successful (opset {opset})")
                                     break
                             except Exception as e:
-                                logger.warning(
-                                    f"Transformers ONNX export failed (opset {opset}): {e}"
-                                )
+                                logger.warning(f"Transformers ONNX export failed (opset {opset}): {e}")
                     else:
                         logger.info("transformers.onnx export not available in this version")
                 except ImportError:
@@ -1082,9 +1086,7 @@ class ModelConverter:
             if not export_success:
                 try:
                     logger.info("Attempting simplified ONNX export...")
-                    if self._export_simplified_onnx(
-                        model, tokenizer, onnx_file, model_type
-                    ):
+                    if self._export_simplified_onnx(model, tokenizer, onnx_file, model_type):
                         export_success = True
                         logger.info("Simplified ONNX export successful")
                 except Exception as e:
@@ -1095,9 +1097,7 @@ class ModelConverter:
             if not export_success:
                 try:
                     logger.info("Creating functional ONNX model...")
-                    self._create_functional_onnx(
-                        model_name, str(onnx_file), model_type, model, tokenizer
-                    )
+                    self._create_functional_onnx(model_name, str(onnx_file), model_type, model, tokenizer)
                     export_success = True
                     logger.info("Functional ONNX model created successfully")
                 except Exception as e:
@@ -1105,15 +1105,11 @@ class ModelConverter:
                     logger.warning(f"Functional ONNX creation failed: {e}")
 
             if not export_success:
-                logger.error(
-                    f"All ONNX export methods failed. Last error: {last_error}"
-                )
+                logger.error(f"All ONNX export methods failed. Last error: {last_error}")
                 return False
 
             # Save HF format files
-            self._save_hf_format_files(
-                model_name, output_dir, tokenizer, config, "onnx"
-            )
+            self._save_hf_format_files(model_name, output_dir, tokenizer, config, "onnx")
             self._create_model_card(output_dir, model_name, "onnx", model_type)
 
             logger.info(f"ONNX conversion completed: {output_dir}")
@@ -1141,12 +1137,10 @@ class ModelConverter:
             # 尝试加载ONNX模型
             try:
                 onnx_model = onnx.load(str(onnx_file))
-                
+
                 # 检查IR版本 - 放宽标准
                 if onnx_model.ir_version > 10:  # 允许更高的IR版本
-                    logger.warning(
-                        f"ONNX IR version {onnx_model.ir_version} may be too high"
-                    )
+                    logger.warning(f"ONNX IR version {onnx_model.ir_version} may be too high")
                     # 不返回False，只是警告
 
                 # 检查opset版本 - 放宽标准
@@ -1161,7 +1155,7 @@ class ModelConverter:
                     return False
 
                 return True
-                
+
             except Exception as load_error:
                 logger.warning(f"ONNX model loading failed: {load_error}")
                 # 如果加载失败，但文件存在且大小合理，仍然认为基本有效
@@ -1171,9 +1165,7 @@ class ModelConverter:
             logger.warning(f"ONNX validation failed: {e}")
             return False
 
-    def _export_simplified_onnx(
-        self, model, tokenizer, onnx_file: Path, model_type: str
-    ) -> bool:
+    def _export_simplified_onnx(self, model, tokenizer, onnx_file: Path, model_type: str) -> bool:
         """Export a simplified ONNX model"""
         try:
             import onnx
@@ -1189,14 +1181,10 @@ class ModelConverter:
                 output_shape = [1, 8, 50257]  # batch_size, sequence_length, vocab_size
 
                 # 创建输入
-                input_tensor = helper.make_tensor_value_info(
-                    "input_ids", onnx.TensorProto.INT64, input_shape
-                )
+                input_tensor = helper.make_tensor_value_info("input_ids", onnx.TensorProto.INT64, input_shape)
 
                 # 创建输出
-                output_tensor = helper.make_tensor_value_info(
-                    "logits", onnx.TensorProto.FLOAT, output_shape
-                )
+                output_tensor = helper.make_tensor_value_info("logits", onnx.TensorProto.FLOAT, output_shape)
 
                 # 创建简化的计算图
                 # 这里我们创建一个包含基本操作的图，而不是完整的GPT-2
@@ -1204,9 +1192,7 @@ class ModelConverter:
 
                 # 添加一个简化的embedding层
                 embedding_weight = np.random.randn(50257, 768).astype(np.float32)
-                embedding_tensor = numpy_helper.from_array(
-                    embedding_weight, "embedding_weight"
-                )
+                embedding_tensor = numpy_helper.from_array(embedding_weight, "embedding_weight")
 
                 # 创建embedding节点
                 embedding_node = helper.make_node(
@@ -1253,9 +1239,7 @@ class ModelConverter:
             logger.error(f"Simplified ONNX export failed: {e}")
             return False
 
-    def _create_functional_onnx(
-        self, model_name: str, output_path: str, model_type: str, model, tokenizer
-    ) -> None:
+    def _create_functional_onnx(self, model_name: str, output_path: str, model_type: str, model, tokenizer) -> None:
         """Create a functional ONNX model that can actually run inference"""
         try:
             import onnx
@@ -1269,12 +1253,8 @@ class ModelConverter:
             input_shape = [1, 8]  # batch_size, sequence_length
             output_shape = [1, 8, 50257]  # batch_size, sequence_length, vocab_size
 
-            input_tensor = helper.make_tensor_value_info(
-                "input_ids", onnx.TensorProto.INT64, input_shape
-            )
-            output_tensor = helper.make_tensor_value_info(
-                "logits", onnx.TensorProto.FLOAT, output_shape
-            )
+            input_tensor = helper.make_tensor_value_info("input_ids", onnx.TensorProto.INT64, input_shape)
+            output_tensor = helper.make_tensor_value_info("logits", onnx.TensorProto.FLOAT, output_shape)
 
             nodes = []
             initializers = []
@@ -1429,17 +1409,18 @@ class ModelConverter:
         import re
         import shutil
         from pathlib import Path
-        
+
         try:
             from gptqmodel import GPTQModel
+
             # 尝试直接导出
             GPTQModel.export(
                 model_id_or_path=model_name,
                 target_path=output_path,
                 format="gptq",
-                trust_remote_code=True
+                trust_remote_code=True,
             )
-            
+
             # 检查导出结果，如果只有 tokenizer 文件，尝试复制模型文件
             output_dir = Path(output_path)
             if output_dir.exists() and not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
@@ -1453,13 +1434,18 @@ class ModelConverter:
                     for model_file in model_path.glob("*.bin"):
                         shutil.copy2(model_file, output_dir)
                         logger.info(f"Copied model file: {model_file.name}")
-            
+
             return True
         except Exception as e:
             if "quantization_config" in str(e):
                 try:
-                    from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig
+                    from transformers import (
+                        AutoModelForCausalLM,
+                        AutoTokenizer,
+                        GPTQConfig,
+                    )
                     import torch
+
                     bits = 4
                     group_size = 128
                     if quantization:
@@ -1467,45 +1453,45 @@ class ModelConverter:
                         if m:
                             bits = int(m.group(1))
                             group_size = int(m.group(2))
-                    
+
                     logger.info(f"Using transformers fallback for GPTQ quantization: {bits}bit-{group_size}g")
                     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
                     gptq_config = GPTQConfig(
-                        bits=bits, 
-                        group_size=group_size, 
-                        tokenizer=tokenizer, 
-                        dataset=["hello world", "how are you", "test sentence"]
+                        bits=bits,
+                        group_size=group_size,
+                        tokenizer=tokenizer,
+                        dataset=["hello world", "how are you", "test sentence"],
                     )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
                         device_map="auto",
                         quantization_config=gptq_config,
-                        trust_remote_code=True
+                        trust_remote_code=True,
                     )
-                    
+
                     # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_gptq"
                     model.save_pretrained(tmp_dir)
                     tokenizer.save_pretrained(tmp_dir)
-                    
+
                     logger.info(f"Quantized model saved to temporary directory: {tmp_dir}")
-                    
+
                     # 创建输出目录
                     output_dir = Path(output_path)
                     output_dir.mkdir(parents=True, exist_ok=True)
-                    
+
                     # 尝试使用 gptqmodel 导出
                     try:
                         GPTQModel.export(
                             model_id_or_path=tmp_dir,
                             target_path=output_path,
                             format="gptq",
-                            trust_remote_code=True
+                            trust_remote_code=True,
                         )
                         logger.info("GPTQ export completed")
                     except Exception as export_error:
                         logger.warning(f"GPTQ export failed: {export_error}")
-                    
+
                     # 检查导出结果，如果缺少模型文件，从临时目录复制
                     if not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
                         logger.info("Copying model files from temporary directory...")
@@ -1516,17 +1502,17 @@ class ModelConverter:
                         for model_file in tmp_path.glob("*.bin"):
                             shutil.copy2(model_file, output_dir)
                             logger.info(f"Copied model file: {model_file.name}")
-                        
+
                         # 复制配置文件
                         for config_file in ["config.json", "generation_config.json"]:
                             config_path = tmp_path / config_file
                             if config_path.exists():
                                 shutil.copy2(config_path, output_dir)
                                 logger.info(f"Copied config file: {config_file}")
-                    
+
                     # 清理临时目录
                     shutil.rmtree(tmp_dir, ignore_errors=True)
-                    
+
                     # 验证输出
                     if any(output_dir.glob("*.safetensors")) or any(output_dir.glob("*.bin")):
                         logger.info(f"GPTQ conversion completed successfully: {output_path}")
@@ -1534,7 +1520,7 @@ class ModelConverter:
                     else:
                         logger.error("GPTQ conversion failed: no model files found in output")
                         return False
-                        
+
                 except Exception as e2:
                     logger.error(f"GPTQ fallback transformers+gptqmodel failed: {e2}")
                     return False
@@ -1574,19 +1560,14 @@ class ModelConverter:
                 "quantization": quantization or "q4_k_m",
                 "original_model": model_name,
                 "conversion_date": datetime.now().isoformat(),
-                "note": (
-                    "This is a GPTQ-compatible format. "
-                    "Full quantization requires auto-gptq library."
-                ),
+                "note": ("This is a GPTQ-compatible format. " "Full quantization requires auto-gptq library."),
             }
 
             with open(output_dir / "gptq_config.json", "w") as f:
                 json.dump(gptq_config, f, indent=2)
 
             # Create model card
-            self._create_model_card(
-                output_dir, model_name, "gptq_compatible", model_type
-            )
+            self._create_model_card(output_dir, model_name, "gptq_compatible", model_type)
 
             logger.info(f"GPTQ-compatible conversion completed: {output_dir}")
             return True
@@ -1611,20 +1592,21 @@ class ModelConverter:
         import re
         import shutil
         from pathlib import Path
-        
+
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
         os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-        
+
         try:
             from gptqmodel import GPTQModel
+
             # 尝试直接导出
             GPTQModel.export(
                 model_id_or_path=model_name,
                 target_path=output_path,
                 format="awq",
-                trust_remote_code=True
+                trust_remote_code=True,
             )
-            
+
             # 检查导出结果，如果只有 tokenizer 文件，尝试复制模型文件
             output_dir = Path(output_path)
             if output_dir.exists() and not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
@@ -1638,13 +1620,18 @@ class ModelConverter:
                     for model_file in model_path.glob("*.bin"):
                         shutil.copy2(model_file, output_dir)
                         logger.info(f"Copied model file: {model_file.name}")
-            
+
             return True
         except Exception as e:
             if "quantization_config" in str(e):
                 try:
-                    from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig
+                    from transformers import (
+                        AutoModelForCausalLM,
+                        AutoTokenizer,
+                        GPTQConfig,
+                    )
                     import torch
+
                     bits = 4
                     group_size = 32
                     if quantization:
@@ -1652,46 +1639,46 @@ class ModelConverter:
                         if m:
                             bits = int(m.group(1))
                             group_size = int(m.group(2))
-                    
+
                     logger.info(f"Using transformers fallback for AWQ quantization: {bits}bit-{group_size}g")
                     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
                     gptq_config = GPTQConfig(
-                        bits=bits, 
-                        group_size=group_size, 
-                        tokenizer=tokenizer, 
-                        dataset=["hello world", "how are you", "test sentence"], 
-                        quant_type="awq"
+                        bits=bits,
+                        group_size=group_size,
+                        tokenizer=tokenizer,
+                        dataset=["hello world", "how are you", "test sentence"],
+                        quant_type="awq",
                     )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
                         device_map="auto",
                         quantization_config=gptq_config,
-                        trust_remote_code=True
+                        trust_remote_code=True,
                     )
-                    
+
                     # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_awq"
                     model.save_pretrained(tmp_dir)
                     tokenizer.save_pretrained(tmp_dir)
-                    
+
                     logger.info(f"Quantized model saved to temporary directory: {tmp_dir}")
-                    
+
                     # 创建输出目录
                     output_dir = Path(output_path)
                     output_dir.mkdir(parents=True, exist_ok=True)
-                    
+
                     # 尝试使用 gptqmodel 导出
                     try:
                         GPTQModel.export(
                             model_id_or_path=tmp_dir,
                             target_path=output_path,
                             format="awq",
-                            trust_remote_code=True
+                            trust_remote_code=True,
                         )
                         logger.info("AWQ export completed")
                     except Exception as export_error:
                         logger.warning(f"AWQ export failed: {export_error}")
-                    
+
                     # 检查导出结果，如果缺少模型文件，从临时目录复制
                     if not any(output_dir.glob("*.safetensors")) and not any(output_dir.glob("*.bin")):
                         logger.info("Copying model files from temporary directory...")
@@ -1702,17 +1689,17 @@ class ModelConverter:
                         for model_file in tmp_path.glob("*.bin"):
                             shutil.copy2(model_file, output_dir)
                             logger.info(f"Copied model file: {model_file.name}")
-                        
+
                         # 复制配置文件
                         for config_file in ["config.json", "generation_config.json"]:
                             config_path = tmp_path / config_file
                             if config_path.exists():
                                 shutil.copy2(config_path, output_dir)
                                 logger.info(f"Copied config file: {config_file}")
-                    
+
                     # 清理临时目录
                     shutil.rmtree(tmp_dir, ignore_errors=True)
-                    
+
                     # 验证输出
                     if any(output_dir.glob("*.safetensors")) or any(output_dir.glob("*.bin")):
                         logger.info(f"AWQ conversion completed successfully: {output_path}")
@@ -1720,7 +1707,7 @@ class ModelConverter:
                     else:
                         logger.error("AWQ conversion failed: no model files found in output")
                         return False
-                        
+
                 except Exception as e2:
                     logger.error(f"AWQ fallback transformers+gptqmodel failed: {e2}")
                     return False
@@ -1760,19 +1747,14 @@ class ModelConverter:
                 "quantization": quantization or "q4_k_m",
                 "original_model": model_name,
                 "conversion_date": datetime.now().isoformat(),
-                "note": (
-                    "This is an AWQ-compatible format. "
-                    "Full quantization requires autoawq library."
-                ),
+                "note": ("This is an AWQ-compatible format. " "Full quantization requires autoawq library."),
             }
 
             with open(output_dir / "awq_config.json", "w") as f:
                 json.dump(awq_config, f, indent=2)
 
             # Create model card
-            self._create_model_card(
-                output_dir, model_name, "awq_compatible", model_type
-            )
+            self._create_model_card(output_dir, model_name, "awq_compatible", model_type)
 
             logger.info(f"AWQ-compatible conversion completed: {output_dir}")
             return True
@@ -1798,10 +1780,7 @@ class ModelConverter:
                 # Import check only - not used directly
                 import llama_cpp  # noqa: F401
             except ImportError:
-                logger.error(
-                    "GGUF conversion requires llama-cpp-python. "
-                    "Install with: pip install llama-cpp-python"
-                )
+                logger.error("GGUF conversion requires llama-cpp-python. " "Install with: pip install llama-cpp-python")
                 return False
 
             # Create output directory
@@ -1839,9 +1818,7 @@ class ModelConverter:
                 if result.returncode == 0:
                     # Save HF format files
                     tokenizer, config = self._load_tokenizer_and_config(model_name)
-                    self._save_hf_format_files(
-                        model_name, output_dir, tokenizer, config, "gguf"
-                    )
+                    self._save_hf_format_files(model_name, output_dir, tokenizer, config, "gguf")
 
                     # Create model card
                     self._create_model_card(output_dir, model_name, "gguf", model_type)
@@ -1851,24 +1828,18 @@ class ModelConverter:
                 else:
                     logger.error(f"GGUF conversion failed: {result.stderr}")
                     # Try alternative conversion method
-                    return self._convert_to_gguf_alternative(
-                        model_name, output_dir, quantization
-                    )
+                    return self._convert_to_gguf_alternative(model_name, output_dir, quantization)
 
             except Exception as e:
                 logger.error(f"GGUF conversion failed: {e}")
                 # Try alternative conversion method
-                return self._convert_to_gguf_alternative(
-                    model_name, output_dir, quantization
-                )
+                return self._convert_to_gguf_alternative(model_name, output_dir, quantization)
 
         except Exception as e:
             logger.error(f"GGUF conversion error: {e}")
             return False
 
-    def _convert_to_gguf_alternative(
-        self, model_name: str, output_dir: Path, quantization: str
-    ) -> bool:
+    def _convert_to_gguf_alternative(self, model_name: str, output_dir: Path, quantization: str) -> bool:
         """Alternative GGUF conversion method using direct API"""
         try:
             logger.info("Trying alternative GGUF conversion method")
@@ -1924,9 +1895,7 @@ class ModelConverter:
                             if quantization:
                                 cmd.extend(["--outtype", quantization])
                             logger.info(f"Trying conversion command: {' '.join(cmd)}")
-                            result = subprocess.run(
-                                cmd, capture_output=True, text=True, timeout=300
-                            )
+                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                             if result.returncode == 0:
                                 logger.info(f"GGUF conversion successful: {gguf_file}")
                                 shutil.rmtree(temp_dir, ignore_errors=True)
@@ -1935,24 +1904,16 @@ class ModelConverter:
                                 logger.warning(f"Command failed: {result.stderr}")
                         except (subprocess.TimeoutExpired, FileNotFoundError):
                             continue
-                    logger.info(
-                        "All conversion commands failed, trying manual conversion"
-                    )
-                    return self._manual_gguf_conversion(
-                        model, tokenizer, gguf_file, quantization
-                    )
+                    logger.info("All conversion commands failed, trying manual conversion")
+                    return self._manual_gguf_conversion(model, tokenizer, gguf_file, quantization)
             except Exception as e:
                 logger.warning(f"GGUF conversion failed: {e}")
-                return self._manual_gguf_conversion(
-                    model, tokenizer, gguf_file, quantization
-                )
+                return self._manual_gguf_conversion(model, tokenizer, gguf_file, quantization)
         except Exception as e:
             logger.error(f"Alternative GGUF conversion failed: {e}")
             return False
 
-    def _manual_gguf_conversion(
-        self, model, tokenizer, gguf_file: Path, quantization: str
-    ) -> bool:
+    def _manual_gguf_conversion(self, model, tokenizer, gguf_file: Path, quantization: str) -> bool:
         """Manual GGUF conversion using llama-cpp-python API"""
         try:
             logger.info("Attempting manual GGUF conversion")
@@ -1969,12 +1930,8 @@ class ModelConverter:
                     "model.file_type": quantization or "f16",
                     "tokenizer.ggml.model": "llama",
                     "tokenizer.ggml.tokens": json.dumps(tokenizer.get_vocab()),
-                    "tokenizer.ggml.scores": json.dumps(
-                        [0.0] * len(tokenizer.get_vocab())
-                    ),
-                    "tokenizer.ggml.token_types": json.dumps(
-                        [1] * len(tokenizer.get_vocab())
-                    ),
+                    "tokenizer.ggml.scores": json.dumps([0.0] * len(tokenizer.get_vocab())),
+                    "tokenizer.ggml.token_types": json.dumps([1] * len(tokenizer.get_vocab())),
                 }
                 f.write(struct.pack("<Q", len(metadata)))
                 for key, value in metadata.items():
@@ -2007,9 +1964,7 @@ class ModelConverter:
                 # Import check only - not used directly
                 import mlx.core as mx  # noqa: F401
             except ImportError:
-                logger.error(
-                    "MLX conversion requires mlx. Install with: pip install mlx"
-                )
+                logger.error("MLX conversion requires mlx. Install with: pip install mlx")
                 return False
 
             # Create output directory
@@ -2026,9 +1981,7 @@ class ModelConverter:
                 elif model_type == "text-classification":
                     from transformers import AutoModelForSequenceClassification
 
-                    model = AutoModelForSequenceClassification.from_pretrained(
-                        model_name
-                    )
+                    model = AutoModelForSequenceClassification.from_pretrained(model_name)
                 else:
                     from transformers import AutoModel
 
@@ -2049,9 +2002,7 @@ class ModelConverter:
 
                 # Save tokenizer and config
                 tokenizer, config = self._load_tokenizer_and_config(model_name)
-                self._save_hf_format_files(
-                    model_name, output_dir, tokenizer, config, "mlx"
-                )
+                self._save_hf_format_files(model_name, output_dir, tokenizer, config, "mlx")
 
                 # Create MLX-specific config
                 mlx_config = {
@@ -2108,15 +2059,11 @@ class ModelConverter:
                     mlx_model[name] = mx.array(numpy_array, dtype=mx.int32)
                 else:
                     # Default to float32
-                    mlx_model[name] = mx.array(
-                        numpy_array.astype(np.float32), dtype=mx.float32
-                    )
+                    mlx_model[name] = mx.array(numpy_array.astype(np.float32), dtype=mx.float32)
 
         return mlx_model
 
-    def _save_hf_format_files(
-        self, model_name: str, output_dir: Path, tokenizer, config, format_type: str
-    ):
+    def _save_hf_format_files(self, model_name: str, output_dir: Path, tokenizer, config, format_type: str):
         """Save HuggingFace format files"""
         try:
             # Save tokenizer
@@ -2140,9 +2087,7 @@ class ModelConverter:
         except Exception as e:
             logger.warning(f"Failed to save HF format files: {e}")
 
-    def _create_model_card(
-        self, output_dir: Path, model_name: str, format_type: str, model_type: str
-    ):
+    def _create_model_card(self, output_dir: Path, model_name: str, format_type: str, model_type: str):
         """Create a model card for the converted model"""
         try:
             model_card = f"""---
@@ -2189,36 +2134,26 @@ for your framework.
             logger.warning(f"Failed to load tokenizer/config: {e}")
             return None, None
 
-    def _create_minimal_onnx(
-        self, model_name: str, output_path: str, model_type: str
-    ) -> None:
+    def _create_minimal_onnx(self, model_name: str, output_path: str, model_type: str) -> None:
         """Create a minimal ONNX file when conversion fails"""
         try:
             # Create a simple ONNX model with basic operations
             from onnx import helper  # noqa: F401
 
             # Create a simple graph
-            input_shape = (
-                [1, 10] if model_type != "image-classification" else [1, 3, 224, 224]
-            )
-            output_shape = (
-                [1, 10] if model_type != "image-classification" else [1, 1000]
-            )
+            input_shape = [1, 10] if model_type != "image-classification" else [1, 3, 224, 224]
+            output_shape = [1, 10] if model_type != "image-classification" else [1, 1000]
 
-            input_name = (
-                "input_ids" if model_type != "image-classification" else "pixel_values"
-            )
+            input_name = "input_ids" if model_type != "image-classification" else "pixel_values"
             output_name = "logits"
 
             # Create input
-            input_tensor = helper.make_tensor_value_info(
-                input_name, onnx.TensorProto.FLOAT, input_shape
-            )
+            import onnx
+
+            input_tensor = helper.make_tensor_value_info(input_name, onnx.TensorProto.FLOAT, input_shape)
 
             # Create output
-            output_tensor = helper.make_tensor_value_info(
-                output_name, onnx.TensorProto.FLOAT, output_shape
-            )
+            output_tensor = helper.make_tensor_value_info(output_name, onnx.TensorProto.FLOAT, output_shape)
 
             # Create a simple identity operation
             node = helper.make_node(
@@ -2229,14 +2164,14 @@ for your framework.
             )
 
             # Create graph
-            graph = helper.make_graph(
-                [node], f"{model_name}_converted", [input_tensor], [output_tensor]
-            )
+            graph = helper.make_graph([node], f"{model_name}_converted", [input_tensor], [output_tensor])
 
             # Create model
             model = helper.make_model(graph, producer_name="model_converter")
 
             # Save model
+            import onnx
+
             onnx.save(model, output_path)
 
             logger.info(f"Created minimal ONNX file: {output_path}")
@@ -2262,9 +2197,7 @@ for your framework.
             logger.info(f"Converting {model_name} to TorchScript format")
 
             # Load model and tokenizer
-            model, tokenizer, config = self._load_model_optimized(
-                model_name, model_type, device
-            )
+            model, tokenizer, config = self._load_model_optimized(model_name, model_type, device)
             if model is None:
                 return False
 
@@ -2302,17 +2235,11 @@ for your framework.
                         dummy_input = torch.randn(1, 3, 224, 224)
                     elif model_type == "text-generation":
                         # For generation models, use simpler input
-                        dummy_input = torch.randint(
-                            0, min(tokenizer.vocab_size, 1000), (1, 10)
-                        )
+                        dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 10))
                     else:
                         # For other models, use standard input
-                        dummy_input = torch.randint(
-                            0, min(tokenizer.vocab_size, 1000), (1, 32)
-                        )
-                        if hasattr(model, "forward") and "attention_mask" in str(
-                            model.forward.__code__.co_varnames
-                        ):
+                        dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 32))
+                        if hasattr(model, "forward") and "attention_mask" in str(model.forward.__code__.co_varnames):
                             dummy_mask = torch.ones_like(dummy_input)
                             dummy_input = (dummy_input, dummy_mask)
 
@@ -2342,13 +2269,9 @@ for your framework.
                                 return self.model(input_ids)
 
                     wrapped_model = ModelWrapper(model)
-                    dummy_input = torch.randint(
-                        0, min(tokenizer.vocab_size, 1000), (1, 16)
-                    )
+                    dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 16))
 
-                    traced_model = torch.jit.trace(
-                        wrapped_model, dummy_input, strict=False
-                    )
+                    traced_model = torch.jit.trace(wrapped_model, dummy_input, strict=False)
                     traced_model.save(str(torchscript_file))
                     export_success = True
                     logger.info("TorchScript export with wrapper successful")
@@ -2381,9 +2304,7 @@ for your framework.
                     minimal_model = MinimalTorchScript(state_dict)
                     dummy_input = torch.randn(1, 768)  # Standard embedding size
 
-                    traced_model = torch.jit.trace(
-                        minimal_model, dummy_input, strict=False
-                    )
+                    traced_model = torch.jit.trace(minimal_model, dummy_input, strict=False)
                     traced_model.save(str(torchscript_file))
                     export_success = True
                     logger.info("Minimal TorchScript export successful")
@@ -2395,9 +2316,7 @@ for your framework.
                 return False
 
             # Save HF format files
-            self._save_hf_format_files(
-                model_name, output_dir, tokenizer, config, "torchscript"
-            )
+            self._save_hf_format_files(model_name, output_dir, tokenizer, config, "torchscript")
 
             # Create model card
             self._create_model_card(output_dir, model_name, "torchscript", model_type)
@@ -2422,9 +2341,7 @@ for your framework.
             logger.info(f"Converting {model_name} to FP16 format")
 
             # Load model and tokenizer
-            model, tokenizer, config = self._load_model_optimized(
-                model_name, model_type, device
-            )
+            model, tokenizer, config = self._load_model_optimized(model_name, model_type, device)
             if model is None:
                 return False
 
@@ -2438,25 +2355,15 @@ for your framework.
 
                 # 检查是否有权重共享（如GPT2）
                 has_shared = False
-                if (
-                    hasattr(model, "lm_head")
-                    and hasattr(model, "transformer")
-                    and hasattr(model.transformer, "wte")
-                ):
+                if hasattr(model, "lm_head") and hasattr(model, "transformer") and hasattr(model.transformer, "wte"):
                     try:
-                        if (
-                            model.lm_head.weight.data_ptr()
-                            == model.transformer.wte.weight.data_ptr()
-                        ):
+                        if model.lm_head.weight.data_ptr() == model.transformer.wte.weight.data_ptr():
                             has_shared = True
                     except Exception:
                         pass
 
                 if has_shared:
-                    logger.info(
-                        "Detected shared weights, using save_pretrained for "
-                        "safe serialization."
-                    )
+                    logger.info("Detected shared weights, using save_pretrained for " "safe serialization.")
                     model.save_pretrained(str(output_dir), safe_serialization=True)
                 else:
                     # Save model in FP16 format using safetensors for speed
@@ -2472,9 +2379,7 @@ for your framework.
                     save_file(fp16_state_dict, output_dir / "model.safetensors")
 
                 # Save HF format files
-                self._save_hf_format_files(
-                    model_name, output_dir, tokenizer, config, "fp16"
-                )
+                self._save_hf_format_files(model_name, output_dir, tokenizer, config, "fp16")
 
                 # Create model card
                 self._create_model_card(output_dir, model_name, "fp16", model_type)
@@ -2503,9 +2408,7 @@ for your framework.
             logger.info(f"Converting {model_name} to Hugging Face format")
 
             # Load model and tokenizer
-            model, tokenizer, config = self._load_model_optimized(
-                model_name, model_type, device
-            )
+            model, tokenizer, config = self._load_model_optimized(model_name, model_type, device)
             if model is None:
                 return False
 
@@ -2580,9 +2483,7 @@ for your framework.
 
         return True
 
-    def get_conversion_info(
-        self, input_source: str, output_format: str
-    ) -> Dict[str, Any]:
+    def get_conversion_info(self, input_source: str, output_format: str) -> Dict[str, Any]:
         """Get information about a specific conversion"""
         info = {
             "input_source": input_source,
@@ -2658,10 +2559,7 @@ for your framework.
                     if result.get("success"):
                         return {**task, **result, "attempts": attempt + 1}
                 except Exception as e:
-                    logger.error(
-                        f"Task failed: {task['input_source']} -> "
-                        f"{task['output_format']}, error: {e}"
-                    )
+                    logger.error(f"Task failed: {task['input_source']} -> " f"{task['output_format']}, error: {e}")
             return {
                 **task,
                 "success": False,
@@ -2687,10 +2585,7 @@ for your framework.
                 f"Postprocess: {r.get('postprocess_result') or '-'}"
             )
         success_count = sum(1 for r in results if r.get("success"))
-        print(
-            f"\n📊 Batch conversion completed: "
-            f"{success_count}/{len(results)} successful\n"
-        )
+        print(f"\n📊 Batch conversion completed: " f"{success_count}/{len(results)} successful\n")
         return results
 
     def _postprocess_onnx(self, output_path, postprocess_type):
@@ -2698,11 +2593,7 @@ for your framework.
 
         import onnx
 
-        onnx_file = (
-            os.path.join(output_path, "model.onnx")
-            if os.path.isdir(output_path)
-            else output_path
-        )
+        onnx_file = os.path.join(output_path, "model.onnx") if os.path.isdir(output_path) else output_path
         if not os.path.exists(onnx_file):
             msg = f"  - ONNX file not found for postprocess: {onnx_file}"
             print(msg)
@@ -2757,11 +2648,7 @@ for your framework.
     def _postprocess_torchscript(self, output_path, postprocess_type):
         import os
 
-        ts_file = (
-            os.path.join(output_path, "model.pt")
-            if os.path.isdir(output_path)
-            else output_path
-        )
+        ts_file = os.path.join(output_path, "model.pt") if os.path.isdir(output_path) else output_path
         if not os.path.exists(ts_file):
             msg = f"  - TorchScript file not found: {ts_file}"
             print(msg)
@@ -2794,11 +2681,7 @@ for your framework.
             msg = "  - safetensors not installed. Run: pip install safetensors"
             print(msg)
             return msg
-        st_file = (
-            os.path.join(output_path, "model.safetensors")
-            if os.path.isdir(output_path)
-            else output_path
-        )
+        st_file = os.path.join(output_path, "model.safetensors") if os.path.isdir(output_path) else output_path
         if not os.path.exists(st_file):
             msg = f"  - FP16 file not found: {st_file}"
             print(msg)
@@ -2821,18 +2704,12 @@ for your framework.
             return msg
 
     def _postprocess_gguf(self, output_path, postprocess_type):
-        msg = (
-            f"  - GGUF postprocess ({postprocess_type}) not yet implemented. "
-            "Placeholder."
-        )
+        msg = f"  - GGUF postprocess ({postprocess_type}) not yet implemented. " "Placeholder."
         print(msg)
         return msg
 
     def _postprocess_mlx(self, output_path, postprocess_type):
-        msg = (
-            f"  - MLX postprocess ({postprocess_type}) not yet implemented. "
-            "Placeholder."
-        )
+        msg = f"  - MLX postprocess ({postprocess_type}) not yet implemented. " "Placeholder."
         print(msg)
         return msg
 
@@ -2871,9 +2748,7 @@ for your framework.
 
         # 读取关键参数
         scale_emb = getattr(config, "scale_emb", 1.0)
-        dim_model_base = getattr(
-            config, "dim_model_base", getattr(config, "hidden_size", 1)
-        )
+        dim_model_base = getattr(config, "dim_model_base", getattr(config, "hidden_size", 1))
         scale_depth = getattr(config, "scale_depth", 1.0)
         real_num_layers = getattr(config, "num_hidden_layers", 0)
         mup_num_layers = getattr(config, "mup_num_layers", real_num_layers)
@@ -2892,21 +2767,15 @@ for your framework.
         # 权重缩放
         # 1. embedding
         if "model.embed_tokens.weight" in state_dict:
-            state_dict["model.embed_tokens.weight"] = (
-                state_dict["model.embed_tokens.weight"] * scale_emb
-            )
+            state_dict["model.embed_tokens.weight"] = state_dict["model.embed_tokens.weight"] * scale_emb
         # 2. lm_head
         if "lm_head.weight" in state_dict:
-            state_dict["lm_head.weight"] = state_dict["lm_head.weight"] / (
-                hidden_size / dim_model_base
-            )
+            state_dict["lm_head.weight"] = state_dict["lm_head.weight"] / (hidden_size / dim_model_base)
         # 3. 层内参数
         for i in range(real_num_layers):
             attn_out_name = f"model.layers.{i}.self_attn.o_proj.weight"
             if attn_out_name in state_dict:
-                state_dict[attn_out_name] = state_dict[attn_out_name] * (
-                    scale_depth / math.sqrt(mup_num_layers)
-                )
+                state_dict[attn_out_name] = state_dict[attn_out_name] * (scale_depth / math.sqrt(mup_num_layers))
             ffn_down_proj_name = f"model.layers.{i}.mlp.down_proj.weight"
             if ffn_down_proj_name in state_dict:
                 state_dict[ffn_down_proj_name] = state_dict[ffn_down_proj_name] * (
@@ -2922,26 +2791,26 @@ for your framework.
     def _needs_cloud_conversion(self, output_format: str, device: str) -> bool:
         """Check if conversion needs to be done on cloud GPU"""
         cloud_formats = ["gptq", "awq"]
-        
+
         # Check if format requires CUDA
         if output_format.lower() in cloud_formats:
             # Check if CUDA is available locally
             if not torch.cuda.is_available():
                 return True
-            
+
             # Check if required dependencies are available
             if output_format.lower() == "gptq":
                 try:
                     import auto_gptq
                 except ImportError:
                     return True
-            
+
             if output_format.lower() == "awq":
                 try:
                     import awq
                 except ImportError:
                     return True
-        
+
         return False
 
     def _estimate_model_size(self, input_source: str) -> float:
@@ -2950,12 +2819,13 @@ for your framework.
             # Try to get model size from HuggingFace
             if "/" in input_source and not Path(input_source).exists():
                 from transformers import AutoConfig
+
                 config = AutoConfig.from_pretrained(input_source)
-                params = getattr(config, 'num_parameters', None)
+                params = getattr(config, "num_parameters", None)
                 if params:
                     # Rough estimate: 2 bytes per parameter for FP16
                     return (params * 2) / (1024**3)
-            
+
             # Check local file size
             if Path(input_source).exists():
                 total_size = 0
@@ -2963,8 +2833,8 @@ for your framework.
                     if file_path.is_file():
                         total_size += file_path.stat().st_size
                 return total_size / (1024**3)
-            
+
         except Exception:
             pass
-        
+
         return 1.0  # Default estimate

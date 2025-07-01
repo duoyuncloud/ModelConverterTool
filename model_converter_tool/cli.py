@@ -3,23 +3,27 @@ import torch
 import sys
 from model_converter_tool.converter import ModelConverter
 
-# 实例化全局 ModelConverter
+# Global ModelConverter instance
 converter = ModelConverter()
 
+
 def detect_model_format(input_model):
+    """Detect the format of input model."""
     fmt, norm_path = converter._detect_model_format(input_model)
-    # 这里 norm_path 可能是路径或模型名，meta 可选
+    # norm_path could be path or model name, meta is optional
     meta = {"format": fmt}
     return fmt, norm_path, meta
 
+
 def load_model_with_fallbacks(norm_path, model_type, device):
+    """Load model with fallback strategies."""
     return converter._load_model_with_fallbacks(norm_path, model_type, device)
 
+
 def validate_conversion_compatibility(in_fmt, output_format, model_type):
-    # 这里只做简单兼容性校验
-    result = converter._validate_conversion_inputs(
-        in_fmt, output_format, model_type, quantization="", device="auto"
-    )
+    """Validate conversion compatibility."""
+    # Simple compatibility validation
+    result = converter._validate_conversion_inputs(in_fmt, output_format, model_type, quantization="", device="auto")
     return {
         "compatible": result["valid"],
         "errors": result["errors"],
@@ -27,65 +31,78 @@ def validate_conversion_compatibility(in_fmt, output_format, model_type):
         "recommendations": [],
     }
 
+
 @click.group()
 def cli():
-    """Model Converter CLI (CPU-only, supports all formats including quantized models)"""
+    """Model Converter CLI (CPU-only, supports all formats)"""
     pass
 
+
 @cli.command()
-@click.argument('input_model')
-@click.argument('output_format')
-@click.option('--output-path', default=None, help='Path to save the converted model')
-@click.option('--model-type', default='auto', help='Model type (auto/text-generation/text-classification/...)')
+@click.argument("input_model")
+@click.argument("output_format")
+@click.option("--output-path", default=None, help="Path to save the converted model")
+@click.option("--model-type", default="auto", help="Model type (auto/text-generation/...)")
 def convert(input_model, output_format, output_path, model_type):
     """Convert a model to the specified format (CPU-only)."""
     click.echo(f"[INFO] Detecting input model format for: {input_model}")
     in_fmt, norm_path, meta = detect_model_format(input_model)
-    click.echo(f"[INFO] Detected input format: {in_fmt} ({meta.get('format')})")
+    click.echo(f"Fmt: {in_fmt}")
+    click.echo(f"Meta: {meta.get('format')}")
 
-    # 兼容性检查
+    # Compatibility check
     result = validate_conversion_compatibility(in_fmt, output_format, model_type)
-    if not result['compatible']:
+    if not result["compatible"]:
         click.echo(f"[ERROR] Incompatible conversion: {result['errors']}")
         sys.exit(1)
-    if result['warnings']:
+    if result["warnings"]:
         click.echo(f"[WARN] {result['warnings']}")
-    if result['recommendations']:
+    if result["recommendations"]:
         click.echo(f"[RECOMMEND] {result['recommendations']}")
 
-    # 自动检测设备
+    # Auto-detect device
     if torch.cuda.is_available():
-        device = 'cuda'
-        click.echo(f"[INFO] 检测到GPU，所有操作将在GPU上执行")
+        device = "cuda"
+        click.echo("[INFO] GPU detected, all operations will be performed on GPU")
     else:
-        device = 'cpu'
-        click.echo(f"[INFO] 未检测到GPU，所有操作将在CPU上执行")
+        device = "cpu"
+        click.echo("[INFO] No GPU detected, all operations will be performed on CPU")
 
-    # GPTQ/AWQ等量化模型特殊处理
-    if output_format in ['gptq', 'awq']:
-        click.echo(f"[INFO] Attempting quantized conversion ({output_format}) on CPU...")
-        # 检查相关库是否支持CPU
+    # Special handling for quantized models like GPTQ/AWQ
+    if output_format in ["gptq", "awq"]:
+        click.echo(f"[INFO] Attempting quantized conversion ({output_format}) " f"on CPU...")
+        # Check if related libraries support CPU
         try:
-            if output_format == 'gptq':
-                import auto_gptq
-                # 检查auto_gptq是否支持CPU
+            if output_format == "gptq":
+                # Check if auto-gptq supports CPU
                 if not torch.cuda.is_available():
-                    click.echo("[WARN] auto-gptq库主要为GPU优化，CPU下速度较慢且部分功能可能不可用。")
-            elif output_format == 'awq':
-                import awq
-                click.echo("[WARN] awq库主要为GPU优化，CPU下速度较慢且部分功能可能不可用。")
+                    click.echo(
+                        "[WARN] auto-gptq library is mainly optimized for GPU, "
+                        "CPU performance may be slow and some features unavailable."
+                    )
+            elif output_format == "awq":
+                click.echo(
+                    "[WARN] awq library is mainly optimized for GPU, "
+                    "CPU performance may be slow and some features unavailable."
+                )
         except ImportError:
-            click.echo(f"[ERROR] {output_format}库未安装，无法进行量化转换。请先安装相关依赖。")
+            click.echo(
+                f"[ERROR] {output_format} library not installed, "
+                "cannot perform quantized conversion. Please install dependencies."
+            )
             sys.exit(1)
-
-    # 加载模型
-    click.echo(f"[INFO] Loading model with fallback strategies...")
+    # Load model
+    click.echo("[INFO] Loading model with fallback strategies...")
     model, tokenizer, load_meta = load_model_with_fallbacks(norm_path, model_type, device)
-    click.echo(f"[INFO] Model loaded. Device: {load_meta.get('device')}, Format: {load_meta.get('format', 'unknown')}")
+    click.echo(
+        f"[INFO] Model loaded. Device: {load_meta.get('device')}, " f"Format: {load_meta.get('format', 'unknown')}"
+    )
+    # Demo: actual conversion logic needs to be implemented based on output_format
+    click.echo(
+        f"[INFO] (DEMO) Would convert model to {output_format} " f"and save to {output_path or '[not specified]'}"
+    )
+    click.echo("[SUCCESS] Conversion pipeline completed (CPU-only mode).")
 
-    # 这里只做演示：实际转换逻辑需根据output_format实现
-    click.echo(f"[INFO] (DEMO) Would convert model to {output_format} and save to {output_path or '[not specified]'}")
-    click.echo(f"[SUCCESS] Conversion pipeline completed (CPU-only mode).")
 
-if __name__ == '__main__':
-    cli() 
+if __name__ == "__main__":
+    cli()

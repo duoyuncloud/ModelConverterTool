@@ -13,7 +13,7 @@ Main components:
 
 Example usage:
     from model_converter_tool import ModelConverter
-    
+
     converter = ModelConverter()
     result = converter.convert(
         input_source="gpt2",
@@ -25,8 +25,18 @@ Example usage:
 # Import main classes and functions
 from .converter import ModelConverter
 from .validator import ModelValidator
-from .config import ConfigManager, ConversionConfig, load_config_preset, list_available_presets
-from .cli import cli, detect_model_format, load_model_with_fallbacks, validate_conversion_compatibility
+from .config import (
+    ConfigManager,
+    ConversionConfig,
+    load_config_preset,
+    list_available_presets,
+)
+from .cli import (
+    cli,
+    detect_model_format,
+    load_model_with_fallbacks,
+    validate_conversion_compatibility,
+)
 from .utils import (
     setup_directories,
     cleanup_temp_files,
@@ -40,7 +50,7 @@ from .utils import (
     ensure_output_directory,
     copy_with_progress,
     remove_directory_safely,
-    create_dummy_model
+    create_dummy_model,
 )
 
 # Version information
@@ -54,25 +64,22 @@ __url__ = "https://github.com/modelconverter/model-converter-tool"
 __all__ = [
     # Main classes
     "ModelConverter",
-    "ModelValidator", 
+    "ModelValidator",
     "ConfigManager",
     "ConversionConfig",
-    
     # CLI functions
     "cli",
     "detect_model_format",
-    "load_model_with_fallbacks", 
+    "load_model_with_fallbacks",
     "validate_conversion_compatibility",
-    
     # Configuration functions
     "load_config_preset",
     "list_available_presets",
-    
     # Utility functions
     "setup_directories",
     "cleanup_temp_files",
     "get_file_size",
-    "format_file_size", 
+    "format_file_size",
     "get_directory_size",
     "create_temp_directory",
     "safe_filename",
@@ -84,17 +91,17 @@ __all__ = [
     "create_dummy_model",
 ]
 
-# Convenience function for quick conversion
+
 def quick_convert(input_source: str, output_format: str, output_path: str, **kwargs):
     """
     Quick conversion function for simple use cases.
-    
+
     Args:
         input_source: Path to input model or HuggingFace model name
         output_format: Target format (hf, onnx, gguf, mlx, torchscript, fp16, gptq, awq)
         output_path: Output path for converted model
         **kwargs: Additional conversion parameters
-        
+
     Returns:
         Dict with conversion results
     """
@@ -103,41 +110,43 @@ def quick_convert(input_source: str, output_format: str, output_path: str, **kwa
         input_source=input_source,
         output_format=output_format,
         output_path=output_path,
-        **kwargs
+        **kwargs,
     )
+
 
 # Add quick_convert to __all__
 __all__.append("quick_convert")
 
-# Convenience function for batch conversion
+
 def batch_convert(tasks: list, **kwargs):
     """
     Batch conversion function for multiple models.
-    
+
     Args:
         tasks: List of conversion task dictionaries
         **kwargs: Additional batch conversion parameters
-        
+
     Returns:
         List of conversion results
     """
     converter = ModelConverter()
     return converter.batch_convert(tasks, **kwargs)
 
+
 # Add batch_convert to __all__
 __all__.append("batch_convert")
 
-# Convenience function for model validation
+
 def validate_model(model_path: str, output_format: str, model_type: str = "text-generation", **kwargs):
     """
     Quick validation function for converted models.
-    
+
     Args:
         model_path: Path to the model to validate
         output_format: Format of the model
         model_type: Type of model
         **kwargs: Additional validation parameters
-        
+
     Returns:
         Dict with validation results
     """
@@ -146,42 +155,45 @@ def validate_model(model_path: str, output_format: str, model_type: str = "text-
         model_path=model_path,
         output_format=output_format,
         model_type=model_type,
-        **kwargs
+        **kwargs,
     )
+
 
 # Add validate_model to __all__
 __all__.append("validate_model")
 
-# Get supported formats
+
 def get_supported_formats():
     """
     Get all supported input and output formats.
-    
+
     Returns:
         Dict with supported formats
     """
     converter = ModelConverter()
     return converter.get_supported_formats()
 
+
 # Add get_supported_formats to __all__
 __all__.append("get_supported_formats")
 
-# Package initialization
+
 def _initialize_package():
     """Initialize package on import"""
     import logging
-    
+
     # Set up basic logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # Create necessary directories
     try:
         setup_directories()
     except Exception:
         pass  # Silently fail if directories can't be created
 
+
 # Run initialization
-_initialize_package() 
+_initialize_package()
