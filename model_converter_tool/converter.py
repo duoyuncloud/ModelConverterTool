@@ -2041,15 +2041,16 @@ class ModelConverter:
     def _convert_pytorch_to_mlx(self, pytorch_model):
         """Convert PyTorch model to MLX format with enhanced error handling"""
         try:
+            import os
+
             import mlx.core as mx
             import numpy as np
-            import os
         except ImportError:
             logger.error("MLX not available for conversion")
             return {}
 
         # Skip MLX conversion on CI environments to avoid bus errors
-        if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+        if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
             logger.warning("Skipping MLX conversion on CI environment to avoid bus errors")
             return {}
 
@@ -2557,7 +2558,7 @@ for your framework.
             import os
 
             # Use single worker on CI to avoid bus errors
-            if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+            if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
                 max_workers = 1
             else:
                 max_workers = min(4, os.cpu_count() or 1)
@@ -2625,6 +2626,7 @@ for your framework.
             return msg
         if postprocess_type == "simplify":
             try:
+                import onnx
                 from onnxsim import simplify
 
                 model = onnx.load(onnx_file)
@@ -2648,6 +2650,7 @@ for your framework.
                 return msg
         elif postprocess_type == "optimize":
             try:
+                import onnx
                 import onnxoptimizer
 
                 model = onnx.load(onnx_file)

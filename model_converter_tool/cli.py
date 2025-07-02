@@ -11,6 +11,7 @@ converter = ModelConverter()
 # Dynamically set help text based on hardware
 try:
     import torch
+
     if torch.cuda.is_available():
         CLI_HELP = "Model Converter CLI (GPU & CPU supported, all formats)"
         CONVERT_HELP = "Convert a model to the specified format (GPU/CPU supported)."
@@ -60,6 +61,7 @@ def cli():
 def convert(input_model, output_format, output_path, model_type):
     """Convert a model to the specified format."""
     import torch  # Only when needed
+
     click.echo(f"[INFO] Detecting input model format for: {input_model}")
     in_fmt, norm_path, meta = detect_model_format(input_model)
     click.echo(f"Fmt: {in_fmt}")
