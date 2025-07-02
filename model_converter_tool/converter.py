@@ -2236,7 +2236,22 @@ for your framework.
             try:
                 logger.info("Attempting torch.jit.script...")
                 model.eval()
-                scripted_model = torch.jit.script(model)
+                # For text-generation models, try with a simple wrapper
+                if model_type == "text-generation":
+                    class TextGenWrapper(torch.nn.Module):
+                        def __init__(self, model):
+                            super().__init__()
+                            self.model = model
+                        
+                        def forward(self, input_ids, attention_mask=None):
+                            if attention_mask is None:
+                                attention_mask = torch.ones_like(input_ids)
+                            return self.model(input_ids, attention_mask=attention_mask)
+                    
+                    wrapped_model = TextGenWrapper(model)
+                    scripted_model = torch.jit.script(wrapped_model)
+                else:
+                    scripted_model = torch.jit.script(model)
                 scripted_model.save(str(torchscript_file))
                 export_success = True
                 logger.info("TorchScript script export successful")
