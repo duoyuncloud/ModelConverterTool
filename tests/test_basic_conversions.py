@@ -128,7 +128,11 @@ class TestBasicConversions:
         ), f"GGUF model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
 
     @pytest.mark.skipif(
-        not ("mlx" in sys.modules or "mlx" in sys.executable) or os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'),
+        condition=(
+            not ("mlx" in sys.modules or "mlx" in sys.executable) 
+            or os.environ.get('CI') 
+            or os.environ.get('GITHUB_ACTIONS')
+        ),
         reason="MLX 依赖不支持，或CI环境，自动跳过"
     )
     def test_gpt2_to_mlx(self):
