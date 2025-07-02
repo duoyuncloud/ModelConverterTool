@@ -5,8 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # Enable manual triggers
 
-# 全局环境变量，确保所有 job 都禁用 MPS
+# Global environment variables to disable GPU/MPS
 env:
   CUDA_VISIBLE_DEVICES: ""
   MPS_VISIBLE_DEVICES: ""
@@ -19,325 +20,231 @@ env:
   PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:0"
 
 jobs:
-  lint-and-test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.11]
-
+  lint:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.11'
 
-      - name: Upgrade pip and install build tools
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-3.11-lint-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-3.11-lint-
+            ${{ runner.os }}-pip-3.11-
+
+      - name: Install linting tools
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          pip install flake8 black isort
 
-      - name: Install all dependencies
-        run: |
-          pip install --no-cache-dir torch>=2.0.0
-          pip install --no-cache-dir -r requirements.txt
-          pip install --no-cache-dir gptqmodel>=0.1.0 || echo "gptqmodel install failed"
-          pip install --no-cache-dir awqmodel || echo "awqmodel install failed"
-          pip install --no-cache-dir optimum[gptq] || echo "optimum[gptq] install failed"
-          pip install --no-cache-dir auto-gptq || echo "auto-gptq install failed"
-          pip install --no-cache-dir auto-awq || echo "auto-awq install failed"
-          pip install flake8 black isort pytest pytest-cov
-
-      - name: Lint with isort/black/flake8 (fail on critical errors, warn on style)
+      - name: Lint with isort/black/flake8
         run: |
           isort --check-only --diff model_converter_tool/ --profile black || true
           black --check model_converter_tool/ || true
           flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Test basic conversions
-        run: pytest tests/test_basic_conversions.py
-
-      - name: Test quantization
-        run: pytest tests/test_quantization.py
-
-      - name: Test batch conversion
-        run: pytest tests/test_batch_conversion.py
-
-      - name: Test API usage
-        run: pytest tests/test_api_usage.py
-
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ['3.11']
-        exclude:
-          - os: macos-latest
-            python-version: '3.9'
-
+  test-ubuntu:
+    runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-v2-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-v2-
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
-
-    - name: Install dependencies
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip cache purge || echo "Cache purge failed, continuing..."
-        pip install -r requirements.txt
-        # Install quantization libraries separately after torch is installed
-        pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
-        pip install logbar || echo "logbar installation failed, continuing..."
-        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
-
-    - name: Test package installation
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        pip install -e .
-        python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
-
-    - name: Test CLI help
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        model-converter --help
-
-    - name: Test fast conversions
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python ci_fast_test.py
-
-    - name: Debug torch/mps/cuda
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python -c "import torch; print('torch:', torch.__version__); print('cuda:', torch.cuda.is_available()); print('mps available:', getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available()); print('mps built:', getattr(torch.backends, 'mps', None) and torch.backends.mps.is_built())"
-
-    - name: Test slow conversions (quantization)
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python ci_slow_test.py
-
-    - name: Test batch conversion
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python -c "
-        from model_converter_tool.converter import ModelConverter
-        converter = ModelConverter()
-        
-        tasks = [
-            {
-                'input_source': 'gpt2',
-                'output_format': 'hf',
-                'output_path': 'outputs/batch_test_gpt2_hf',
-                'model_type': 'text-generation',
-                'device': 'cpu'
-            },
-            {
-                'input_source': 'gpt2',
-                'output_format': 'onnx',
-                'output_path': 'outputs/batch_test_gpt2_onnx',
-                'model_type': 'text-generation',
-                'device': 'cpu'
-            }
-        ]
-        
-        results = converter.batch_convert(tasks, max_workers=2)
-        success_count = sum(1 for r in results if r.get('success'))
-        print(f'✅ Batch conversion: {success_count}/{len(results)} successful')
-        "
-
-    - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-outputs-${{ matrix.os }}-${{ matrix.python-version }}
-        path: outputs/
-        retention-days: 1
-
-  integration:
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install -r requirements.txt
-
-    - name: Test integration scenarios
-      run: |
-        python -c "
-        from model_converter_tool.converter import ModelConverter
-        import os
-        
-        converter = ModelConverter()
-        
-        # Test supported formats
-        formats = converter.get_supported_formats()
-        print(f'✅ Supported formats: {list(formats.keys())}')
-        
-        # Test conversion info
-        info = converter.get_conversion_info('gpt2', 'hf')
-        print(f'✅ Conversion info: {info.get(\"supported\", False)}')
-        
-        # Test validation
-        valid = converter.validate_conversion('gpt2', 'hf')
-        print(f'✅ Validation: {valid}')
-        
-        # Test model size estimation
-        size = converter._estimate_model_size('gpt2')
-        print(f'✅ Model size estimation: {size:.2f} MB')
-        "
-
-    - name: Test error handling
-      run: |
-        python -c "
-        from model_converter_tool.converter import ModelConverter
-        
-        converter = ModelConverter()
-        
-        # Test invalid model
-        result = converter.convert(
-            input_source='invalid-model-name',
-            output_format='hf',
-            output_path='outputs/invalid_test',
-            model_type='text-generation',
-            device='cpu'
-        )
-        print(f'✅ Error handling: {not result.get(\"success\", True)}')
-        "
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Install security tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install bandit safety
-
-    - name: Run security scan
-      run: |
-        bandit -r model_converter_tool/ -f json -o bandit-report.json || true
-        safety check --json --output safety-report.json || true
-
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-reports
-        path: |
-          bandit-report.json
-          safety-report.json
-        retention-days: 7
-
-  critical-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip cache purge || echo "Cache purge failed, continuing..."
-        pip install -r requirements.txt
-        # Install quantization libraries separately after torch is installed
-        pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
-        pip install logbar || echo "logbar installation failed, continuing..."
-        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
-
-    - name: Test critical functionality
-      run: |
-        pip install -e .
-        python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
-        python ci_fast_test.py
-
-  quantization-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-3.11-test-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-3.11-test-
+            ${{ runner.os }}-pip-3.11-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+          pip install logbar || echo "logbar installation failed, continuing..."
+          pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+      - name: Test package installation
+        run: |
+          pip install -e .
+          python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
+
+      - name: Test CLI help
+        run: |
+          model-converter --help
+
+      - name: Test basic conversions
+        run: pytest tests/test_basic_conversions.py -v
+
+      - name: Test quantization
+        run: pytest tests/test_quantization.py -v
+
+      - name: Test batch conversion
+        run: pytest tests/test_batch_conversion.py -v
+
+      - name: Test API usage
+        run: pytest tests/test_api_usage.py -v
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-outputs-ubuntu-3.11
+          path: |
+            outputs/
+            .pytest_cache/
+            *.log
+          retention-days: 1
+
+  test-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-3.11-test-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-3.11-test-
+            ${{ runner.os }}-pip-3.11-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+          pip install logbar || echo "logbar installation failed, continuing..."
+          pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+      - name: Test package installation
+        run: |
+          pip install -e .
+          python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
+
+      - name: Test CLI help
+        run: |
+          model-converter --help
+
+      - name: Test basic conversions
+        run: pytest tests/test_basic_conversions.py -v
+
+      - name: Test quantization
+        run: pytest tests/test_quantization.py -v
+
+      - name: Test batch conversion
+        run: pytest tests/test_batch_conversion.py -v
+
+      - name: Test API usage
+        run: pytest tests/test_api_usage.py -v
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-outputs-macos-3.11
+          path: |
+            outputs/
+            .pytest_cache/
+            *.log
+          retention-days: 1
+
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-3.11-test-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-3.11-test-
+            ${{ runner.os }}-pip-3.11-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+          pip install logbar || echo "logbar installation failed, continuing..."
+          pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+      - name: Test package installation
+        run: |
+          pip install -e .
+          python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
+
+      - name: Test CLI help
+        run: |
+          model-converter --help
+
+      - name: Test basic conversions
+        run: pytest tests/test_basic_conversions.py -v
+
+      - name: Test quantization
+        run: pytest tests/test_quantization.py -v
+
+      - name: Test batch conversion
+        run: pytest tests/test_batch_conversion.py -v
+
+      - name: Test API usage
+        run: pytest tests/test_api_usage.py -v
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-outputs-windows-3.11
+          path: |
+            outputs/
+            .pytest_cache/
+            *.log
+          retention-days: 1
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [test-ubuntu, test-macos, test-windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
@@ -346,30 +253,78 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
-          pip install datasets logbar gptqmodel device_smi tokenicer threadpoolctl
 
-      - name: Run quantization-only tests
-        env:
-          CUDA_VISIBLE_DEVICES: ""
-          MPS_VISIBLE_DEVICES: ""
-          TRANSFORMERS_NO_MPS: "1"
+      - name: Test integration scenarios
         run: |
-          python ci_slow_test.py
+          python -c "
+          from model_converter_tool.converter import ModelConverter
+          import os
+          
+          converter = ModelConverter()
+          
+          # Test supported formats
+          formats = converter.get_supported_formats()
+          print(f'✅ Supported formats: {list(formats.keys())}')
+          
+          # Test conversion info
+          info = converter.get_conversion_info('gpt2', 'hf')
+          print(f'✅ Conversion info: {info.get(\"supported\", False)}')
+          
+          # Test validation
+          valid = converter.validate_conversion('gpt2', 'hf')
+          print(f'✅ Validation: {valid}')
+          
+          # Test model size estimation
+          size = converter._estimate_model_size('gpt2')
+          print(f'✅ Model size estimation: {size:.2f} MB')
+          "
 
-      - name: Show Python version and environment
+      - name: Test error handling
         run: |
-          python --version
-          which python
-          echo $PATH
+          python -c "
+          from model_converter_tool.converter import ModelConverter
+          
+          converter = ModelConverter()
+          
+          # Test invalid model
+          result = converter.convert(
+              input_source='invalid-model-name',
+              output_format='hf',
+              output_path='outputs/invalid_test',
+              model_type='text-generation',
+              device='cpu'
+          )
+          print(f'✅ Error handling: {not result.get(\"success\", True)}')
+          "
 
-      - name: List installed pip packages
-        run: |
-          pip list
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Check pip dependency health
-        run: |
-          pip check
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-      - name: Check quantization dependencies
+      - name: Install security tools
         run: |
-          python check_quant_deps.py || true 
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run security scan
+        run: |
+          bandit -r model_converter_tool/ -f json -o bandit-report.json || true
+          safety check --json --output safety-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 7 

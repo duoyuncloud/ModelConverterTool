@@ -2,7 +2,6 @@ import os
 import sys
 
 import click
-import torch
 
 from model_converter_tool.converter import ModelConverter
 
@@ -10,10 +9,15 @@ from model_converter_tool.converter import ModelConverter
 converter = ModelConverter()
 
 # Dynamically set help text based on hardware
-if torch.cuda.is_available():
-    CLI_HELP = "Model Converter CLI (GPU & CPU supported, all formats)"
-    CONVERT_HELP = "Convert a model to the specified format (GPU/CPU supported)."
-else:
+try:
+    import torch
+    if torch.cuda.is_available():
+        CLI_HELP = "Model Converter CLI (GPU & CPU supported, all formats)"
+        CONVERT_HELP = "Convert a model to the specified format (GPU/CPU supported)."
+    else:
+        CLI_HELP = "Model Converter CLI (CPU supported, all formats)"
+        CONVERT_HELP = "Convert a model to the specified format (CPU supported)."
+except ImportError:
     CLI_HELP = "Model Converter CLI (CPU supported, all formats)"
     CONVERT_HELP = "Convert a model to the specified format (CPU supported)."
 
@@ -55,6 +59,7 @@ def cli():
 @click.option("--model-type", default="auto", help="Model type (auto/text-generation/...)")
 def convert(input_model, output_format, output_path, model_type):
     """Convert a model to the specified format."""
+    import torch  # Only when needed
     click.echo(f"[INFO] Detecting input model format for: {input_model}")
     in_fmt, norm_path, meta = detect_model_format(input_model)
     click.echo(f"Fmt: {in_fmt}")
