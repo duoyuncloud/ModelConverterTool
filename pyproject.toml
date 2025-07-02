@@ -38,9 +38,7 @@ test = ["pytest"]
 [project.scripts]
 model-converter = "model_converter_tool.cli:cli"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["model_converter_tool*"]
+# Package discovery is now handled by setup.cfg
 
 [tool.isort]
 profile = "black"

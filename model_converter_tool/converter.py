@@ -1465,10 +1465,12 @@ class ModelConverter:
                     )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
-                        device_map="auto",
                         quantization_config=gptq_config,
                         trust_remote_code=True,
+                        torch_dtype=torch.float16,
                     )
+                    # Move to device manually to avoid meta tensor issues
+                    model = model.to("cpu")
 
                     # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_gptq"
@@ -1655,10 +1657,12 @@ class ModelConverter:
                     )
                     model = AutoModelForCausalLM.from_pretrained(
                         model_name,
-                        device_map="auto",
                         quantization_config=gptq_config,
                         trust_remote_code=True,
+                        torch_dtype=torch.float16,
                     )
+                    # Move to device manually to avoid meta tensor issues
+                    model = model.to("cpu")
 
                     # 保存量化后的模型到临时目录
                     tmp_dir = output_path + "_tmp_awq"

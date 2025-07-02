@@ -1,0 +1,23 @@
+include README.md
+include requirements.txt
+include pyproject.toml
+include setup.py
+recursive-include model_converter_tool *.py
+recursive-include configs *.yaml
+recursive-include configs *.yml
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude .git*
+global-exclude .DS_Store
+global-exclude *.egg-info
+global-exclude build
+global-exclude dist
+global-exclude venv*
+global-exclude .venv*
+global-exclude temp
+global-exclude outputs
+global-exclude test_outputs
+global-exclude uploads
+global-exclude model_cache 
