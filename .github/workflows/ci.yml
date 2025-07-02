@@ -37,12 +37,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
 
-      - name: Lint with isort/black/flake8 (fail on critical errors, warn on style)
-        run: |
-          isort --check-only --diff model_converter_tool/ --profile black || true
-          black --check model_converter_tool/ || true
-          flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
-
       - name: Install all dependencies
         run: |
           pip install --no-cache-dir torch>=2.0.0
@@ -53,6 +47,12 @@ jobs:
           pip install --no-cache-dir auto-gptq || echo "auto-gptq install failed"
           pip install --no-cache-dir auto-awq || echo "auto-awq install failed"
           pip install flake8 black isort pytest pytest-cov
+
+      - name: Lint with isort/black/flake8 (fail on critical errors, warn on style)
+        run: |
+          isort --check-only --diff model_converter_tool/ --profile black || true
+          black --check model_converter_tool/ || true
+          flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Test basic conversions
         run: pytest tests/test_basic_conversions.py
