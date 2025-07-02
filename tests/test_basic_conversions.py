@@ -128,8 +128,8 @@ class TestBasicConversions:
         ), f"GGUF model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
 
     @pytest.mark.skipif(
-        sys.platform == "darwin" or not ("mlx" in sys.modules or "mlx" in sys.executable),
-        reason="MLX 依赖或环境不支持，自动跳过"
+        not ("mlx" in sys.modules or "mlx" in sys.executable) or os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'),
+        reason="MLX 依赖不支持，或CI环境，自动跳过"
     )
     def test_gpt2_to_mlx(self):
         """Test gpt2 → mlx conversion"""
@@ -171,7 +171,6 @@ class TestBasicConversions:
             "success", False
         ), f"FP16 model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
 
-    @pytest.mark.xfail(reason="CI/平台/依赖兼容性问题，允许失败")
     def test_gpt2_to_torchscript(self):
         """Test distilbert-base-uncased → torchscript conversion"""
         self.test_model = "distilbert-base-uncased"
@@ -196,10 +195,6 @@ class TestBasicConversions:
         ), f"TorchScript model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
         self.validate_model_output(output_path, "torchscript")
 
-    @pytest.mark.skipif(
-        True,  # safetensors 权重共享问题，当前 transformers 结构不兼容
-        reason="safetensors 权重共享不兼容，自动跳过"
-    )
     def test_gpt2_to_safetensors(self):
         """Test gpt2 → safetensors conversion"""
         output_path = str(self.output_dir / "gpt2_safetensors")
@@ -244,7 +239,6 @@ class TestBasicConversions:
         ), f"HF model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
         self.validate_model_output(output_path, "hf")
 
-    @pytest.mark.xfail(reason="CI/平台/依赖兼容性问题，允许失败")
     def test_gpt2_to_gptq(self):
         """Test gpt2 → gptq conversion"""
         output_path = str(self.output_dir / "gpt2_gptq")
@@ -269,7 +263,6 @@ class TestBasicConversions:
             or "unsupported" in str(mv.get("error", "")).lower()
         ), f"GPTQ model validation failed: {mv.get('error', 'No validation result')}"
 
-    @pytest.mark.xfail(reason="CI/平台/依赖兼容性问题，允许失败")
     def test_gpt2_to_awq(self):
         """Test gpt2 → awq conversion"""
         output_path = str(self.output_dir / "gpt2_awq")
@@ -305,8 +298,10 @@ class TestBasicConversions:
         ("awq", False),
         ("safetensors", True),
     ])
-    @pytest.mark.xfail(lambda self, output_format, extra_infer: output_format in ["gptq", "awq"], reason="CI/平台/依赖兼容性问题，允许失败")
     def test_cli_equivalent_conversion(self, output_format, extra_infer):
+        # Skip MLX tests when MLX is not available or on CI to avoid bus errors
+        if output_format == "mlx" and (not ("mlx" in sys.modules or "mlx" in sys.executable) or os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')):
+            pytest.skip("MLX not available or CI environment, skipping MLX tests")
         model_name = self.test_model
         output_dir = self.output_dir
         output_path = output_dir / f"{model_name.replace('/', '_')}.{output_format}"

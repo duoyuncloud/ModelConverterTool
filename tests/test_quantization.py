@@ -27,7 +27,6 @@ class TestQuantization:
         self.output_dir = Path("test_outputs/quantization")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    @pytest.mark.forked
     def test_gptq_quantization(self):
         """Test GPTQ quantization"""
         model_name = "sshleifer/tiny-gpt2"
@@ -49,7 +48,6 @@ class TestQuantization:
             or "基础验证" in str(mv.get("error", ""))
         ), f"GPTQ model validation failed: {mv.get('error', 'No validation result')}"
 
-    @pytest.mark.forked
     def test_awq_quantization(self):
         """Test AWQ quantization"""
         model_name = "sshleifer/tiny-gpt2"
@@ -92,7 +90,6 @@ class TestQuantization:
             assert os.path.exists(output_path), f"GGUF output not found: {output_path}"
 
     @pytest.mark.parametrize("output_format", ["gptq", "awq"])
-    @pytest.mark.forked
     def test_cli_equivalent_quantization(self, output_format):
         model_name = self.test_model
         output_dir = self.output_dir

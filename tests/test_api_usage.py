@@ -93,7 +93,6 @@ class TestAPIUsage:
             assert result.get("success"), f"Batch {result.get('output_format')} failed: {result.get('error')}"
             assert os.path.exists(result.get("output_path", "")), f"Batch {result.get('output_format')} output file not found: {result.get('output_path')}"
 
-    @pytest.mark.xfail(reason="CI/平台/依赖兼容性问题，允许失败")
     def test_convert_with_quantization(self):
         for fmt in ["gptq", "awq"]:
             output_path = str(self.output_dir / f"tiny_gpt2_{fmt}")
