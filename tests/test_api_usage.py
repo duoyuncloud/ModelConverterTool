@@ -36,7 +36,7 @@ class TestAPIUsage:
             output_format="onnx",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
 
@@ -62,7 +62,7 @@ class TestAPIUsage:
                 output_format=format_name,
                 output_path=output_path,
                 model_type="text-generation",
-                device="cpu",
+                device="auto",
                 validate=True,
             )
 
@@ -85,7 +85,7 @@ class TestAPIUsage:
                 "output_format": fmt,
                 "output_path": output_path,
                 "model_type": "text-generation",
-                "device": "cpu",
+                "device": "auto",
                 "validate": True,
             })
         results = self.converter.batch_convert(tasks=tasks, max_workers=1, max_retries=1)
@@ -101,7 +101,7 @@ class TestAPIUsage:
                 output_format=fmt,
                 output_path=output_path,
                 model_type="text-generation",
-                device="cpu",
+                device="auto",
                 validate=True,
             )
             assert result["success"], f"{fmt} quantization failed: {result.get('error')}"
@@ -116,7 +116,7 @@ class TestAPIUsage:
             output_format="onnx",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,  # Enable validation
         )
 
@@ -135,7 +135,7 @@ class TestAPIUsage:
             output_format="onnx",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=False,  # Disable validation
         )
 

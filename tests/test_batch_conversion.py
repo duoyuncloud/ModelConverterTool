@@ -35,49 +35,49 @@ class TestBatchConversion:
                     "output_format": "onnx",
                     "output_path": str(self.output_dir / "gpt2.onnx"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_gguf": {
                     "input": self.test_model,
                     "output_format": "gguf",
                     "output_path": str(self.output_dir / "gpt2.gguf"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_mlx": {
                     "input": self.test_model,
                     "output_format": "mlx",
                     "output_path": str(self.output_dir / "gpt2.mlx"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_fp16": {
                     "input": self.test_model,
                     "output_format": "fp16",
                     "output_path": str(self.output_dir / "gpt2_fp16"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_torchscript": {
                     "input": self.test_model,
                     "output_format": "torchscript",
                     "output_path": str(self.output_dir / "gpt2.pt"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_safetensors": {
                     "input": self.test_model,
                     "output_format": "safetensors",
                     "output_path": str(self.output_dir / "gpt2_safetensors"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
                 "gpt2_to_hf": {
                     "input": self.test_model,
                     "output_format": "hf",
                     "output_path": str(self.output_dir / "gpt2_hf"),
                     "model_type": "text-generation",
-                    "device": "cpu",
+                    "device": "auto",
                 },
             }
         }
@@ -163,3 +163,69 @@ class TestBatchConversion:
         # Clean up
         if yaml_path.exists():
             yaml_path.unlink()
+
+# --- Debug script: Run batch_convert and print all results for debugging ---
+if __name__ == "__main__":
+    from model_converter_tool.converter import ModelConverter
+    import json
+    output_dir = Path("test_outputs/batch_conversion")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    test_model = "gpt2"
+    tasks = [
+        {
+            "input_source": test_model,
+            "output_format": "onnx",
+            "output_path": str(output_dir / "gpt2.onnx"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "gguf",
+            "output_path": str(output_dir / "gpt2.gguf"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "mlx",
+            "output_path": str(output_dir / "gpt2.mlx"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "fp16",
+            "output_path": str(output_dir / "gpt2_fp16"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "torchscript",
+            "output_path": str(output_dir / "gpt2.pt"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "safetensors",
+            "output_path": str(output_dir / "gpt2_safetensors"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+        {
+            "input_source": test_model,
+            "output_format": "hf",
+            "output_path": str(output_dir / "gpt2_hf"),
+            "model_type": "text-generation",
+            "device": "auto",
+        },
+    ]
+    converter = ModelConverter()
+    results = converter.batch_convert(tasks, max_workers=1)
+    for r in results:
+        print(json.dumps(r, indent=2, ensure_ascii=False))
+    # Optionally, save to file for further inspection
+    with open(output_dir / "batch_debug_results.json", "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)

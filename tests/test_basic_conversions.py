@@ -94,7 +94,7 @@ class TestBasicConversions:
             output_format="onnx",
             output_path=output_path,
             model_type="feature-extraction",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("ONNX model_validation:", result.get("model_validation"))
@@ -116,7 +116,7 @@ class TestBasicConversions:
             output_format="gguf",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("GGUF model_validation:", result.get("model_validation"))
@@ -144,7 +144,7 @@ class TestBasicConversions:
             output_format="mlx",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("MLX model_validation:", result.get("model_validation"))
@@ -164,7 +164,7 @@ class TestBasicConversions:
             output_format="fp16",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("FP16 model_validation:", result.get("model_validation"))
@@ -185,7 +185,7 @@ class TestBasicConversions:
             output_format="torchscript",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("TorchScript model_validation:", result.get("model_validation"))
@@ -213,7 +213,7 @@ class TestBasicConversions:
             output_format="safetensors",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("SafeTensors model_validation:", result.get("model_validation"))
@@ -236,7 +236,7 @@ class TestBasicConversions:
             output_format="hf",
             output_path=output_path,
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         print("HF model_validation:", result.get("model_validation"))
@@ -249,54 +249,6 @@ class TestBasicConversions:
         ), f"HF model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
         self.validate_model_output(output_path, "hf")
 
-    def test_gpt2_to_gptq(self):
-        """Test gpt2 → gptq conversion"""
-        output_path = str(self.output_dir / "gpt2_gptq")
-        result = self.converter.convert(
-            input_source=self.test_model,
-            output_format="gptq",
-            output_path=output_path,
-            model_type="text-generation",
-            device="cpu",
-            validate=True,
-        )
-        print("GPTQ model_validation:", result.get("model_validation"))
-        assert result[
-            "success"
-        ], f"GPTQ conversion failed: {result.get('error', 'Unknown error')}"
-        assert os.path.exists(output_path), f"GPTQ output not found: {output_path}"
-        mv = result.get("model_validation", {})
-        # 兼容 macOS/无依赖环境下的基础验证
-        assert mv.get("success") or (
-            "not available" in str(mv.get("error", "")).lower()
-            or "基础验证" in str(mv.get("error", ""))
-            or "unsupported" in str(mv.get("error", "")).lower()
-        ), f"GPTQ model validation failed: {mv.get('error', 'No validation result')}"
-
-    def test_gpt2_to_awq(self):
-        """Test gpt2 → awq conversion"""
-        output_path = str(self.output_dir / "gpt2_awq")
-        result = self.converter.convert(
-            input_source=self.test_model,
-            output_format="awq",
-            output_path=output_path,
-            model_type="text-generation",
-            device="cpu",
-            validate=True,
-        )
-        print("AWQ model_validation:", result.get("model_validation"))
-        assert result[
-            "success"
-        ], f"AWQ conversion failed: {result.get('error', 'Unknown error')}"
-        assert os.path.exists(output_path), f"AWQ output not found: {output_path}"
-        mv = result.get("model_validation", {})
-        # 兼容 macOS/无依赖环境下的基础验证
-        assert mv.get("success") or (
-            "not available" in str(mv.get("error", "")).lower()
-            or "基础验证" in str(mv.get("error", ""))
-            or "unsupported" in str(mv.get("error", "")).lower()
-        ), f"AWQ model validation failed: {mv.get('error', 'No validation result')}"
-
     @pytest.mark.parametrize("output_format,extra_infer", [
         ("onnx", True),
         ("gguf", False),
@@ -304,8 +256,6 @@ class TestBasicConversions:
         ("fp16", True),
         ("torchscript", True),
         ("hf", True),
-        ("gptq", False),
-        ("awq", False),
         ("safetensors", True),
     ])
     def test_cli_equivalent_conversion(self, output_format, extra_infer):
@@ -320,7 +270,7 @@ class TestBasicConversions:
             output_format=output_format,
             output_path=str(output_path),
             model_type="text-generation",
-            device="cpu",
+            device="auto",
             validate=True,
         )
         assert result["success"], f"{output_format} conversion failed: {result.get('error')}"

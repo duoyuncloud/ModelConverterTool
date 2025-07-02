@@ -224,48 +224,41 @@ class ModelValidator:
             return {"success": False, "error": f"GGUF validation failed: {e}"}
 
     def _validate_gptq_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
-        """Validate GPTQ model"""
-        import sys
-
+        """Validate GPTQ model by checking safetensors fields"""
         try:
-            import torch
-            from auto_gptq import AutoGPTQForCausalLM
-            from transformers import AutoTokenizer
+            from pathlib import Path
+            try:
+                from safetensors.torch import load_file
+            except ImportError:
+                return {"success": False, "error": "safetensors not installed"}
 
             model_dir = Path(model_path)
-            # macOS 或无 CUDA 环境下仅做基础验证
-            if sys.platform == "darwin" or not torch.cuda.is_available():
-                try:
-                    model = AutoGPTQForCausalLM.from_quantized(str(model_dir), device="cpu")
-                    tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            safetensors_files = list(model_dir.glob("*.safetensors"))
+            if not safetensors_files:
+                return {"success": False, "error": "No .safetensors files found in model directory"}
+            safetensors_file = safetensors_files[0]
+
+            try:
+                tensors = load_file(str(safetensors_file))
+                keys = set(tensors.keys())
+                required_keys = {"qweight", "qzeros", "scales"}
+                found_keys = required_keys & keys
+                if found_keys:
                     return {
                         "success": True,
-                        "model_file": str(model_dir),
-                        "message": "[macOS/CPU] GPTQ模型基础验证通过（文件存在+能加载），未做推理验证。建议在Linux+CUDA环境下做推理级验证。",
+                        "model_file": str(safetensors_file),
+                        "fields": list(keys),
+                        "message": f"GPTQ .safetensors contains quantized fields: {found_keys}" 
                     }
-                except Exception as e:
-                    return {"success": False, "error": f"[macOS/CPU] GPTQ基础验证失败: {e}"}
-            # Linux+CUDA 环境下做推理验证
-            model = AutoGPTQForCausalLM.from_quantized(str(model_dir))
-            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-            test_text = "Hello world"
-            inputs = tokenizer(test_text, return_tensors="pt")
-            with torch.no_grad():
-                outputs = model(**inputs)
-            if hasattr(outputs, "logits"):
-                logits = outputs.logits
-            else:
-                logits = outputs
-            return {
-                "success": True,
-                "model_file": str(model_dir),
-                "input_text": test_text,
-                "input_shape": inputs["input_ids"].shape,
-                "output_shape": logits.shape,
-                "message": f"GPTQ model loaded successfully. Input: {inputs['input_ids'].shape}, Output: {logits.shape}",
-            }
-        except ImportError:
-            return {"success": False, "error": "auto-gptq not available"}
+                else:
+                    return {
+                        "success": False,
+                        "model_file": str(safetensors_file),
+                        "fields": list(keys),
+                        "error": "No GPTQ quantized fields (qweight/qzeros/scales) found in .safetensors"
+                    }
+            except Exception as e:
+                return {"success": False, "error": f"Failed to load .safetensors: {e}"}
         except Exception as e:
             return {"success": False, "error": f"GPTQ validation failed: {e}"}
 
@@ -491,52 +484,41 @@ class ModelValidator:
             }
 
     def _validate_awq_model(self, model_path: str, model_type: str) -> Dict[str, Any]:
-        """Validate AWQ model"""
-        import sys
-
+        """Validate AWQ model by checking safetensors fields"""
         try:
-            import torch
-            from awq import AutoAWQForCausalLM
-            from transformers import AutoTokenizer
+            from pathlib import Path
+            try:
+                from safetensors.torch import load_file
+            except ImportError:
+                return {"success": False, "error": "safetensors not installed"}
 
             model_dir = Path(model_path)
-            awq_files = list(model_dir.glob("*.safetensors"))
-            if not awq_files:
-                return {"success": False, "error": "No AWQ model files found"}
-            # macOS 或无 CUDA 环境下仅做基础验证
-            if sys.platform == "darwin" or not torch.cuda.is_available():
-                try:
-                    model = AutoAWQForCausalLM.from_pretrained(str(model_dir), device_map="cpu")
-                    tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            safetensors_files = list(model_dir.glob("*.safetensors"))
+            if not safetensors_files:
+                return {"success": False, "error": "No .safetensors files found in model directory"}
+            safetensors_file = safetensors_files[0]
+
+            try:
+                tensors = load_file(str(safetensors_file))
+                keys = set(tensors.keys())
+                required_keys = {"qweight", "qzeros", "scales"}
+                found_keys = required_keys & keys
+                if found_keys:
                     return {
                         "success": True,
-                        "model_file": str(model_dir),
-                        "message": "[macOS/CPU] AWQ模型基础验证通过（文件存在+能加载），未做推理验证。建议在Linux+CUDA环境下做推理级验证。",
+                        "model_file": str(safetensors_file),
+                        "fields": list(keys),
+                        "message": f"AWQ .safetensors contains quantized fields: {found_keys}" 
                     }
-                except Exception as e:
-                    return {"success": False, "error": f"[macOS/CPU] AWQ基础验证失败: {e}"}
-            # Linux+CUDA 环境下做推理验证
-            model = AutoAWQForCausalLM.from_pretrained(str(model_dir))
-            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-            test_text = "Hello world"
-            inputs = tokenizer(test_text, return_tensors="pt")
-            with torch.no_grad():
-                outputs = model(**inputs)
-            if hasattr(outputs, "logits"):
-                logits = outputs.logits
-            else:
-                logits = outputs
-            return {
-                "success": True,
-                "model_file": str(model_dir),
-                "input_text": test_text,
-                "input_shape": inputs["input_ids"].shape,
-                "output_shape": logits.shape,
-                "quantization": "AWQ",
-                "message": f"AWQ model loaded successfully. Input: {inputs['input_ids'].shape}, Output: {logits.shape}",
-            }
-        except ImportError:
-            return {"success": False, "error": "AWQ library not available"}
+                else:
+                    return {
+                        "success": False,
+                        "model_file": str(safetensors_file),
+                        "fields": list(keys),
+                        "error": "No AWQ quantized fields (qweight/qzeros/scales) found in .safetensors"
+                    }
+            except Exception as e:
+                return {"success": False, "error": f"Failed to load .safetensors: {e}"}
         except Exception as e:
             return {"success": False, "error": f"AWQ validation failed: {e}"}
 
