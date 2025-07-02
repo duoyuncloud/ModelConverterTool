@@ -1,7 +1,7 @@
 # NOTE: For proper installation, use install_dependencies.sh or install requirements-core.txt first, then requirements-optional.txt
 # Core dependencies
-- torch==2.7.1
-transformers==4.53.0
+torch>=2.0.0
+transformers>=4.30.0
 tokenizers>=0.13.0
 accelerate>=0.20.0
 
@@ -16,10 +16,10 @@ llama-cpp-python>=0.2.0
 mlx>=0.0.8
 
 # Quantization libraries (install after torch)
-# 这些依赖全部由 CI 单独分步安装
-- awqmodel
-- logbar
-- tokenicer
+# These are optional and may fail if torch is not properly installed
+# gptqmodel  # 主要量化转换库，需在torch安装后单独pip install
+logbar
+tokenicer
 device_smi
 threadpoolctl
 Pillow

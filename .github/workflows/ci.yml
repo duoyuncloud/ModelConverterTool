@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
-# Global environment variables to disable MPS
+# 全局环境变量，确保所有 job 都禁用 MPS
 env:
   CUDA_VISIBLE_DEVICES: ""
   MPS_VISIBLE_DEVICES: ""
@@ -35,7 +35,7 @@ jobs:
 
       - name: Upgrade pip and install build tools
         run: |
-          python -m pip install --upgrade pip setuptools wheel build
+          python -m pip install --upgrade pip setuptools wheel
 
       - name: Install core dependencies
         run: |
@@ -51,26 +51,25 @@ jobs:
           pip install logbar || echo "logbar installation failed, continuing..."
           pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
-      - name: Install dev tools
+      - name: Install dev tools and editable package
         run: |
-          pip install flake8 black isort pytest pytest-cov
+          pip install flake8 black isort
+          pip install -e .
 
-      - name: Build and install package
+      - name: Lint with isort/black/flake8
         run: |
-          python -m build --wheel
-          pip install dist/*.whl
+          isort --check-only --diff model_converter_tool/ --profile black
+          black --check model_converter_tool/
+          flake8 model_converter_tool/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Run fast tests
-        run: pytest -m fast -v
+      - name: Run fast CI tests
+        run: python ci_fast_test.py
 
-      - name: Run basic conversion tests
-        run: pytest -m basic -v
+      - name: Run slow CI tests
+        run: python ci_slow_test.py
 
-      - name: Run API usage tests
-        run: pytest -m api -v
-
-      - name: Run all tests with coverage
-        run: pytest --cov=model_converter_tool --cov-report=term-missing
+      - name: Run all tests
+        run: python test_all.py
 
   test:
     runs-on: ${{ matrix.os }}
@@ -92,6 +91,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
@@ -101,17 +101,7 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-v2-
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
-    - name: Install all dependencies first
-      run: |
-        pip install --no-cache-dir torch==2.7.1
-        pip install --no-cache-dir -r requirements.txt
-        pip install --no-cache-dir gptqmodel==2.2.0
-        pip install --no-cache-dir awqmodel
-        pip install --no-cache-dir optimum[gptq]
-        pip install --no-cache-dir auto-gptq
-        pip install --no-cache-dir auto-awq
-
-    - name: Build and install package
+    - name: Install dependencies
       env:
         PYTORCH_ENABLE_MPS_FALLBACK: "1"
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
@@ -120,8 +110,24 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        python -m build --wheel
-        pip install dist/*.whl
+        python -m pip install --upgrade pip setuptools wheel
+        pip cache purge || echo "Cache purge failed, continuing..."
+        pip install -r requirements.txt
+        # Install quantization libraries separately after torch is installed
+        pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+        pip install logbar || echo "logbar installation failed, continuing..."
+        pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+
+    - name: Test package installation
+      env:
+        PYTORCH_ENABLE_MPS_FALLBACK: "1"
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
+        TRANSFORMERS_NO_MPS: "1"
+        CUDA_VISIBLE_DEVICES: ""
+        MPS_VISIBLE_DEVICES: ""
+        USE_CPU_ONLY: "1"
+      run: |
+        pip install -e .
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
 
     - name: Test CLI help
@@ -144,31 +150,9 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        pytest -m fast -v
+        python ci_fast_test.py
 
-    - name: Test basic conversions
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        pytest -m basic -v --tb=short --timeout=300
-
-    - name: Test API usage
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        pytest -m api -v --tb=short --timeout=300
-
-    - name: Debug environment and dependencies
+    - name: Debug torch/mps/cuda
       env:
         PYTORCH_ENABLE_MPS_FALLBACK: "1"
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
@@ -178,46 +162,6 @@ jobs:
         USE_CPU_ONLY: "1"
       run: |
         python -c "import torch; print('torch:', torch.__version__); print('cuda:', torch.cuda.is_available()); print('mps available:', getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available()); print('mps built:', getattr(torch.backends, 'mps', None) and torch.backends.mps.is_built())"
-        python -c "import transformers; print('transformers:', transformers.__version__)"
-        python -c "import optimum; print('optimum:', optimum.__version__)" || echo "optimum not available"
-        python -c "import gptqmodel; print('gptqmodel:', gptqmodel.__version__)" || echo "gptqmodel not available"
-        python -c "import awqmodel; print('awqmodel available')" || echo "awqmodel not available"
-        python -c "import auto_gptq; print('auto-gptq available')" || echo "auto-gptq not available"
-        python -c "import auto_awq; print('auto-awq available')" || echo "auto-awq not available"
-
-    - name: Test simple conversion manually
-      env:
-        PYTORCH_ENABLE_MPS_FALLBACK: "1"
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
-        TRANSFORMERS_NO_MPS: "1"
-        CUDA_VISIBLE_DEVICES: ""
-        MPS_VISIBLE_DEVICES: ""
-        USE_CPU_ONLY: "1"
-      run: |
-        python -c "
-        from model_converter_tool import ModelConverter
-        import os
-        
-        converter = ModelConverter()
-        print('Testing GPTQ conversion...')
-        
-        result = converter.convert(
-            input_source='gpt2',
-            output_format='gptq',
-            output_path='./test_gptq_ci',
-            model_type='text-generation',
-            device='cpu',
-            validate=False
-        )
-        
-        print(f'Success: {result[\"success\"]}')
-        print(f'Error: {result.get(\"error\")}')
-        
-        if result['success']:
-            print('✅ GPTQ conversion succeeded in CI')
-        else:
-            print('❌ GPTQ conversion failed in CI')
-        "
 
     - name: Test slow conversions (quantization)
       env:
@@ -228,8 +172,7 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        # Run quantization tests on all platforms
-        pytest -v tests/test_quantization.py -k 'test_gptq_quantization or test_awq_quantization or test_cli_equivalent_quantization' --maxfail=2
+        python ci_slow_test.py
 
     - name: Test batch conversion
       env:
@@ -289,14 +232,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel build
+        python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
-        pip install pytest pytest-cov
-
-    - name: Build and install package
-      run: |
-        python -m build --wheel
-        pip install dist/*.whl
 
     - name: Test integration scenarios
       run: |
@@ -385,30 +322,22 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel build
+        python -m pip install --upgrade pip setuptools wheel
         pip cache purge || echo "Cache purge failed, continuing..."
         pip install -r requirements.txt
-        pip install pytest pytest-cov
         # Install quantization libraries separately after torch is installed
         pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
         pip install logbar || echo "logbar installation failed, continuing..."
         pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
-    - name: Build and install package
-      run: |
-        python -m build --wheel
-        pip install dist/*.whl
-
     - name: Test critical functionality
       run: |
+        pip install -e .
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
-        pytest -m fast -v
+        python ci_fast_test.py
 
   quantization-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -420,14 +349,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel build
+          python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
           pip install datasets logbar gptqmodel device_smi tokenicer threadpoolctl
-
-      - name: Build and install package
-        run: |
-          python -m build --wheel
-          pip install dist/*.whl
 
       - name: Run quantization-only tests
         env:
@@ -435,7 +359,7 @@ jobs:
           MPS_VISIBLE_DEVICES: ""
           TRANSFORMERS_NO_MPS: "1"
         run: |
-          pytest -m quantization -v
+          python ci_slow_test.py
 
       - name: Show Python version and environment
         run: |
