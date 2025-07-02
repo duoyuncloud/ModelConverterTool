@@ -3,6 +3,7 @@
 Basic model format conversion tests
 """
 
+import importlib.util
 import os
 import tempfile
 from pathlib import Path
@@ -248,6 +249,13 @@ class TestBasicConversions:
         ), f"HF model validation failed: {result.get('model_validation', {}).get('error', 'No validation result')}"
         self.validate_model_output(output_path, "hf")
 
+    @pytest.mark.skipif(
+        condition=(
+            importlib.util.find_spec("gptqmodel") is None
+            or importlib.util.find_spec("auto_gptq") is None
+        ),
+        reason="GPTQ dependencies not available"
+    )
     def test_gpt2_to_gptq(self):
         """Test gpt2 → gptq conversion"""
         output_path = str(self.output_dir / "gpt2_gptq")
@@ -272,6 +280,13 @@ class TestBasicConversions:
             or "unsupported" in str(mv.get("error", "")).lower()
         ), f"GPTQ model validation failed: {mv.get('error', 'No validation result')}"
 
+    @pytest.mark.skipif(
+        condition=(
+            importlib.util.find_spec("awqmodel") is None
+            or importlib.util.find_spec("auto_awq") is None
+        ),
+        reason="AWQ dependencies not available"
+    )
     def test_gpt2_to_awq(self):
         """Test gpt2 → awq conversion"""
         output_path = str(self.output_dir / "gpt2_awq")
