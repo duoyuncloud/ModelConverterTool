@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
-# 全局环境变量，确保所有 job 都禁用 MPS
+# Global environment variables to disable MPS
 env:
   CUDA_VISIBLE_DEVICES: ""
   MPS_VISIBLE_DEVICES: ""
@@ -35,7 +35,7 @@ jobs:
 
       - name: Upgrade pip and install build tools
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel build
 
       - name: Install core dependencies
         run: |
@@ -51,10 +51,14 @@ jobs:
           pip install logbar || echo "logbar installation failed, continuing..."
           pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
-      - name: Install dev tools and editable package
+      - name: Install dev tools
         run: |
           pip install flake8 black isort pytest pytest-cov
-          pip install -e .
+
+      - name: Build and install package
+        run: |
+          python -m build --wheel
+          pip install dist/*.whl
 
       - name: Run fast tests
         run: pytest -m fast -v
@@ -88,7 +92,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-
     - name: Cache pip dependencies
       uses: actions/cache@v4
       with:
@@ -98,25 +101,16 @@ jobs:
           ${{ runner.os }}-pip-${{ matrix.python-version }}-v2-
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
-    - name: Install torch first
-      run: pip install --no-cache-dir torch==2.7.1
+    - name: Install all dependencies first
+      run: |
+        pip install --no-cache-dir torch==2.7.1
+        pip install --no-cache-dir -r requirements.txt
+        pip install --no-cache-dir gptqmodel==2.2.0
+        pip install --no-cache-dir awqmodel
+        pip install --no-cache-dir logbar
+        pip install --no-cache-dir tokenicer
 
-    - name: Install remaining dependencies
-      run: pip install --no-cache-dir -r requirements.txt
-
-    - name: Install gptqmodel
-      run: pip install --no-cache-dir gptqmodel==2.2.0
-
-    - name: Install awqmodel
-      run: pip install --no-cache-dir awqmodel
-
-    - name: Install logbar
-      run: pip install --no-cache-dir logbar
-
-    - name: Install tokenicer
-      run: pip install --no-cache-dir tokenicer
-
-    - name: Test package installation
+    - name: Build and install package
       env:
         PYTORCH_ENABLE_MPS_FALLBACK: "1"
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: "0.0"
@@ -125,7 +119,8 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        pip install -e .
+        python -m build --wheel
+        pip install dist/*.whl
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
 
     - name: Test CLI help
@@ -170,7 +165,7 @@ jobs:
         MPS_VISIBLE_DEVICES: ""
         USE_CPU_ONLY: "1"
       run: |
-        # 所有平台都运行单项量化用例
+        # Run quantization tests on all platforms
         pytest -v tests/test_quantization.py -k 'test_gptq_quantization or test_awq_quantization or test_cli_equivalent_quantization' --maxfail=2
 
     - name: Test batch conversion
@@ -231,9 +226,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel build
         pip install -r requirements.txt
         pip install pytest pytest-cov
+
+    - name: Build and install package
+      run: |
+        python -m build --wheel
+        pip install dist/*.whl
 
     - name: Test integration scenarios
       run: |
@@ -322,7 +322,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel build
         pip cache purge || echo "Cache purge failed, continuing..."
         pip install -r requirements.txt
         pip install pytest pytest-cov
@@ -331,9 +331,13 @@ jobs:
         pip install logbar || echo "logbar installation failed, continuing..."
         pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
 
+    - name: Build and install package
+      run: |
+        python -m build --wheel
+        pip install dist/*.whl
+
     - name: Test critical functionality
       run: |
-        pip install -e .
         python -c "from model_converter_tool.converter import ModelConverter; print('✅ Package installed successfully')"
         pytest -m fast -v
 
@@ -353,9 +357,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel build
           pip install -r requirements.txt
           pip install datasets logbar gptqmodel device_smi tokenicer threadpoolctl
+
+      - name: Build and install package
+        run: |
+          python -m build --wheel
+          pip install dist/*.whl
 
       - name: Run quantization-only tests
         env:
@@ -363,13 +372,7 @@ jobs:
           MPS_VISIBLE_DEVICES: ""
           TRANSFORMERS_NO_MPS: "1"
         run: |
-          # Skip quantization tests on macOS CI due to MPS compatibility issues
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            echo "⚠️  Skipping quantization tests on macOS CI due to MPS compatibility issues"
-            echo "✅ macOS CI quantization tests skipped"
-          else
-            pytest -m quantization -v
-          fi
+          pytest -m quantization -v
 
       - name: Show Python version and environment
         run: |
