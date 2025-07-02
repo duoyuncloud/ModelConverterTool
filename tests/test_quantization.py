@@ -10,9 +10,20 @@ from pathlib import Path
 
 import pytest
 import torch
+import importlib
 
 from model_converter_tool.converter import ModelConverter
 
+# Skip quantization tests if required libraries are missing or only CPU is available
+skip_quant = (
+    importlib.util.find_spec("gptqmodel") is None
+    or importlib.util.find_spec("auto_gptq") is None
+    or not torch.cuda.is_available()
+)
+pytestmark = pytest.mark.skipif(
+    skip_quant,
+    reason="Quantization dependencies not available or no CUDA device"
+)
 
 class TestQuantization:
     """Test quantization formats using tiny-gpt2"""
