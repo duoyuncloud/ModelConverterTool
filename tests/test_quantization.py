@@ -43,27 +43,27 @@ torch.backends.mps.is_available = lambda: False
 torch.backends.mps.is_built = lambda: False
 
 class TestQuantization:
-    """Test quantization formats using tiny-gpt2"""
+    """Test quantization formats using opt-125m-local (local OPT-125M model)"""
 
     pytestmark = [pytest.mark.quantization, pytest.mark.slow]
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test environment"""
         self.converter = ModelConverter()
-        self.test_model = "opt-125m-local"  # 改为本地 OPT-125M 模型
+        self.test_model = "opt-125m-local"
         self.output_dir = Path("test_outputs/quantization")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def test_gptq_quantization(self):
         """Test GPTQ quantization"""
         result = self.converter.convert(
-            input_source="opt-125m-local",  # 本地 OPT-125M 模型
+            input_source=self.test_model,
             output_format="gptq",
             output_path="outputs/opt_125m_gptq_quantized",
             model_type="text-generation",
-            device="auto",  # 自动选择GPU或CPU
+            device="auto",
             validate=True,
+            quantization_config={"damp_percent": 0.015},
         )
         assert result["success"], f"GPTQ quantization failed: {result.get('error')}"
         mv = result.get("model_validation", {})
@@ -72,12 +72,13 @@ class TestQuantization:
     def test_awq_quantization(self):
         """Test AWQ quantization"""
         result = self.converter.convert(
-            input_source="opt-125m-local",  # 本地 OPT-125M 模型
+            input_source=self.test_model,
             output_format="awq",
             output_path="outputs/opt_125m_awq_quantized",
             model_type="text-generation",
-            device="auto",  # 自动选择GPU或CPU
+            device="auto",
             validate=True,
+            quantization_config={"damp_percent": 0.015},
         )
         assert result["success"], f"AWQ quantization failed: {result.get('error')}"
         mv = result.get("model_validation", {})
@@ -86,9 +87,8 @@ class TestQuantization:
     def test_gguf_quantization(self):
         """Test GGUF quantization with different quantization levels"""
         quantization_levels = ["q4_k_m", "q8_0", "q5_k_m"]
-
         for quant_level in quantization_levels:
-            output_path = str(self.output_dir / f"tiny_gpt2_gguf_{quant_level}.gguf")
+            output_path = str(self.output_dir / f"opt_125m_gguf_{quant_level}.gguf")
             result = self.converter.convert(
                 input_source=self.test_model,
                 output_format="gguf",
@@ -97,22 +97,22 @@ class TestQuantization:
                 quantization=quant_level,
                 device="auto",
                 validate=True,
+                quantization_config={"damp_percent": 0.015},
             )
-            assert result[
-                "success"
-            ], f"GGUF quantization {quant_level} failed: {result.get('error', 'Unknown error')}"
-            assert os.path.exists(output_path), f"GGUF output not found: {output_path}"
+            assert result["success"], f"GGUF quantization {quant_level} failed: {result.get('error', 'Unknown error')}"
+            assert Path(output_path).exists(), f"GGUF output not found: {output_path}"
 
     @pytest.mark.parametrize("quant_type", ["gptq", "awq"])
     def test_cli_equivalent_quantization(self, quant_type):
         output_path = f"outputs/opt_125m_{quant_type}_cli"
         result = self.converter.convert(
-            input_source="opt-125m-local",  # 本地 OPT-125M 模型
+            input_source=self.test_model,
             output_format=quant_type,
             output_path=output_path,
             model_type="text-generation",
-            device="auto",  # 自动选择GPU或CPU
+            device="auto",
             validate=True,
+            quantization_config={"damp_percent": 0.015},
         )
         assert result["success"], f"CLI equivalent quantization failed: {result.get('error')}"
         mv = result.get("model_validation", {})

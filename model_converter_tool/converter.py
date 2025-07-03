@@ -599,6 +599,8 @@ class ModelConverter:
         offline_mode: bool = False,
         postprocess: Optional[str] = None,
         validate: bool = True,
+        quantization_config: Optional[dict] = None,
+        use_large_calibration: bool = False,  # 新增参数
     ) -> dict:
         import os
         import platform
@@ -751,7 +753,7 @@ class ModelConverter:
 
                         # 确定量化类型
                         quantization_type = None
-                        if quantization and output_format in ["gptq", "awq", "gguf"]:
+                        if output_format in ["gptq", "awq", "gguf"]:
                             quantization_type = output_format
 
                         # 执行模型验证
@@ -811,6 +813,35 @@ class ModelConverter:
 
             logger.debug(f"Traceback: {traceback.format_exc()}")
             return {"success": False, "error": str(e)}
+
+        # 自动采集大校准集（仅在未显式传calibration_dataset时生效）
+        if (
+            use_large_calibration
+            and quantization_config is not None
+            and "calibration_dataset" not in quantization_config
+            and output_format in ["gptq", "awq"]
+        ):
+            try:
+                from datasets import load_dataset
+                from transformers import AutoTokenizer
+                model_name = input_source if not input_source.startswith("hf:") else input_source[3:]
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                dataset = load_dataset("wikitext", "wikitext-103-v1", split="train")
+                calibration_dataset = []
+                for item in dataset:
+                    text = item["text"].strip()
+                    if not text or len(text) < 100:
+                        continue
+                    tokens = tokenizer(text)["input_ids"]
+                    if len(tokens) >= 256:
+                        calibration_dataset.append(text)
+                    if len(calibration_dataset) >= 256:
+                        break
+                quantization_config = dict(quantization_config)  # 拷贝，避免副作用
+                quantization_config["calibration_dataset"] = calibration_dataset
+                print(f"[INFO] Using large calibration dataset: {len(calibration_dataset)} samples.")
+            except Exception as e:
+                print(f"[WARN] Failed to auto-load large calibration dataset: {e}")
 
     def _validate_conversion_inputs(
         self,

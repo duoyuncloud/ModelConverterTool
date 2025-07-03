@@ -58,7 +58,12 @@ def cli():
 @click.argument("output_format")
 @click.option("--output-path", default=None, help="Path to save the converted model")
 @click.option("--model-type", default="auto", help="Model type (auto/text-generation/...)")
-def convert(input_model, output_format, output_path, model_type):
+@click.option(
+    "--use-large-calibration/--no-use-large-calibration",
+    default=False,
+    help="Use a large calibration dataset for high-precision quantization (slower, recommended for production)",
+)
+def convert(input_model, output_format, output_path, model_type, use_large_calibration):
     """Convert a model to the specified format."""
     import torch  # Only when needed
 
@@ -138,6 +143,7 @@ def convert(input_model, output_format, output_path, model_type):
             model_type=model_type,
             device=device,
             validate=True,
+            use_large_calibration=use_large_calibration,
         )
 
         if result.get("success"):

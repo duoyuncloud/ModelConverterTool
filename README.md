@@ -49,18 +49,31 @@ model-converter convert gpt2 hf --output-path ./outputs/gpt2_hf
 
 ### 2. Quantization
 
-Using `sshleifer/tiny-gpt2` for faster testing:
+Using `facebook/opt-125m` for quick testing:
 
 ```bash
-# GPTQ quantization
-model-converter convert sshleifer/tiny-gpt2 gptq --output-path ./outputs/tiny_gpt2_gptq
+# GPTQ quantization (quick test, 默认小校准集)
+model-converter convert facebook/opt-125m gptq --output-path ./outputs/opt_125m_gptq
 
-# AWQ quantization
-model-converter convert sshleifer/tiny-gpt2 gptq --output-path ./outputs/tiny_gpt2_gptq
+# AWQ quantization (quick test, 默认小校准集)
+model-converter convert facebook/opt-125m awq --output-path ./outputs/opt_125m_awq
 
 # GGUF with quantization
-model-converter convert sshleifer/tiny-gpt2 gguf --output-path ./outputs/tiny_gpt2_q4.gguf
+model-converter convert facebook/opt-125m gguf --output-path ./outputs/opt_125m_q4.gguf
 ```
+
+#### High-Precision Quantization (CLI)
+
+For best quantization quality, you can enable automatic large calibration dataset (256 samples from WikiText-103, each >256 tokens) via CLI:
+
+```bash
+# GPTQ high-precision
+model-converter convert facebook/opt-125m gptq --output-path ./outputs/opt_125m_gptq --use-large-calibration
+# AWQ high-precision
+model-converter convert facebook/opt-125m awq --output-path ./outputs/opt_125m_awq --use-large-calibration
+```
+
+- `--use-large-calibration` will automatically use a large, high-quality calibration dataset for quantization (slower, recommended for production or final model export).
 
 ### 3. Batch Conversion
 
@@ -144,6 +157,62 @@ for fmt in formats:
         device="cpu",
         validate=True
     )
+
+# --- Quantization Examples ---
+# Quick quantization (default small calibration set, for testing)
+result = converter.convert(
+    input_source="facebook/opt-125m",
+    output_format="gptq",
+    output_path="outputs/opt_125m_gptq_quantized",
+    model_type="text-generation",
+    device="auto",
+    validate=True,
+    quantization_config={
+        "damp_percent": 0.015,
+        # No calibration_dataset: uses small built-in set
+    }
+)
+
+# AWQ quick quantization
+result = converter.convert(
+    input_source="facebook/opt-125m",
+    output_format="awq",
+    output_path="outputs/opt_125m_awq_quantized",
+    model_type="text-generation",
+    device="auto",
+    validate=True,
+    quantization_config={
+        "damp_percent": 0.015,
+    }
+)
+
+# High-precision quantization (auto large calibration set, for production)
+result = converter.convert(
+    input_source="facebook/opt-125m",
+    output_format="gptq",
+    output_path="outputs/opt_125m_gptq_quantized",
+    model_type="text-generation",
+    device="auto",
+    validate=True,
+    quantization_config={
+        "damp_percent": 0.015,
+    },
+    use_large_calibration=True,  # Enable large calibration dataset
+)
+
+# AWQ high-precision quantization
+result = converter.convert(
+    input_source="facebook/opt-125m",
+    output_format="awq",
+    output_path="outputs/opt_125m_awq_quantized",
+    model_type="text-generation",
+    device="auto",
+    validate=True,
+    quantization_config={
+        "damp_percent": 0.015,
+    },
+    use_large_calibration=True,
+)
 ```
 
 #### ModelConverter().batch_convert
