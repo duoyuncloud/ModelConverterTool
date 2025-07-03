@@ -11,6 +11,8 @@ import torch
 
 import pytest
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from model_converter_tool.converter import ModelConverter
 
 

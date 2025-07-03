@@ -7,6 +7,7 @@ Test batch conversion using gpt2 model with YAML configuration
 import os
 from pathlib import Path
 import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import pytest
 import yaml

@@ -47,6 +47,8 @@ is_ci = os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 't
 if sys.platform == 'darwin' and is_ci:
     pytest.skip('Skip quantization tests on macOS CI due to known ABI/runner issues', allow_module_level=True)
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 class TestQuantization:
     """Test quantization formats using opt-125m-local (local OPT-125M model)"""
 
