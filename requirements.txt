@@ -12,9 +12,6 @@ onnxruntime>=1.15.0
 # Optional: GGUF conversion
 llama-cpp-python>=0.2.0
 
-# Optional: MLX for Apple Silicon
-mlx>=0.0.8
-
 # Quantization libraries (install after torch)
 # These are optional and may fail if torch is not properly installed
 # gptqmodel  # 主要量化转换库，需在torch安装后单独pip install
@@ -61,4 +58,6 @@ evalplus
 # bitblas  # 仅部分高级量化/推理开发者需要，普通用户可忽略
 
 # For testing
-pytest>=7.0.0 
+pytest>=7.0.0
+
+random_word>=1.0.8 

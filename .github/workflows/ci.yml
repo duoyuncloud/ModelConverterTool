@@ -163,7 +163,7 @@ jobs:
 
       - name: Test CLI help
         run: |
-          model-converter --help
+          python -m model_converter_tool.cli --help
 
       - name: Test basic conversions
         run: pytest tests/test_basic_conversions.py -v
@@ -243,7 +243,7 @@ jobs:
 
       - name: Test CLI help
         run: |
-          model-converter --help
+          python -m model_converter_tool.cli --help
 
       - name: Test basic conversions
         run: pytest tests/test_basic_conversions.py -v

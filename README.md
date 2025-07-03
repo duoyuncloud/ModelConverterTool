@@ -20,6 +20,16 @@ cd ModelConverterTool
 pip install -e .
 ```
 
+> **MLX 支持（仅限 macOS arm64/Apple Silicon）：**
+> 如需使用 MLX 相关功能，请在 Apple Silicon Mac 上手动安装：
+> ```bash
+> pip install mlx
+> ```
+> 或（如支持 extra_requires）：
+> ```bash
+> pip install .[mlx]
+> ```
+
 ## 🎯 Quick Start
 
 ### 1. Basic Model Format Conversion
@@ -259,3 +269,14 @@ tasks = [
 
 results = converter.batch_convert(tasks, max_workers=2)
 ```
+
+## 常见问题（FAQ）
+
+### Q: Windows 下提示 'model-converter' 不是内部或外部命令？
+A: 可能是 Python 的 Scripts 目录未加入 PATH。可用如下命令代替：
+
+```sh
+python -m model_converter_tool.cli [参数]
+```
+
+其它平台如遇类似问题也可用此方法。
