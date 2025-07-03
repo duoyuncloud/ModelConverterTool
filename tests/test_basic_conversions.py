@@ -18,6 +18,7 @@ from transformers import AutoModel, AutoTokenizer
 
 from model_converter_tool.converter import ModelConverter
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 class TestBasicConversions:
     """Test basic model format conversions using gpt2"""
