@@ -117,6 +117,12 @@ jobs:
             *.log
           retention-days: 1
 
+      - name: Pre-download opt-125m model
+        run: |
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
+        env:
+          HF_HOME: ~/.cache/huggingface
+
   test-macos:
     runs-on: macos-latest
     timeout-minutes: 30
@@ -179,9 +185,9 @@ jobs:
         env:
           HF_HOME: ~/.cache/huggingface
 
-      - name: Pre-download gpt2 model
+      - name: Pre-download opt-125m model
         run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('gpt2')"
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
         env:
           HF_HOME: ~/.cache/huggingface
 
@@ -268,9 +274,9 @@ jobs:
         env:
           HF_HOME: ~/.cache/huggingface
 
-      - name: Pre-download gpt2 model
+      - name: Pre-download opt-125m model
         run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('gpt2')"
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
         env:
           HF_HOME: ~/.cache/huggingface
 
@@ -403,9 +409,9 @@ jobs:
         env:
           HF_HOME: ~/.cache/huggingface
 
-      - name: Pre-download gpt2 model
+      - name: Pre-download opt-125m model
         run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('gpt2')"
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
         env:
           HF_HOME: ~/.cache/huggingface
 
