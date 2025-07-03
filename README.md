@@ -270,6 +270,27 @@ tasks = [
 results = converter.batch_convert(tasks, max_workers=2)
 ```
 
+## 安装与使用建议
+
+- 推荐使用如下命令安装本工具包：
+
+```sh
+pip install .
+# 或
+pip install model-converter-tool
+```
+
+- 安装后可直接在命令行使用 `model-converter` 或在 Python 中 `import model_converter_tool`。
+
+- **不建议**直接运行源码目录下的测试脚本（如 `python tests/test_xxx.py`），否则可能遇到 `ModuleNotFoundError: No module named 'model_converter_tool'`。
+
+- 如遇 import 错误，可先执行 `pip install .`，或在测试脚本开头加：
+
+```python
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+```
+
 ## 常见问题（FAQ）
 
 ### Q: Windows 下提示 'model-converter' 不是内部或外部命令？
