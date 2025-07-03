@@ -6,6 +6,7 @@ Test batch conversion using gpt2 model with YAML configuration
 
 import os
 from pathlib import Path
+import sys
 
 import pytest
 import yaml
@@ -22,7 +23,7 @@ class TestBatchConversion:
     def setup(self):
         """Setup test environment"""
         self.converter = ModelConverter()
-        self.test_model = "gpt2"
+        self.test_model = "facebook/opt-125m"
         self.output_dir = Path("test_outputs/batch_conversion")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,13 +42,6 @@ class TestBatchConversion:
                     "input": self.test_model,
                     "output_format": "gguf",
                     "output_path": str(self.output_dir / "gpt2.gguf"),
-                    "model_type": "text-generation",
-                    "device": "auto",
-                },
-                "gpt2_to_mlx": {
-                    "input": self.test_model,
-                    "output_format": "mlx",
-                    "output_path": str(self.output_dir / "gpt2.mlx"),
                     "model_type": "text-generation",
                     "device": "auto",
                 },
@@ -81,6 +75,15 @@ class TestBatchConversion:
                 },
             }
         }
+        # 仅macOS下添加MLX任务
+        if sys.platform == "darwin":
+            config["models"]["gpt2_to_mlx"] = {
+                "input": self.test_model,
+                "output_format": "mlx",
+                "output_path": str(self.output_dir / "gpt2.mlx"),
+                "model_type": "text-generation",
+                "device": "auto",
+            }
         return config
 
     def test_batch_conversion_from_dict(self):
@@ -170,7 +173,7 @@ if __name__ == "__main__":
     import json
     output_dir = Path("test_outputs/batch_conversion")
     output_dir.mkdir(parents=True, exist_ok=True)
-    test_model = "gpt2"
+    test_model = "facebook/opt-125m"
     tasks = [
         {
             "input_source": test_model,

@@ -50,7 +50,7 @@ class TestQuantization:
     @pytest.fixture(autouse=True)
     def setup(self):
         self.converter = ModelConverter()
-        self.test_model = "opt-125m-local"
+        self.test_model = "facebook/opt-125m"
         self.output_dir = Path("test_outputs/quantization")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

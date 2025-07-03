@@ -95,9 +95,9 @@ class TestAPIUsage:
 
     def test_convert_with_quantization(self):
         for fmt in ["gptq", "awq"]:
-            output_path = str(self.output_dir / f"tiny_gpt2_{fmt}")
+            output_path = str(self.output_dir / f"opt_125m_{fmt}")
             result = self.converter.convert(
-                input_source="sshleifer/tiny-gpt2",
+                input_source="facebook/opt-125m",
                 output_format=fmt,
                 output_path=output_path,
                 model_type="text-generation",

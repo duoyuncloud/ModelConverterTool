@@ -76,14 +76,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install torch>=2.0.0
-          # Core quantization dependencies (only what's actually used)
+          pip install onnx onnxruntime click
           pip install gptqmodel>=0.1.0 || echo "gptqmodel install failed"
           pip install optimum[gptq] || echo "optimum[gptq] install failed"
-          # Core requirements
           pip install -r requirements.txt
-          # Additional dependencies for quantization
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
           pip install logbar || echo "logbar installation failed, continuing..."
+          # 仅macOS下安装mlx
+          if [[ "$(uname)" == "Darwin" ]]; then pip install mlx; fi
+
+      - name: Pre-download opt-125m model
+        run: |
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
+        env:
+          HF_HOME: ~/.cache/huggingface
 
       - name: Test package installation
         run: |
@@ -95,16 +101,16 @@ jobs:
           model-converter --help
 
       - name: Test basic conversions
-        run: pytest tests/test_basic_conversions.py -v || echo "Basic conversions test failed, continuing..."
+        run: pytest tests/test_basic_conversions.py -v
 
       - name: Test quantization
-        run: pytest tests/test_quantization.py -v || echo "Quantization test failed, continuing..."
+        run: pytest tests/test_quantization.py -v
 
       - name: Test batch conversion
-        run: pytest tests/test_batch_conversion.py -v || echo "Batch conversion test failed, continuing..."
+        run: pytest tests/test_batch_conversion.py -v
 
       - name: Test API usage
-        run: pytest tests/test_api_usage.py -v || echo "API usage test failed, continuing..."
+        run: pytest tests/test_api_usage.py -v
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
@@ -116,12 +122,6 @@ jobs:
             .pytest_cache/
             *.log
           retention-days: 1
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
-        env:
-          HF_HOME: ~/.cache/huggingface
 
   test-macos:
     runs-on: macos-latest
@@ -148,14 +148,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install torch>=2.0.0
-          # Core quantization dependencies (only what's actually used)
+          pip install onnx onnxruntime click
           pip install gptqmodel>=0.1.0 || echo "gptqmodel install failed"
           pip install optimum[gptq] || echo "optimum[gptq] install failed"
-          # Core requirements
           pip install -r requirements.txt
-          # Additional dependencies for quantization
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
           pip install logbar || echo "logbar installation failed, continuing..."
+          # 仅macOS下安装mlx
+          if [[ "$(uname)" == "Darwin" ]]; then pip install mlx; fi
+
+      - name: Pre-download opt-125m model
+        run: |
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
+        env:
+          HF_HOME: ~/.cache/huggingface
 
       - name: Test package installation
         run: |
@@ -167,27 +173,21 @@ jobs:
           model-converter --help
 
       - name: Test basic conversions
-        run: pytest tests/test_basic_conversions.py -v || echo "Basic conversions test failed, continuing..."
+        run: pytest tests/test_basic_conversions.py -v
 
       - name: Test quantization
-        run: pytest tests/test_quantization.py -v || echo "Quantization test failed, continuing..."
+        run: pytest tests/test_quantization.py -v
 
       - name: Test batch conversion
-        run: pytest tests/test_batch_conversion.py -v || echo "Batch conversion test failed, continuing..."
+        run: pytest tests/test_batch_conversion.py -v
 
       - name: Test API usage
-        run: pytest tests/test_api_usage.py -v || echo "API usage test failed, continuing..."
+        run: pytest tests/test_api_usage.py -v
 
       - name: Set up Hugging Face cache
         run: |
           mkdir -p ~/.cache/huggingface
         shell: bash
-        env:
-          HF_HOME: ~/.cache/huggingface
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
         env:
           HF_HOME: ~/.cache/huggingface
 
@@ -237,14 +237,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install torch>=2.0.0
-          # Core quantization dependencies (only what's actually used)
+          pip install onnx onnxruntime click
           pip install gptqmodel>=0.1.0 || echo "gptqmodel install failed"
           pip install optimum[gptq] || echo "optimum[gptq] install failed"
-          # Core requirements
           pip install -r requirements.txt
-          # Additional dependencies for quantization
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
           pip install logbar || echo "logbar installation failed, continuing..."
+
+      - name: Pre-download opt-125m model
+        run: |
+          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
+        env:
+          HF_HOME: ~/.cache/huggingface
 
       - name: Test package installation
         run: |
@@ -256,27 +260,21 @@ jobs:
           model-converter --help
 
       - name: Test basic conversions
-        run: pytest tests/test_basic_conversions.py -v || echo "Basic conversions test failed, continuing..."
+        run: pytest tests/test_basic_conversions.py -v
 
       - name: Test quantization
-        run: pytest tests/test_quantization.py -v || echo "Quantization test failed, continuing..."
+        run: pytest tests/test_quantization.py -v
 
       - name: Test batch conversion
-        run: pytest tests/test_batch_conversion.py -v || echo "Batch conversion test failed, continuing..."
+        run: pytest tests/test_batch_conversion.py -v
 
       - name: Test API usage
-        run: pytest tests/test_api_usage.py -v || echo "API usage test failed, continuing..."
+        run: pytest tests/test_api_usage.py -v
 
       - name: Set up Hugging Face cache
         run: |
           mkdir -p ~/.cache/huggingface
         shell: bash
-        env:
-          HF_HOME: ~/.cache/huggingface
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
         env:
           HF_HOME: ~/.cache/huggingface
 
