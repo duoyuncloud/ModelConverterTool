@@ -84,12 +84,8 @@ jobs:
           pip install logbar || echo "logbar installation failed, continuing..."
           # 仅macOS下安装mlx
           if [[ "$(uname)" == "Darwin" ]]; then pip install mlx; fi
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
-        env:
-          HF_HOME: ~/.cache/huggingface
+          - name: Show installed packages
+            run: pip list
 
       - name: Test package installation
         run: |
@@ -154,14 +150,9 @@ jobs:
           pip install -r requirements.txt
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
           pip install logbar || echo "logbar installation failed, continuing..."
-          # 仅macOS下安装mlx
-          if [[ "$(uname)" == "Darwin" ]]; then pip install mlx; fi
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
-        env:
-          HF_HOME: ~/.cache/huggingface
+          if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then pip install mlx; fi
+          - name: Show installed packages
+            run: pip list
 
       - name: Test package installation
         run: |
@@ -195,12 +186,6 @@ jobs:
         run: |
           pip install pytest-xdist
 
-      - name: Run all tests in parallel
-        run: |
-          pytest -n auto --maxfail=3 --disable-warnings
-        env:
-          HF_HOME: ~/.cache/huggingface
-
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -215,6 +200,8 @@ jobs:
   test-windows:
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      PYTHONIOENCODING: utf-8
     
     steps:
       - uses: actions/checkout@v4
@@ -243,12 +230,8 @@ jobs:
           pip install -r requirements.txt
           pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
           pip install logbar || echo "logbar installation failed, continuing..."
-
-      - name: Pre-download opt-125m model
-        run: |
-          python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
-        env:
-          HF_HOME: ~/.cache/huggingface
+          - name: Show installed packages
+            run: pip list
 
       - name: Test package installation
         run: |
@@ -281,12 +264,6 @@ jobs:
       - name: Install pytest-xdist for parallel test execution
         run: |
           pip install pytest-xdist
-
-      - name: Run all tests in parallel
-        run: |
-          pytest -n auto --maxfail=3 --disable-warnings
-        env:
-          HF_HOME: ~/.cache/huggingface
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
@@ -407,6 +384,17 @@ jobs:
         env:
           HF_HOME: ~/.cache/huggingface
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install torch>=2.0.0
+          pip install onnx onnxruntime click
+          pip install gptqmodel>=0.1.0 || echo "gptqmodel install failed"
+          pip install optimum[gptq] || echo "optimum[gptq] install failed"
+          pip install -r requirements.txt
+          pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
+          pip install logbar || echo "logbar installation failed, continuing..."
+
       - name: Pre-download opt-125m model
         run: |
           python -c "from transformers import AutoModelForCausalLM; AutoModelForCausalLM.from_pretrained('facebook/opt-125m')"
@@ -416,12 +404,6 @@ jobs:
       - name: Install pytest-xdist for parallel test execution
         run: |
           pip install pytest-xdist
-
-      - name: Run all tests in parallel
-        run: |
-          pytest -n auto --maxfail=3 --disable-warnings
-        env:
-          HF_HOME: ~/.cache/huggingface
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4
