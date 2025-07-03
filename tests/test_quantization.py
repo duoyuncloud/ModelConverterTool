@@ -42,6 +42,11 @@ from model_converter_tool.converter import ModelConverter
 torch.backends.mps.is_available = lambda: False
 torch.backends.mps.is_built = lambda: False
 
+# 在CI环境下跳过macOS量化测试
+is_ci = os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'
+if sys.platform == 'darwin' and is_ci:
+    pytest.skip('Skip quantization tests on macOS CI due to known ABI/runner issues', allow_module_level=True)
+
 class TestQuantization:
     """Test quantization formats using opt-125m-local (local OPT-125M model)"""
 

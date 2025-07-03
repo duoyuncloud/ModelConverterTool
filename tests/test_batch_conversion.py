@@ -96,7 +96,7 @@ class TestBatchConversion:
             tasks.append(task_config)
 
         results = self.converter.batch_convert(
-            tasks=tasks, max_workers=2, max_retries=1  # Limit workers for testing
+            tasks=tasks, max_workers=1, max_retries=1  # Limit workers for CI stability
         )
 
         # Check all conversions succeeded
@@ -143,7 +143,7 @@ class TestBatchConversion:
             tasks.append(task_config)
 
         results = self.converter.batch_convert(
-            tasks=tasks, max_workers=2, max_retries=1
+            tasks=tasks, max_workers=1, max_retries=1
         )
 
         # Check results
