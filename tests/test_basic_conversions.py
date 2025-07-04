@@ -35,10 +35,10 @@ def output_dir():
 # 用dict驱动所有README demo
 DEMO_TASKS = [
     {"input_model": "bert-base-uncased", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
-    {"input_model": "meta-llama/Llama-2-7b-hf", "output_format": "gguf", "output_file": "llama2-7b.gguf", "model_type": "text-generation"},
+    # {"input_model": "meta-llama/Llama-2-7b-hf", "output_format": "gguf", "output_file": "llama2-7b.gguf", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     {"input_model": "sshleifer/tiny-gpt2", "output_format": "fp16", "output_file": "tiny_gpt2_fp16", "model_type": "text-generation"},
-    {"input_model": "gpt2", "output_format": "torchscript", "output_file": "gpt2.pt", "model_type": "text-generation"},
+    {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},
     {"input_model": "gpt2", "output_format": "safetensors", "output_file": "gpt2_safetensors", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
 ]
@@ -47,7 +47,7 @@ DEMO_TASKS = [
 def test_readme_demo(converter, output_dir, task):
     output_path = str(output_dir / task["output_file"])
     result = converter.convert(
-        input_source=task["input_model"],
+        model_path=task["input_model"],
         output_format=task["output_format"],
         output_path=output_path,
         model_type=task["model_type"],

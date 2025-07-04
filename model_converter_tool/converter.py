@@ -41,11 +41,11 @@ class ModelConverter:
     """
     def convert(
         self,
-        model: Any,
-        tokenizer: Any,
-        model_name: str,
-        output_format: str,
-        output_path: str,
+        model: Any = None,
+        tokenizer: Any = None,
+        model_name: str = None,
+        output_format: str = None,
+        output_path: str = None,
         model_type: str = "auto",
         device: str = "auto",
         quantization: Optional[str] = None,
@@ -54,9 +54,9 @@ class ModelConverter:
         """
         Convert a model to the specified format.
         Args:
-            model: 已加载的模型对象
-            tokenizer: 已加载的分词器对象
-            model_name: 源模型名称或路径
+            model: 已加载的模型对象（可选）
+            tokenizer: 已加载的分词器对象（可选）
+            model_name: 源模型名称或路径（可选，若未传model/tokenizer则自动加载）
             output_format: 目标格式
             output_path: 输出路径
             model_type: 模型类型
@@ -68,6 +68,11 @@ class ModelConverter:
         """
         result = ConversionResult(success=False)
         try:
+            # 自动加载 transformers 模型和分词器
+            if (model is None or tokenizer is None) and model_name is not None:
+                from transformers import AutoModel, AutoTokenizer
+                model = AutoModel.from_pretrained(model_name)
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
             if output_format in CONVERTERS:
                 convert_func = CONVERTERS[output_format]["convert"]
                 validate_func = CONVERTERS[output_format]["validate"]

@@ -66,7 +66,7 @@ def output_dir():
 def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization):
     output_path = str(output_dir / output_file)
     result = converter.convert(
-        input_source=input_model,
+        model_name=input_model,
         output_format=output_format,
         output_path=output_path,
         model_type="text-generation",
