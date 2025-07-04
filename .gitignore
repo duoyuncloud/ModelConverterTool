@@ -14,27 +14,12 @@ dump.rdb
 
 # 忽略 Python 编译文件
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
+*.pyc
+*.pyo
+*.pyd
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+venv/
+temp/
 
 # Virtual environments
 venv311/
@@ -119,3 +104,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Uploads
+uploads/

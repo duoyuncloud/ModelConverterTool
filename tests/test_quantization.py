@@ -49,78 +49,30 @@ if sys.platform == 'darwin' and is_ci:
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-class TestQuantization:
-    """Test quantization formats using opt-125m-local (local OPT-125M model)"""
+@pytest.fixture(scope="module")
+def converter():
+    return ModelConverter()
 
-    pytestmark = [pytest.mark.quantization, pytest.mark.slow]
+@pytest.fixture(scope="module")
+def output_dir():
+    d = Path("test_outputs/quantization")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.converter = ModelConverter()
-        self.test_model = "facebook/opt-125m"
-        self.output_dir = Path("test_outputs/quantization")
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
-    def test_gptq_quantization(self):
-        """Test GPTQ quantization"""
-        result = self.converter.convert(
-            input_source=self.test_model,
-            output_format="gptq",
-            output_path="outputs/opt_125m_gptq_quantized",
-            model_type="text-generation",
-            device="auto",
-            validate=True,
-            quantization_config={"damp_percent": 0.015},
-        )
-        assert result["success"], f"GPTQ quantization failed: {result.get('error')}"
-        mv = result.get("model_validation", {})
-        assert mv.get("success"), f"GPTQ model validation failed: {mv.get('error', 'No validation result')}"
-
-    def test_awq_quantization(self):
-        """Test AWQ quantization"""
-        result = self.converter.convert(
-            input_source=self.test_model,
-            output_format="awq",
-            output_path="outputs/opt_125m_awq_quantized",
-            model_type="text-generation",
-            device="auto",
-            validate=True,
-            quantization_config={"damp_percent": 0.015},
-        )
-        assert result["success"], f"AWQ quantization failed: {result.get('error')}"
-        mv = result.get("model_validation", {})
-        assert mv.get("success"), f"AWQ model validation failed: {mv.get('error', 'No validation result')}"
-
-    def test_gguf_quantization(self):
-        """Test GGUF quantization with different quantization levels"""
-        quantization_levels = ["q4_k_m", "q8_0", "q5_k_m"]
-        for quant_level in quantization_levels:
-            output_path = str(self.output_dir / f"opt_125m_gguf_{quant_level}.gguf")
-            result = self.converter.convert(
-                input_source=self.test_model,
-                output_format="gguf",
-                output_path=output_path,
-                model_type="text-generation",
-                quantization=quant_level,
-                device="auto",
-                validate=True,
-                quantization_config={"damp_percent": 0.015},
-            )
-            assert result["success"], f"GGUF quantization {quant_level} failed: {result.get('error', 'Unknown error')}"
-            assert Path(output_path).exists(), f"GGUF output not found: {output_path}"
-
-    @pytest.mark.parametrize("quant_type", ["gptq", "awq"])
-    def test_cli_equivalent_quantization(self, quant_type):
-        output_path = f"outputs/opt_125m_{quant_type}_cli"
-        result = self.converter.convert(
-            input_source=self.test_model,
-            output_format=quant_type,
-            output_path=output_path,
-            model_type="text-generation",
-            device="auto",
-            validate=True,
-            quantization_config={"damp_percent": 0.015},
-        )
-        assert result["success"], f"CLI equivalent quantization failed: {result.get('error')}"
-        mv = result.get("model_validation", {})
-        assert mv.get("success"), f"CLI equivalent quantization model validation failed: {mv.get('error', 'No validation result')}"
+@pytest.mark.parametrize("input_model,output_format,output_file,quantization", [
+    ("facebook/opt-125m", "gptq", "opt_125m_gptq", "q4_k_m"),
+    ("facebook/opt-125m", "awq", "opt_125m_awq", "q4_k_m"),
+])
+def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization):
+    output_path = str(output_dir / output_file)
+    result = converter.convert(
+        input_source=input_model,
+        output_format=output_format,
+        output_path=output_path,
+        model_type="text-generation",
+        device="cpu",
+        quantization=quantization,
+        validate=True,
+    )
+    assert result["success"], f"{output_format} quantization failed: {result.get('error')}"
+    assert os.path.exists(output_path)

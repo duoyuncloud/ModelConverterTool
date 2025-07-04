@@ -4,9 +4,11 @@ Configuration management for the model converter tool
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
+import os
+import logging
 
 
 @dataclass
@@ -273,3 +275,6 @@ class PresetManager:
     def load_presets(self) -> Dict[str, Any]:
         """Load model presets from file"""
         return {preset["name"]: preset for preset in self.presets}
+
+
+# 移除重复的空函数定义

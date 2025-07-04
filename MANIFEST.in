@@ -1,9 +1,8 @@
 include README.md
-include requirements.txt
+recursive-include configs *.yaml
 include pyproject.toml
 include setup.py
 recursive-include model_converter_tool *.py
-recursive-include configs *.yaml
 recursive-include configs *.yml
 global-exclude __pycache__
 global-exclude *.pyc

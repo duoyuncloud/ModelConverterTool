@@ -60,4 +60,7 @@ evalplus
 # For testing
 pytest>=7.0.0
 
-random_word>=1.0.8 
+random_word>=1.0.8
+
+# 在此处填写你的主依赖包，例如：
+numpy 

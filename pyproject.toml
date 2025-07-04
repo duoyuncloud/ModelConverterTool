@@ -1,27 +1,15 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "model-converter-tool"
-version = "1.0.0"
-description = "A comprehensive tool for converting between different model formats"
-authors = [{name = "Model Converter Team"}]
+name = "model_converter_tool"
+version = "0.1.0"
+description = "A tool for converting machine learning models between formats."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dependencies = [
-    "torch>=2.0.0",
-    "transformers>=4.30.0",
-    "tokenizers>=0.13.0",
-    "accelerate>=0.20.0",
-    "safetensors>=0.4.0",
-    "numpy>=1.21.0",
-    "tqdm>=4.64.0",
-    "onnx>=1.14.0",
-    "onnxruntime>=1.15.0",
-    "llama-cpp-python>=0.2.0",
-    "mlx>=0.0.8",
-    "gptqmodel>=0.1.0",
+    # 在此处填写你的依赖包，例如 "torch", "transformers", ...
 ]
 
 [project.optional-dependencies]
@@ -36,7 +24,7 @@ dev = [
 test = ["pytest"]
 
 [project.scripts]
-model-converter = "model_converter_tool.cli:cli"
+model-converter = "model_converter_tool.cli:app"
 
 # Package discovery is now handled by setup.cfg
 
