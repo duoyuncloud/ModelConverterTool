@@ -90,7 +90,7 @@ model-converter convert facebook/opt-125m gptq --output-path ./outputs/opt_125m_
 model-converter convert facebook/opt-125m awq --output-path ./outputs/opt_125m_awq
 
 # GGUF with quantization
-model-converter convert facebook/opt-125m gguf --output-path ./outputs/opt_125m_q4.gguf
+#model-converter convert facebook/opt-125m gguf --output-path ./outputs/opt_125m_q4.gguf
 ```
 
 ### 3. Batch Conversion (YAML)
