@@ -47,7 +47,7 @@ DEMO_TASKS = [
 def test_readme_demo(converter, output_dir, task):
     output_path = str(output_dir / task["output_file"])
     result = converter.convert(
-        model_path=task["input_model"],
+        input_source=task["input_model"],
         output_format=task["output_format"],
         output_path=output_path,
         model_type=task["model_type"],
