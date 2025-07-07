@@ -19,7 +19,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # 先安装基础依赖
           pip install -e .
+          # 再安装重型依赖
+          pip install torch>=2.0.0 transformers>=4.30.0 onnx>=1.14.0 onnxruntime>=1.15.0 gptqmodel>=0.1.0
 
       - name: Run all tests
         run: pytest --maxfail=1 --disable-warnings -v 
