@@ -38,6 +38,7 @@ class ConversionPlan:
     model_type: str = "auto"
     device: str = "auto"
     quantization: Optional[str] = None
+    use_large_calibration: bool = False
     is_valid: bool = True
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -153,6 +154,7 @@ class ModelConverterAPI:
             model_type=kwargs.get("model_type", "auto"),
             device=kwargs.get("device", "auto"),
             quantization=kwargs.get("quantization"),
+            use_large_calibration=kwargs.get("use_large_calibration", False),
             is_valid=validation["valid"],
             errors=validation["errors"],
             warnings=validation["warnings"]
@@ -237,7 +239,8 @@ class ModelConverterAPI:
                 output_path=plan.output_path,
                 model_type=plan.model_type,
                 device=plan.device,
-                quantization=plan.quantization
+                quantization=plan.quantization,
+                use_large_calibration=plan.use_large_calibration
             )
             
             if track_progress:

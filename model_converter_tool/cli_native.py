@@ -99,7 +99,8 @@ def plan(
     output_path: str = typer.Option(..., "--output", "-o", help="Output file path"),
     model_type: str = typer.Option("auto", "--type", "-t", help="Model type"),
     device: str = typer.Option("auto", "--device", "-d", help="Target device"),
-    quantization: Optional[str] = typer.Option(None, "--quantization", "-q", help="Quantization parameters")
+    quantization: Optional[str] = typer.Option(None, "--quantization", "-q", help="Quantization parameters"),
+    use_large_calibration: bool = typer.Option(False, "--use-large-calibration", help="Use large calibration dataset for better quantization quality (GPTQ/AWQ only)")
 ):
     """
     Create a conversion plan without executing it.
@@ -118,7 +119,8 @@ def plan(
             output_path=output_path,
             model_type=model_type,
             device=device,
-            quantization=quantization
+            quantization=quantization,
+            use_large_calibration=use_large_calibration
         )
     
     # Display plan
@@ -130,7 +132,8 @@ def plan(
             f"[bold]Format:[/bold] {plan.output_format}\n"
             f"[bold]Type:[/bold] {plan.model_type}\n"
             f"[bold]Device:[/bold] {plan.device}\n"
-            f"[bold]Quantization:[/bold] {plan.quantization or 'None'}",
+            f"[bold]Quantization:[/bold] {plan.quantization or 'None'}\n"
+            f"[bold]Large Calibration:[/bold] {'Yes' if getattr(plan, 'use_large_calibration', False) else 'No'}",
             title="Conversion Plan",
             border_style="green"
         ))
@@ -159,6 +162,7 @@ def execute(
     model_type: str = typer.Option("auto", "--type", "-t", help="Model type"),
     device: str = typer.Option("auto", "--device", "-d", help="Target device"),
     quantization: Optional[str] = typer.Option(None, "--quantization", "-q", help="Quantization parameters"),
+    use_large_calibration: bool = typer.Option(False, "--use-large-calibration", help="Use large calibration dataset for better quantization quality (GPTQ/AWQ only)"),
     skip_plan: bool = typer.Option(False, "--skip-plan", help="Skip planning phase")
 ):
     """
@@ -180,7 +184,8 @@ def execute(
                 output_path=output_path,
                 model_type=model_type,
                 device=device,
-                quantization=quantization
+                quantization=quantization,
+                use_large_calibration=use_large_calibration
             )
         
         if not plan.is_valid:
@@ -199,7 +204,8 @@ def execute(
             output_path=output_path,
             model_type=model_type,
             device=device,
-            quantization=quantization
+            quantization=quantization,
+            use_large_calibration=use_large_calibration
         )
     
     # Execute conversion with progress
@@ -235,6 +241,7 @@ def convert(
     model_type: str = typer.Option("auto", "--type", "-t", help="Model type"),
     device: str = typer.Option("auto", "--device", "-d", help="Target device"),
     quantization: Optional[str] = typer.Option(None, "--quantization", "-q", help="Quantization parameters"),
+    use_large_calibration: bool = typer.Option(False, "--use-large-calibration", help="Use large calibration dataset for better quantization quality (GPTQ/AWQ only)"),
     plan_only: bool = typer.Option(False, "--plan-only", help="Only show conversion plan")
 ):
     """
@@ -255,7 +262,8 @@ def convert(
             output_path=output_path,
             model_type=model_type,
             device=device,
-            quantization=quantization
+            quantization=quantization,
+            use_large_calibration=use_large_calibration
         )
     else:
         # Execute directly
@@ -266,6 +274,7 @@ def convert(
             model_type=model_type,
             device=device,
             quantization=quantization,
+            use_large_calibration=use_large_calibration,
             skip_plan=True
         )
 

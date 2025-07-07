@@ -119,6 +119,9 @@ model-converter execute gpt2 gptq --output ./gpt2-4bit.safetensors --quantizatio
 
 # Use large calibration set (for quantization)
 model-converter plan facebook/opt-125m gptq --output ./opt_125m_gptq --quantization 4bit --use-large-calibration
+
+# Execute with large calibration
+model-converter execute facebook/opt-125m gptq --output ./opt_125m_gptq --quantization 4bit --use-large-calibration
 ```
 
 ### 6. 常用转换示例（Basic Conversion & Quantization）
@@ -154,8 +157,14 @@ model-converter convert gpt2 hf --output ./outputs/gpt2_hf
 # GPTQ 量化 (4bit)
 model-converter convert facebook/opt-125m gptq --output ./outputs/opt_125m_gptq --quantization 4bit
 
+# GPTQ 量化 (4bit) - 使用大校准集提高质量
+model-converter convert facebook/opt-125m gptq --output ./outputs/opt_125m_gptq_high_quality --quantization 4bit --use-large-calibration
+
 # AWQ 量化 (4bit)
 model-converter convert facebook/opt-125m awq --output ./outputs/opt_125m_awq --quantization 4bit
+
+# AWQ 量化 (4bit) - 使用大校准集提高质量
+model-converter convert facebook/opt-125m awq --output ./outputs/opt_125m_awq_high_quality --quantization 4bit --use-large-calibration
 
 # GGUF 量化
 model-converter convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --quantization q4_k_m
@@ -163,6 +172,11 @@ model-converter convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outpu
 # MLX 量化
 model-converter convert gpt2 mlx --output ./outputs/gpt2.mlx --quantization q4_k_m
 ```
+
+**量化质量说明：**
+- `--use-large-calibration`: 使用更大的校准数据集进行量化，可以提高量化质量但会增加转换时间
+- 适用于 GPTQ 和 AWQ 量化格式
+- 建议在追求高质量量化时使用此选项
 
 ### 7. Batch Conversion
 
@@ -191,6 +205,14 @@ tasks:
     quantization: "q4_k_m"
     model_type: "text-generation"
     device: "cpu"
+  
+  - model_path: "facebook/opt-125m"
+    output_format: "gptq"
+    output_path: "./outputs/opt_125m_gptq_high_quality"
+    quantization: "4bit"
+    model_type: "text-generation"
+    device: "cpu"
+    use_large_calibration: true
 ```
 
 #### Batch Commands
