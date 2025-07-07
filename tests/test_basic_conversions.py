@@ -14,7 +14,6 @@ import numpy as np
 import onnx
 import onnxruntime
 import pytest
-import torch
 from transformers import AutoModel, AutoTokenizer
 
 from model_converter_tool.converter import ModelConverter

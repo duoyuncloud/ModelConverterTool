@@ -10,12 +10,8 @@ from pathlib import Path
 import platform
 
 import pytest
-import torch
 
 from model_converter_tool.converter import ModelConverter
-
-torch.backends.mps.is_available = lambda: False
-torch.backends.mps.is_built = lambda: False
 
 # 在CI环境下跳过macOS量化测试
 is_ci = os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'

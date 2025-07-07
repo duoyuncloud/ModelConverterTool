@@ -10,8 +10,6 @@ import time
 from pathlib import Path
 from typing import Any, Optional, Dict, List, Union, Tuple
 
-import torch
-
 logger = logging.getLogger(__name__)
 
 
