@@ -21,8 +21,8 @@ jobs:
         run: |
           # 先安装重型依赖，避免构建时导入错误
           pip install torch>=2.0.0 transformers>=4.30.0 onnx>=1.14.0 onnxruntime>=1.15.0 gptqmodel>=0.1.0
-          # 再安装项目包
-          pip install .
+          # 再安装项目包（开发模式，避免构建）
+          pip install -e .
 
       - name: Run all tests
         run: pytest --maxfail=1 --disable-warnings -v 
