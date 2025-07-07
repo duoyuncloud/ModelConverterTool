@@ -22,6 +22,8 @@ def get_dependencies():
         "onnx>=1.14.0",
         "onnxruntime>=1.15.0",
         "safetensors>=0.3.0",
+        # 量化相关依赖
+        "gptqmodel>=0.1.0",
     ]
     
     # Check if we're on Apple Silicon macOS

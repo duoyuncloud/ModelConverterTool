@@ -7,6 +7,7 @@ All tests use facebook/opt-125m for faster testing
 import os
 import sys
 from pathlib import Path
+import platform
 
 import pytest
 import torch
@@ -40,6 +41,10 @@ def output_dir():
     ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
 ])
 def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization, model_type):
+    # 自动跳过MLX测试（非Apple Silicon）
+    if output_format == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
+        pytest.skip("MLX only supported on Apple Silicon macOS")
+    
     output_path = str(output_dir / output_file)
     result = converter.convert(
         model_name=input_model,
