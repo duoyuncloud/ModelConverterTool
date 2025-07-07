@@ -1,2 +1,2 @@
 from .converter import ModelConverter, ConversionResult
-from .cli import app
+from .cli_native import app

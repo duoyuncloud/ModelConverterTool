@@ -71,15 +71,16 @@ def convert_to_mlx(
         # 加载模型
         try:
             if model is None:
+                from model_converter_tool.utils import load_model_with_cache
                 if model_type == "text-generation":
                     from transformers import AutoModelForCausalLM
-                    model = AutoModelForCausalLM.from_pretrained(model_name)
+                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
                 elif model_type == "text-classification":
                     from transformers import AutoModelForSequenceClassification
-                    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+                    model = load_model_with_cache(model_name, AutoModelForSequenceClassification)
                 else:
                     from transformers import AutoModel
-                    model = AutoModel.from_pretrained(model_name)
+                    model = load_model_with_cache(model_name, AutoModel)
         except Exception as e:
             logger.error(f"Failed to load model for MLX conversion: {e}")
             return False, None

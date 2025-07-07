@@ -46,8 +46,9 @@ def validate_hf_file(hf_dir: Path, _: any) -> bool:
             return False
         from transformers import AutoModel, AutoTokenizer
         import torch
-        model = AutoModel.from_pretrained(str(hf_dir))
-        tokenizer = AutoTokenizer.from_pretrained(str(hf_dir))
+        from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+        model = load_model_with_cache(str(hf_dir), AutoModel)
+        tokenizer = load_tokenizer_with_cache(str(hf_dir))
         inputs = tokenizer("hello world", return_tensors="pt")
         with torch.no_grad():
             _ = model(**inputs)

@@ -120,8 +120,11 @@ def convert_to_gguf(
             model_dir = model_name
             if not Path(model_name).exists():
                 temp_dir = tempfile.mkdtemp(prefix="hf_model_")
-                AutoModel.from_pretrained(model_name, cache_dir=temp_dir).save_pretrained(temp_dir)
-                AutoTokenizer.from_pretrained(model_name, cache_dir=temp_dir).save_pretrained(temp_dir)
+                from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+                model = load_model_with_cache(model_name, cache_dir=temp_dir)
+                tokenizer = load_tokenizer_with_cache(model_name, cache_dir=temp_dir)
+                model.save_pretrained(temp_dir)
+                tokenizer.save_pretrained(temp_dir)
                 model_dir = temp_dir
             # 检查脚本参数
             import subprocess
@@ -176,8 +179,9 @@ def convert_to_gguf(
             from transformers import AutoModel, AutoTokenizer
             temp_dir = output_dir / "temp_model"
             temp_dir.mkdir(exist_ok=True)
-            model = AutoModel.from_pretrained(model_name)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+            model = load_model_with_cache(model_name)
+            tokenizer = load_tokenizer_with_cache(model_name)
             model.save_pretrained(str(temp_dir), safe_serialization=False)
             tokenizer.save_pretrained(str(temp_dir))
             try:

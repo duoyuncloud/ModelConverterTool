@@ -1,22 +1,111 @@
-# Batch conversion configuration template (matches README demo)
-# Edit this file and run with batch_convert_from_yaml
+# 批量模型转换配置文件模板
+# 支持多种输入输出格式的转换任务
 
-models:
-  bert_to_onnx:
-    input: "bert-base-uncased"
+# 任务列表
+tasks:
+  # 示例 1: Hugging Face -> GGUF (量化)
+  - model_path: "meta-llama/Llama-2-7b-hf"
+    output_format: "gguf"
+    output_path: "./outputs/llama2-7b-q4_k_m.gguf"
+    model_type: "text-generation"
+    quantization: "q4_k_m"
+    device: "auto"
+    use_large_calibration: false
+
+  # 示例 2: Hugging Face -> ONNX (跨平台推理)
+  - model_path: "bert-base-uncased"
     output_format: "onnx"
-    output_path: "outputs/bert.onnx"
-    model_type: "feature-extraction"
-    device: "cpu"
-  tiny_gpt2_to_fp16:
-    input: "sshleifer/tiny-gpt2"
-    output_format: "fp16"
-    output_path: "outputs/tiny_gpt2_fp16"
+    output_path: "./outputs/bert-base-uncased.onnx"
+    model_type: "text-classification"
+    device: "auto"
+
+  # 示例 3: Hugging Face -> MLX (Apple Silicon 优化)
+  - model_path: "microsoft/DialoGPT-medium"
+    output_format: "mlx"
+    output_path: "./outputs/dialogpt-medium.mlx"
     model_type: "text-generation"
-    device: "cpu"
-  gpt2_to_torchscript:
-    input: "gpt2"
+    quantization: "q4_k_m"
+    device: "auto"
+
+  # 示例 4: Hugging Face -> GPTQ (GPU 量化)
+  - model_path: "gpt2"
+    output_format: "gptq"
+    output_path: "./outputs/gpt2-4bit.safetensors"
+    model_type: "text-generation"
+    quantization: "4bit"
+    device: "cuda"
+    use_large_calibration: true
+
+  # 示例 5: Hugging Face -> AWQ (激活感知量化)
+  - model_path: "microsoft/DialoGPT-small"
+    output_format: "awq"
+    output_path: "./outputs/dialogpt-small-awq.safetensors"
+    model_type: "text-generation"
+    quantization: "4bit"
+    device: "cuda"
+
+  # 示例 6: Hugging Face -> TorchScript (PyTorch 优化)
+  - model_path: "distilbert-base-uncased"
     output_format: "torchscript"
-    output_path: "outputs/gpt2.pt"
-    model_type: "text-generation"
-    device: "cpu"
+    output_path: "./outputs/distilbert-base-uncased.pt"
+    model_type: "text-classification"
+    device: "auto"
+
+  # 示例 7: Hugging Face -> FP16 (半精度)
+  - model_path: "t5-small"
+    output_format: "fp16"
+    output_path: "./outputs/t5-small-fp16.safetensors"
+    model_type: "text2text-generation"
+    device: "auto"
+
+  # 示例 8: Hugging Face -> SafeTensors (安全格式)
+  - model_path: "google/vit-base-patch16-224"
+    output_format: "safetensors"
+    output_path: "./outputs/vit-base-patch16-224.safetensors"
+    model_type: "image-classification"
+    device: "auto"
+
+# 全局配置 (可选)
+global_config:
+  max_workers: 2  # 并发数
+  max_retries: 3  # 重试次数
+  output_dir: "./outputs"  # 输出目录
+  log_level: "INFO"  # 日志级别
+
+# 格式说明:
+# 
+# 输入格式支持:
+# - huggingface: Hugging Face Transformers 格式 (包含 config.json 的目录)
+# - safetensors: SafeTensors 格式文件
+# - torchscript: TorchScript 格式文件 (.pt/.pth)
+# - onnx: ONNX 格式文件 (.onnx)
+# - gguf: GGUF 格式文件 (.gguf)
+#
+# 输出格式支持:
+# - onnx: ONNX 格式 - 跨平台推理标准
+# - gguf: GGUF 格式 - llama.cpp 优化格式 (支持量化)
+# - torchscript: TorchScript 格式 - PyTorch 优化
+# - fp16: FP16 半精度格式
+# - gptq: GPTQ 量化格式 (支持 4bit/8bit)
+# - awq: AWQ 量化格式 (支持 4bit/8bit)
+# - safetensors: SafeTensors 安全格式
+# - mlx: MLX 格式 - Apple Silicon 优化 (支持量化)
+#
+# 量化选项:
+# - GGUF: q4_k_m, q8_0, q5_k_m, q4_0, q4_1
+# - GPTQ: 4bit, 8bit
+# - AWQ: 4bit, 8bit
+# - MLX: q4_k_m, q8_0, q5_k_m
+#
+# 设备选项:
+# - auto: 自动检测
+# - cuda: NVIDIA GPU
+# - cpu: CPU
+# - mps: Apple Silicon GPU
+#
+# 模型类型:
+# - auto: 自动检测
+# - text-generation: 文本生成
+# - text-classification: 文本分类
+# - image-classification: 图像分类
+# - text2text-generation: 文本到文本生成

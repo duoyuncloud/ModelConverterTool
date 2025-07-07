@@ -209,3 +209,98 @@ def create_dummy_model(output_dir: str, **kwargs):
     
     logger.info(f"✅ Simple dummy model config generated at {output_dir}")
     logger.warning("⚠️  This is a test-only dummy model. Use real models in production.")
+
+
+def get_local_cache_path(model_name: str) -> str:
+    """
+    获取模型在本地缓存中的路径
+    
+    Args:
+        model_name: 模型名称（如 "TinyLlama/TinyLlama-1.1B-Chat-v1.0"）
+    
+    Returns:
+        本地缓存路径，如果不存在则返回原模型名称
+    """
+    import os
+    from pathlib import Path
+    
+    # 构建缓存目录路径
+    cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
+    model_cache_dir = cache_dir / f"models--{model_name.replace('/', '--')}"
+    
+    if not model_cache_dir.exists():
+        return model_name
+    
+    # 查找最新的快照
+    snapshots_dir = model_cache_dir / "snapshots"
+    if not snapshots_dir.exists():
+        return model_name
+    
+    # 获取最新的快照目录
+    snapshot_dirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
+    if not snapshot_dirs:
+        return model_name
+    
+    # 按修改时间排序，取最新的
+    latest_snapshot = max(snapshot_dirs, key=lambda x: x.stat().st_mtime)
+    
+    # 检查快照目录是否包含必要的文件
+    required_files = ["config.json", "model.safetensors", "tokenizer.json"]
+    if all((latest_snapshot / f).exists() for f in required_files):
+        logger.info(f"找到本地缓存: {latest_snapshot}")
+        return str(latest_snapshot)
+    
+    return model_name
+
+
+def load_model_with_cache(model_name: str, model_class=None, **kwargs):
+    """
+    统一的模型加载函数，优先使用本地缓存，如果缓存不完整则允许网络下载
+    
+    Args:
+        model_name: 模型名称或路径
+        model_class: 模型类（如 AutoModel, AutoModelForCausalLM 等）
+        **kwargs: 传递给 from_pretrained 的其他参数
+    
+    Returns:
+        加载的模型对象
+    """
+    if model_class is None:
+        from transformers import AutoModel
+        model_class = AutoModel
+    
+    # 尝试获取本地缓存路径
+    local_path = get_local_cache_path(model_name)
+    
+    try:
+        # 优先尝试使用本地缓存
+        logger.info(f"尝试从本地缓存加载模型: {local_path}")
+        return model_class.from_pretrained(local_path, local_files_only=True, **kwargs)
+    except Exception as e:
+        logger.warning(f"本地缓存不完整，尝试从网络加载: {model_name}")
+        return model_class.from_pretrained(model_name, **kwargs)
+
+
+def load_tokenizer_with_cache(model_name: str, **kwargs):
+    """
+    统一的tokenizer加载函数，优先使用本地缓存，如果缓存不完整则允许网络下载
+    
+    Args:
+        model_name: 模型名称或路径
+        **kwargs: 传递给 from_pretrained 的其他参数
+    
+    Returns:
+        加载的tokenizer对象
+    """
+    from transformers import AutoTokenizer
+    
+    # 尝试获取本地缓存路径
+    local_path = get_local_cache_path(model_name)
+    
+    try:
+        # 优先尝试使用本地缓存
+        logger.info(f"尝试从本地缓存加载tokenizer: {local_path}")
+        return AutoTokenizer.from_pretrained(local_path, local_files_only=True, **kwargs)
+    except Exception as e:
+        logger.warning(f"本地缓存不完整，尝试从网络加载tokenizer: {model_name}")
+        return AutoTokenizer.from_pretrained(model_name, **kwargs)

@@ -24,7 +24,7 @@ dev = [
 test = ["pytest"]
 
 [project.scripts]
-model-converter = "model_converter_tool.cli:app"
+model-converter = "model_converter_tool.cli_native:app"
 
 # Package discovery is now handled by setup.cfg
 
