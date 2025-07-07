@@ -52,7 +52,19 @@ model-converter = "model_converter_tool.cli_native:app"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["model_converter_tool*"]
-exclude = ["tests*", "docs*", "examples*", "venv*", "temp*", "outputs*", "uploads*", "model_cache*", "test_outputs*"]
+exclude = [
+    "tests*",
+    "docs*",
+    "examples*",
+    "venv*",
+    "temp*",
+    "outputs*",
+    "uploads*",
+    "model_cache*",
+    "test_outputs*",
+    "mlx-examples*",
+    "llama.cpp*"
+]
 
 [tool.isort]
 profile = "black"
@@ -102,5 +114,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.setuptools]
+include-package-data = false
 
  
