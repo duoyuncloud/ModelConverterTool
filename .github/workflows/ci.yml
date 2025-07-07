@@ -20,9 +20,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .
-          pip install -r requirements.txt
-          # 确保安装量化相关依赖
-          pip install gptqmodel
 
       - name: Run all tests
         run: pytest --maxfail=1 --disable-warnings -v 

@@ -23,11 +23,9 @@ else
 fi
 
 # Apple Silicon (macOS arm64) 下自动安装 mlx
-if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
-    echo "🍎 Detected Apple Silicon macOS, installing mlx for optimized inference..."
-    pip install mlx
-    echo "✅ mlx installed successfully for Apple Silicon optimization"
-elif [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "x86_64" ]]; then
+python install_mlx.py
+
+if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "x86_64" ]]; then
     echo "ℹ️  Detected Intel macOS - mlx is not available for Intel Macs"
     echo "   MLX features will be disabled. Consider using Apple Silicon for MLX support."
 elif [[ "$(uname -s)" == "Linux" ]]; then
