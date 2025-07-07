@@ -5,43 +5,8 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 
 logger = logging.getLogger(__name__)
 
-# 延迟导入引擎模块，避免在模块级别导入所有引擎
-def _get_converter_functions(output_format: str):
-    """延迟导入转换器函数"""
-    if output_format == "onnx":
-        from .engine.onnx import convert_to_onnx, validate_onnx_file
-        return convert_to_onnx, validate_onnx_file
-    elif output_format == "torchscript":
-        from .engine.torchscript import convert_to_torchscript, validate_torchscript_file
-        return convert_to_torchscript, validate_torchscript_file
-    elif output_format == "gguf":
-        from .engine.gguf import convert_to_gguf, validate_gguf_file
-        return convert_to_gguf, validate_gguf_file
-    elif output_format == "fp16":
-        from .engine.fp16 import convert_to_fp16, validate_fp16_file
-        return convert_to_fp16, validate_fp16_file
-    elif output_format == "awq":
-        from .engine.awq import convert_to_awq, validate_awq_file
-        return convert_to_awq, validate_awq_file
-    elif output_format == "gptq":
-        from .engine.gptq import convert_to_gptq, validate_gptq_file
-        return convert_to_gptq, validate_gptq_file
-    elif output_format == "hf":
-        from .engine.hf import convert_to_hf, validate_hf_file
-        return convert_to_hf, validate_hf_file
-    elif output_format == "safetensors":
-        from .engine.safetensors import convert_to_safetensors, validate_safetensors_file
-        return convert_to_safetensors, validate_safetensors_file
-    elif output_format == "mlx":
-        from .engine.mlx import convert_to_mlx, validate_mlx_file
-        return convert_to_mlx, validate_mlx_file
-    else:
-        raise ValueError(f"Unsupported output format: {output_format}")
-
 # 支持的格式列表
 SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "fp16", "awq", "gptq", "hf", "safetensors", "mlx"]
-
-# 移除重复的 logger 定义，因为上面已经有了
 
 @dataclass
 class ConversionResult:
@@ -56,6 +21,38 @@ class ModelConverter:
     Model converter with engine-based logic and unified dispatch.
     API-First: 参数全部显式、类型安全、文档齐全，返回 dataclass。
     """
+    
+    def _get_converter_functions(self, output_format: str):
+        """延迟导入转换器函数"""
+        if output_format == "onnx":
+            from .engine.onnx import convert_to_onnx, validate_onnx_file
+            return convert_to_onnx, validate_onnx_file
+        elif output_format == "torchscript":
+            from .engine.torchscript import convert_to_torchscript, validate_torchscript_file
+            return convert_to_torchscript, validate_torchscript_file
+        elif output_format == "gguf":
+            from .engine.gguf import convert_to_gguf, validate_gguf_file
+            return convert_to_gguf, validate_gguf_file
+        elif output_format == "fp16":
+            from .engine.fp16 import convert_to_fp16, validate_fp16_file
+            return convert_to_fp16, validate_fp16_file
+        elif output_format == "awq":
+            from .engine.awq import convert_to_awq, validate_awq_file
+            return convert_to_awq, validate_awq_file
+        elif output_format == "gptq":
+            from .engine.gptq import convert_to_gptq, validate_gptq_file
+            return convert_to_gptq, validate_gptq_file
+        elif output_format == "hf":
+            from .engine.hf import convert_to_hf, validate_hf_file
+            return convert_to_hf, validate_hf_file
+        elif output_format == "safetensors":
+            from .engine.safetensors import convert_to_safetensors, validate_safetensors_file
+            return convert_to_safetensors, validate_safetensors_file
+        elif output_format == "mlx":
+            from .engine.mlx import convert_to_mlx, validate_mlx_file
+            return convert_to_mlx, validate_mlx_file
+        else:
+            raise ValueError(f"Unsupported output format: {output_format}")
     
     def _detect_model_format(self, input_model: str) -> Tuple[str, str]:
         """
@@ -193,7 +190,7 @@ class ModelConverter:
                 model = load_model_with_cache(model_name)
                 tokenizer = load_tokenizer_with_cache(model_name)
             if output_format in SUPPORTED_FORMATS:
-                convert_func, validate_func = _get_converter_functions(output_format)
+                convert_func, validate_func = self._get_converter_functions(output_format)
                 if output_format in ("awq", "gptq"):
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration
