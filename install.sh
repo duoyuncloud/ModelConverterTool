@@ -20,4 +20,20 @@ if [ $? -eq 0 ]; then
   echo "\n✅ 依赖安装完成！"
 else
   echo "\n⚠️ 某些依赖安装失败（如 auto-gptq/autoawq），请参考 README.md 的常见问题说明。"
+fi
+
+# Apple Silicon (macOS arm64) 下自动安装 mlx
+if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
+    echo "🍎 Detected Apple Silicon macOS, installing mlx for optimized inference..."
+    pip install mlx
+    echo "✅ mlx installed successfully for Apple Silicon optimization"
+elif [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "x86_64" ]]; then
+    echo "ℹ️  Detected Intel macOS - mlx is not available for Intel Macs"
+    echo "   MLX features will be disabled. Consider using Apple Silicon for MLX support."
+elif [[ "$(uname -s)" == "Linux" ]]; then
+    echo "🐧 Detected Linux - mlx is not available for Linux"
+    echo "   MLX features will be disabled. MLX only supports Apple Silicon macOS."
+else
+    echo "🖥️  Detected $(uname -s) $(uname -m) - mlx is not available for this platform"
+    echo "   MLX features will be disabled. MLX only supports Apple Silicon macOS."
 fi 

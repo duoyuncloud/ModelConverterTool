@@ -312,7 +312,8 @@ class ModelConverterAPI:
             "safetensors": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"],
             "torchscript": ["onnx", "torchscript"],
             "onnx": ["onnx"],
-            "gguf": ["gguf"]
+            "gguf": ["gguf"],
+            "mlx": ["mlx"]
         }
         return format_matrix.get(input_format, [])
     

@@ -8,6 +8,7 @@ import os
 import tempfile
 from pathlib import Path
 import sys
+import platform
 
 import numpy as np
 import onnx
@@ -21,6 +22,11 @@ from model_converter_tool.converter import ModelConverter
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 MODEL_NAME = "HuggingFaceM4/tiny-random-LlamaForCausalLM"
+
+skip_mlx = pytest.mark.skipif(
+    platform.system() != "Darwin" or platform.machine() != "arm64",
+    reason="MLX only supported on Apple Silicon macOS"
+)
 
 @pytest.fixture(scope="module")
 def converter():
@@ -45,6 +51,9 @@ DEMO_TASKS = [
 
 @pytest.mark.parametrize("task", DEMO_TASKS)
 def test_readme_demo(converter, output_dir, task):
+    # 如果是MLX任务且非Apple Silicon，自动跳过
+    if task["output_format"] == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
+        pytest.skip("MLX only supported on Apple Silicon macOS")
     output_path = str(output_dir / task["output_file"])
     result = converter.convert(
         model_name=task["input_model"],

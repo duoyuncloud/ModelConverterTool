@@ -69,23 +69,31 @@ class ModelConverter:
         """
         path = Path(input_model)
         
-        # 新逻辑：只要本地不存在，都认为是 Hugging Face Hub 名称
+        # 首先检查文件扩展名（即使文件不存在）
+        suffix = path.suffix.lower()
+        if suffix == ".onnx":
+            return "onnx", str(path)
+        elif suffix == ".gguf":
+            return "gguf", str(path)
+        elif suffix in [".pt", ".pth"]:
+            return "torchscript", str(path)
+        elif suffix == ".safetensors":
+            return "safetensors", str(path)
+        elif suffix == ".npz":
+            return "mlx", str(path)
+        
+        # 如果本地不存在，且没有明确的文件扩展名，则认为是 Hugging Face Hub 名称
         if not path.exists():
-            return "huggingface", input_model
+            # 检查是否包含斜杠（可能是组织/模型名格式）或者是不带扩展名的模型名
+            if "/" in input_model or "\\" in input_model or (not suffix and not input_model.startswith(".")):
+                return "huggingface", input_model
+            else:
+                return "unknown", str(path)
         
         # Check if it's a local file
         if path.is_file():
-            suffix = path.suffix.lower()
-            if suffix == ".onnx":
-                return "onnx", str(path)
-            elif suffix == ".gguf":
-                return "gguf", str(path)
-            elif suffix in [".pt", ".pth"]:
-                return "torchscript", str(path)
-            elif suffix == ".safetensors":
-                return "safetensors", str(path)
-            else:
-                return "unknown", str(path)
+            # 文件存在但没有支持的扩展名
+            return "unknown", str(path)
         
         # Check if it's a directory (likely Hugging Face format)
         if path.is_dir():
