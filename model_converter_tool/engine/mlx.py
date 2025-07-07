@@ -22,6 +22,7 @@ def _auto_setup_mlx_examples():
         logger.info("[MLX] Cloning latest mlx-examples...")
         subprocess.check_call(["git", "clone", MLX_EXAMPLES_REPO, str(repo_dir)])
     try:
+        # 延迟执行，避免在模块导入时执行
         if not repo_dir.exists():
             clone_repo()
         convert_scripts = list(repo_dir.rglob("*convert*.py"))
