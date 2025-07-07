@@ -63,7 +63,12 @@ exclude = [
     "model_cache*",
     "test_outputs*",
     "mlx-examples*",
-    "llama.cpp*"
+    "llama.cpp*",
+    "**/mlx-examples*",
+    "**/llama.cpp*",
+    "**/tests*",
+    "**/docs*",
+    "**/examples*"
 ]
 
 [tool.isort]

@@ -1,22 +1,31 @@
-include README.md
-recursive-include configs *.yaml
-include pyproject.toml
+# 只包含 model_converter_tool 包
+include model_converter_tool/**/*.py
+include model_converter_tool/**/*.txt
+include model_converter_tool/**/*.md
+include model_converter_tool/**/*.json
+include model_converter_tool/**/*.yaml
+include model_converter_tool/**/*.yml
 
-recursive-include model_converter_tool *.py
-recursive-include configs *.yml
-global-exclude __pycache__
-global-exclude *.pyc
-global-exclude *.pyo
-global-exclude *.pyd
-global-exclude .git*
-global-exclude .DS_Store
-global-exclude *.egg-info
-global-exclude build
-global-exclude dist
-global-exclude venv*
-global-exclude .venv*
-global-exclude temp
-global-exclude outputs
-global-exclude test_outputs
-global-exclude uploads
-global-exclude model_cache 
+# 包含项目根目录的重要文件
+include README.md
+include pyproject.toml
+include LICENSE
+include requirements*.txt
+
+# 明确排除所有可能导致问题的目录
+exclude mlx-examples/**/*
+exclude llama.cpp/**/*
+exclude tests/**/*
+exclude docs/**/*
+exclude examples/**/*
+exclude venv/**/*
+exclude temp/**/*
+exclude outputs/**/*
+exclude uploads/**/*
+exclude model_cache/**/*
+exclude test_outputs/**/*
+exclude .git/**/*
+exclude __pycache__/**/*
+exclude *.egg-info/**/*
+exclude build/**/*
+exclude dist/**/* 
