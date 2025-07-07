@@ -23,8 +23,9 @@ def _auto_setup_mlx_examples():
         subprocess.check_call(["git", "clone", MLX_EXAMPLES_REPO, str(repo_dir)])
     try:
         # 延迟执行，避免在模块导入时执行
+        # 移除模块级别的函数调用，改为在需要时调用
         if not repo_dir.exists():
-            clone_repo()
+            clone_repo()  # 在实际需要时才克隆
         convert_scripts = list(repo_dir.rglob("*convert*.py"))
         if not convert_scripts:
             py_files = list(repo_dir.rglob("*.py"))
