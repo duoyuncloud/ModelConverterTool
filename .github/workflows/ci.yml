@@ -17,15 +17,18 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Create and activate virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+
       - name: Install dependencies
         run: |
           pip install torch==2.7.1
           pip install numpy
-
-      - name: Install other dependencies
-        run: |
           pip install -r requirements.txt
           pip install -e .
 
       - name: Run all tests
-        run: pytest --maxfail=1 --disable-warnings -v
+        run: |
+          pytest --maxfail=1 --disable-warnings -v
