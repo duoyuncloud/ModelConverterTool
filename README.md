@@ -275,12 +275,7 @@ print(result.success, result.output_path)
 ## Why Plan-Execute?
 - **安全**：先预览计划，确认无误再执行，防止误操作
 - **透明**：提前看到资源消耗、兼容性、潜在风险
-- **专业**：行业最佳实践，适合大模型/大数据场景
-
-## Design Philosophy
-- **API First**：所有核心逻辑都通过API实现，CLI只是友好包装
-- **CLI Native**：CLI体验现代、直观、专业，支持plan-execute安全模式
-
+- **专业**：适合大模型/大数据场景
 ---
 
 如需更多帮助，请使用 `model-converter --help` 或查阅文档。
