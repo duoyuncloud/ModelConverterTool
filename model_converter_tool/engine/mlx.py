@@ -66,7 +66,12 @@ def convert_to_mlx(
             import mlx.core as mx
             import numpy as np
         except ImportError:
-            logger.error("MLX conversion requires mlx. Install with: pip install mlx")
+            import platform
+            is_apple_silicon = platform.system() == "Darwin" and platform.machine() in ("arm64", "arm")
+            if is_apple_silicon:
+                logger.error("MLX conversion requires mlx. You are on Apple Silicon (macOS arm64). For best performance, install MLX: pip install mlx")
+            else:
+                logger.error("MLX conversion requires mlx, which is only available on Apple Silicon (macOS arm64). Your platform is not supported.")
             return False, None
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)

@@ -29,6 +29,8 @@ cd ModelConverterTool
 ### 2. Install Python dependencies
 
 ```sh
+pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
+pip install -r requirements.txt
 pip install -e .
 ```
 
