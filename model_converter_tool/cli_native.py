@@ -137,6 +137,13 @@ def plan(
             title="Conversion Plan",
             border_style="green"
         ))
+        # 新增：显示资源消耗预估
+        if getattr(plan, 'estimated_size', None):
+            console.print(f"[bold]Estimated Output Size:[/bold] {plan.estimated_size}")
+        if getattr(plan, 'estimated_memory', None):
+            console.print(f"[bold]Estimated Memory:[/bold] {plan.estimated_memory}")
+        if getattr(plan, 'estimated_time', None):
+            console.print(f"[bold]Estimated Time:[/bold] {plan.estimated_time}")
         
         if plan.warnings:
             console.print("\n[yellow]⚠️  Warnings:[/yellow]")

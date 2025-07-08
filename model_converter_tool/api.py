@@ -42,6 +42,9 @@ class ConversionPlan:
     is_valid: bool = True
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    estimated_size: Optional[str] = None
+    estimated_memory: Optional[str] = None
+    estimated_time: Optional[str] = None
 
 
 @dataclass
@@ -164,6 +167,7 @@ class ModelConverterAPI:
         if plan.is_valid:
             estimates = self._estimate_conversion(plan)
             plan.estimated_size = estimates.get("size")
+            plan.estimated_memory = estimates.get("memory")
             plan.estimated_time = estimates.get("time")
         
         return {
@@ -321,11 +325,45 @@ class ModelConverterAPI:
         return format_matrix.get(input_format, [])
     
     def _estimate_conversion(self, plan: ConversionPlan) -> Dict[str, str]:
-        """Estimate conversion size and time"""
-        return {
-            "size": "unknown",
-            "time": "unknown"
-        }
+        """Estimate conversion size, memory, and time"""
+        import os
+        try:
+            # 判断是否为本地文件
+            if os.path.exists(plan.model_path):
+                model_size = os.path.getsize(plan.model_path)
+                size_note = ""
+            else:
+                # 针对常见模型名给出典型大小
+                lower_name = plan.model_path.lower()
+                if "bert-base" in lower_name:
+                    model_size = 420 * 1024 ** 2  # 420MB
+                    size_note = " (estimated for BERT-base)"
+                elif "llama" in lower_name:
+                    model_size = 3 * 1024 ** 3  # 3GB
+                    size_note = " (estimated for LLaMA)"
+                elif "gpt2" in lower_name:
+                    model_size = 500 * 1024 ** 2  # 500MB
+                    size_note = " (estimated for GPT-2)"
+                else:
+                    model_size = 1 * 1024 ** 3  # 默认1GB
+                    size_note = " (default estimate)"
+            estimated_size = f"{model_size / (1024**2):.2f} MB{size_note}"
+            estimated_memory = f"{model_size * 3 / (1024**3):.2f} GB{size_note}"
+            gb = model_size / (1024**3)
+            min_time = int(gb * 30)
+            max_time = int(gb * 60)
+            estimated_time = f"{min_time}~{max_time} s{size_note}"
+            return {
+                "size": estimated_size,
+                "memory": estimated_memory,
+                "time": estimated_time
+            }
+        except Exception:
+            return {
+                "size": "unknown",
+                "memory": "unknown",
+                "time": "unknown"
+            }
     
     def _get_current_time(self) -> float:
         """Get current timestamp"""

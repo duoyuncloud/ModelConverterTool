@@ -11,8 +11,7 @@ onnxruntime>=1.15.0
 # Optional: GGUF conversion
 llama-cpp-python>=0.2.0
 
-# Quantization libraries (install after torch)
-# These are optional and may fail if torch is not properly installed
+# Quantization libraries (install after torch, optional)
 gptqmodel==2.2.0  # 主要量化转换库
 logbar
 tokenicer
@@ -23,7 +22,6 @@ safetensors
 
 # Configuration and utilities
 pyyaml>=6.0
-click>=8.0.0
 rich>=13.0.0
 tqdm>=4.65.0
 
@@ -37,13 +35,6 @@ pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
 
-# Optional dependencies for advanced features/postprocess:
-# onnxsim: ONNX model simplification (for postprocess:simplify)
-# torch-optimizer: TorchScript optimization (for postprocess:optimize)
-# safetensors: Fast model saving/loading (already required)
-# To install all optional features:
-# pip install onnxsim torch-optimizer
-
 # Optional/advanced quantization dependencies
 optimum
 peft
@@ -53,12 +44,6 @@ evalplus
 # intel-extension-for-pytorch  # 仅限Linux+Intel XPU/CPU优化环境需要
 # bitblas  # 仅部分高级量化/推理开发者需要，普通用户可忽略
 
-# For testing
-pytest>=7.0.0
-
 random_word>=1.0.8
-
-# 主依赖包
 numpy
-
 typer 
