@@ -33,13 +33,6 @@ pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 
 pip install -r requirements.txt
 pip install -e .
 ```
-> **GPU support:**
->
-> In the requirements.txt, you can select either the CPU version or the GPU version of gptqmodel.
->
-> Default [CPU version]
->
-> For GPU: Comment out the CPU version and uncomment the GPU 
 
 > **MLX support (macOS arm64/Apple Silicon only):**
 > To use MLX features, install MLX manually:
