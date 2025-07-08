@@ -10,38 +10,37 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout repository
       - uses: actions/checkout@v3
 
-      # Step 2: Set up Python 3.11
+      # Step 1: Set up Python 3.11
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # Step 3: Install system dependencies (for PyTorch and other libraries)
+      # Step 2: Install system dependencies (for PyTorch and other libraries)
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libopenblas-dev libomp-dev
 
-      # Step 4: Set up a Python virtual environment
+      # Step 3: Set up virtual environment
       - name: Set up virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install torch>=2.0.0
-          pip install -r requirements.txt
-          pip install -e .
+          pip install --no-cache-dir torch==2.0.0+cpu
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir -e .
 
-      # Step 5: Verify PyTorch installation
+      # Step 4: Verify PyTorch installation
       - name: Verify torch installation
         run: |
           source venv/bin/activate
           python -c "import torch; print('Torch version:', torch.__version__)"
 
-      # Step 6: Run the tests
+      # Step 5: Run all tests
       - name: Run all tests
         run: |
           source venv/bin/activate
