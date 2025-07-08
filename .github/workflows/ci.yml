@@ -17,14 +17,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install torch
+      - name: Install dependencies
         run: |
-          pip install torch>=2.7.1
+          pip install torch==2.7.1
+          pip install numpy
 
-      - name: Verify torch installation
-        run: |
-          python -c "import torch; print(torch.__version__)"
-        
       - name: Install other dependencies
         run: |
           pip install -r requirements.txt
