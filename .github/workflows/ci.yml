@@ -21,22 +21,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
 
-      - name: Install core dependencies
+      - name: Install model_converter_tool package
         run: |
-          pip install torch>=2.0.0
-          pip install transformers>=4.30.0
-          pip install tokenizers>=0.13.0
-          pip install accelerate>=0.20.0
-
-      - name: Install remaining dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Install quantization libraries
-        run: |
-          pip install datasets>=2.0.0 || echo "datasets installation failed, continuing..."
-          pip install logbar || echo "logbar installation failed, continuing..."
-          pip install gptqmodel>=0.1.0 || echo "gptqmodel installation failed, continuing..."
+          pip install -e .
 
       - name: Run all tests
         run: |
