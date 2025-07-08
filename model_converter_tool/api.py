@@ -374,7 +374,7 @@ class ModelConverterAPI:
         """Get available formats in current environment"""
         return {
             "input": ["huggingface", "safetensors", "torchscript", "onnx", "gguf"],
-            "output": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"]
+            "output": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx", "hf"]
         }
     
     def _get_input_formats(self) -> Dict[str, Any]:
@@ -461,15 +461,22 @@ class ModelConverterAPI:
                 "use_cases": ["Apple Silicon", "macOS optimization", "Local inference"],
                 "quantization": True,
                 "quantization_options": ["q4_k_m", "q8_0", "q5_k_m"]
+            },
+            "hf": {
+                "description": "HuggingFace native format - directory with config.json, model, and tokenizer files",
+                "extensions": ["config.json", "pytorch_model.bin", "*.safetensors"],
+                "use_cases": ["HuggingFace Hub", "Transformers ecosystem", "Re-upload to hub", "Interoperability"],
+                "quantization": False
             }
         }
     
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         """Get conversion compatibility matrix"""
         return {
-            "huggingface": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"],
-            "safetensors": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"],
-            "torchscript": ["onnx", "torchscript"],
-            "onnx": ["onnx"],
-            "gguf": ["gguf"]
+            "huggingface": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx", "hf"],
+            "safetensors": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx", "hf"],
+            "torchscript": ["onnx", "torchscript", "hf"],
+            "onnx": ["onnx", "hf"],
+            "gguf": ["gguf", "hf"],
+            "mlx": ["mlx", "hf"]
         } 

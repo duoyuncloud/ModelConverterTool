@@ -55,6 +55,19 @@ def print_info(message: str):
     console.print(f"ℹ️  {message}", style="blue")
 
 
+def normalize_format(fmt: Optional[str], is_output: bool = False) -> Optional[str]:
+    if fmt is None:
+        return None
+    fmt_lower = fmt.lower()
+    if is_output:
+        if fmt_lower in ["hf", "huggingface"]:
+            return "hf"
+    else:
+        if fmt_lower in ["hf", "huggingface"]:
+            return "huggingface"
+    return fmt_lower
+
+
 @app.command()
 def detect(
     model_path: str = typer.Argument(..., help="Model path or name to detect"),
@@ -112,6 +125,8 @@ def plan(
         model-converter plan meta-llama/Llama-2-7b-hf gguf ./output.gguf --quantization q4_k_m
         model-converter plan bert-base-uncased onnx ./bert.onnx
     """
+    # Normalize output_format
+    output_format = normalize_format(output_format, is_output=True)
     with console.status("[bold blue]Creating conversion plan..."):
         plan = api.plan_conversion(
             model_path=model_path,
@@ -182,6 +197,8 @@ def execute(
         model-converter execute meta-llama/Llama-2-7b-hf gguf ./output.gguf --quantization q4_k_m
         model-converter execute bert-base-uncased onnx ./bert.onnx
     """
+    # Normalize output_format
+    output_format = normalize_format(output_format, is_output=True)
     # Create plan first (unless skipped)
     if not skip_plan:
         with console.status("[bold blue]Creating conversion plan..."):
@@ -261,6 +278,8 @@ def convert(
         model-converter convert meta-llama/Llama-2-7b-hf gguf ./output.gguf --quantization q4_k_m
         model-converter convert bert-base-uncased onnx ./bert.onnx --plan-only
     """
+    # Normalize output_format
+    output_format = normalize_format(output_format, is_output=True)
     if plan_only:
         # Just show the plan
         plan(
@@ -301,34 +320,37 @@ def formats(
         model-converter formats --input huggingface
         model-converter formats --output gguf
     """
+    # Normalize input/output format
+    input_format_norm = normalize_format(input_format, is_output=False) if input_format else None
+    output_format_norm = normalize_format(output_format, is_output=True) if output_format else None
     formats_info = api.get_supported_formats()
     
-    if input_format:
+    if input_format_norm:
         # Show specific input format
         input_formats = formats_info["input_formats"]
-        if input_format in input_formats:
+        if input_format_norm in input_formats:
             console.print(Panel(
-                f"[bold]{input_format.upper()}[/bold]\n"
-                f"{input_formats[input_format]['description']}\n\n"
+                f"[bold]{input_format_norm.upper()}[/bold]\n"
+                f"{input_formats[input_format_norm]['description']}\n\n"
                 f"[bold]Supported outputs:[/bold]\n" +
-                "\n".join(f"  • {fmt}" for fmt in formats_info["conversion_matrix"].get(input_format, [])),
-                title=f"Input Format: {input_format}",
+                "\n".join(f"  • {fmt}" for fmt in formats_info["conversion_matrix"].get(input_format_norm, [])),
+                title=f"Input Format: {input_format_norm}",
                 border_style="cyan"
             ))
         else:
             print_error(f"Unknown input format: {input_format}")
             raise typer.Exit(1)
     
-    elif output_format:
+    elif output_format_norm:
         # Show specific output format
         output_formats = formats_info["output_formats"]
-        if output_format in output_formats:
-            fmt_info = output_formats[output_format]
+        if output_format_norm in output_formats:
+            fmt_info = output_formats[output_format_norm]
             console.print(Panel(
-                f"[bold]{output_format.upper()}[/bold]\n"
+                f"[bold]{output_format_norm.upper()}[/bold]\n"
                 f"{fmt_info['description']}\n\n"
                 f"[bold]Quantization:[/bold] {'Supported' if fmt_info['quantization'] else 'Not supported'}",
-                title=f"Output Format: {output_format}",
+                title=f"Output Format: {output_format_norm}",
                 border_style="green"
             ))
         else:
