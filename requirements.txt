@@ -14,7 +14,7 @@ llama-cpp-python>=0.2.0
 
 # Quantization libraries (install after torch)
 # These are optional and may fail if torch is not properly installed
-gptqmodel==2.2.0  # 主要量化转换库
+#gptqmodel==2.2.0  # 主要量化转换库
 logbar
 tokenicer
 device_smi

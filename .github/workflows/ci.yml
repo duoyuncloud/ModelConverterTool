@@ -17,17 +17,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Create and activate virtual environment
+      - name: Upgrade pip and install build tools
         run: |
-          python -m venv venv
-          source venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
 
-      - name: Install dependencies
+      - name: Install core dependencies
         run: |
-          pip install torch==2.7.1
-          pip install numpy
+          pip install torch>=2.0.0 
+          transformers>=4.30.0 
+          tokenizers>=0.13.0 
+          accelerate>=0.20.0
+  
+      - name: Install remaining dependencies
+        run: |
           pip install -r requirements.txt
-          pip install -e .
+  
+      - name: Install quantization libraries
+        run: |
+          pip install datasets>=2.0.0 
+          pip install logbar
+          pip install gptqmodel>=0.1.0
 
       - name: Run all tests
         run: |
