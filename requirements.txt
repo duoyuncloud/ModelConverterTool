@@ -12,13 +12,7 @@ onnxruntime>=1.15.0
 llama-cpp-python>=0.2.0
 
 # Quantization libraries (install after torch, optional)
-# gptqmodel for CPU (default)
-#comment the next line for gpu
-gptqmodel==2.2.0
-
-# Optional: GPU version
-# Uncomment the next line for GPU version
-#gptqmodel==2.2.0+cu121torch2.5
+gptqmodel
 logbar
 tokenicer
 device_smi
