@@ -22,7 +22,7 @@ pip install mlx
 
 ```sh
 modelconvert inspect <model>                # Inspect model format and info
-modelconvert convert <input> <output> [--to FORMAT] [--quant QUANT] [--device cpu/cuda]  # Convert model
+modelconvert convert <input> [--output OUTPUT] [--to FORMAT] [--quant QUANT] [--device cpu/cuda]  # Convert model
 modelconvert list [formats|quantizations]   # List supported formats/quantization types
 modelconvert validate <model> [--output-format FORMAT]  # Validate model or conversion feasibility
 modelconvert cache                          # Show local cache and task status
@@ -46,8 +46,14 @@ modelconvert inspect ./models/llama.bin
 # Convert model (auto-detect format, output path auto-completed)
 modelconvert convert ./models/llama.bin --to gguf
 
+# Convert model with custom output path
+modelconvert convert ./models/llama.bin --output ./outputs/llama.gguf --to gguf
+
 # Quantized conversion (output path auto-completed)
 modelconvert convert facebook/opt-125m --to gptq --quant 4bit
+
+# Quantized conversion with custom output path
+modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_gptq --to gptq --quant 4bit
 
 # List supported formats
 modelconvert list formats
@@ -73,25 +79,25 @@ modelconvert config set cache_dir ./mycache
 
 ```sh
 # Hugging Face → ONNX
-modelconvert convert bert-base-uncased ./outputs/bert.onnx --to onnx
+modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
 
 # Hugging Face → GGUF (Llama/Mistral family)
-modelconvert convert arnir0/Tiny-LLM ./outputs/tiny-llm.gguf --to gguf
+modelconvert convert arnir0/Tiny-LLM --output ./outputs/tiny-llm.gguf --to gguf
 
 # Hugging Face → MLX
-modelconvert convert gpt2 ./outputs/gpt2.mlx --to mlx
+modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx
 
 # Hugging Face → FP16
-modelconvert convert sshleifer/tiny-gpt2 ./outputs/tiny_gpt2_fp16 --to fp16
+modelconvert convert sshleifer/tiny-gpt2 --output ./outputs/tiny_gpt2_fp16 --to fp16
 
 # Hugging Face → TorchScript
-modelconvert convert bert-base-uncased ./outputs/bert.pt --to torchscript
+modelconvert convert bert-base-uncased --output ./outputs/bert.pt --to torchscript
 
 # Hugging Face → SafeTensors
-modelconvert convert gpt2 ./outputs/gpt2_safetensors --to safetensors
+modelconvert convert gpt2 --output ./outputs/gpt2_safetensors --to safetensors
 
 # Hugging Face → HF (re-save)
-modelconvert convert gpt2 ./outputs/gpt2_hf --to hf
+modelconvert convert gpt2 --output ./outputs/gpt2_hf --to hf
 ```
 
 ---
@@ -100,22 +106,22 @@ modelconvert convert gpt2 ./outputs/gpt2_hf --to hf
 
 ```sh
 # GPTQ quantization (4bit)
-modelconvert convert facebook/opt-125m ./outputs/opt_125m_gptq --to gptq --quant 4bit
+modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_gptq --to gptq --quant 4bit
 
 # GPTQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m ./outputs/opt_125m_gptq_high_quality --to gptq --quant 4bit --use-large-calibration
+modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_gptq_high_quality --to gptq --quant 4bit --use-large-calibration
 
 # AWQ quantization (4bit)
-modelconvert convert facebook/opt-125m ./outputs/opt_125m_awq --to awq --quant 4bit
+modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq --to awq --quant 4bit
 
 # AWQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m ./outputs/opt_125m_awq_high_quality --to awq --quant 4bit --use-large-calibration
+modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq_high_quality --to awq --quant 4bit --use-large-calibration
 
 # GGUF quantization
-modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf --quant q4_k_m
+modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf --quant q4_k_m
 
 # MLX quantization
-modelconvert convert gpt2 ./outputs/gpt2.mlx --to mlx --quant q4_k_m
+modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx --quant q4_k_m
 ```
 
 **Quantization quality notes:**

@@ -95,7 +95,7 @@ def convert_to_gguf(
     device: str
 ) -> tuple:
     """
-    增强版GGUF转换，优先用llama.cpp/convert_hf_to_gguf.py命令行，自动适配参数和输出路径。
+    Enhanced GGUF conversion with robust fallback and user-friendly error messages.
     """
     try:
         # 1. 判断output_path是目录还是文件
@@ -150,8 +150,6 @@ def convert_to_gguf(
             logger.info(f"GGUF conversion completed: {gguf_file}")
             return True, None
         # 3. fallback到原有逻辑（llama_cpp python包等）
-        # ...原有API/手动兜底逻辑...
-        # 依赖检查
         try:
             import llama_cpp  # noqa: F401
         except ImportError:
@@ -161,6 +159,10 @@ def convert_to_gguf(
         # 优先尝试 llama_cpp.convert_hf_to_gguf
         try:
             from llama_cpp import convert_hf_to_gguf
+        except ImportError as e:
+            logger.error("Your llama-cpp-python version does not support 'convert_hf_to_gguf'. Please upgrade: pip install --upgrade llama-cpp-python")
+            return False, None
+        try:
             convert_hf_to_gguf(
                 model_path=model_name,
                 output_path=str(gguf_file),
@@ -173,6 +175,8 @@ def convert_to_gguf(
             return True, None
         except Exception as e:
             logger.warning(f"llama_cpp.convert_hf_to_gguf failed: {e}")
+            if "Some weights" in str(e) and "were not initialized" in str(e):
+                logger.warning("Some model weights were not initialized. Please check that your config.json and pytorch_model.bin match and are complete.")
         # 兜底：命令行或手动
         try:
             import tempfile
@@ -199,6 +203,8 @@ def convert_to_gguf(
                 return True, None
             except Exception as e:
                 logger.warning(f"llama_cpp API fallback failed: {e}")
+                if "Some weights" in str(e) and "were not initialized" in str(e):
+                    logger.warning("Some model weights were not initialized. Please check that your config.json and pytorch_model.bin match and are complete.")
             # 命令行方式
             python_exe = sys.executable
             cmd = [python_exe, "-m", "llama_cpp.convert_hf_to_gguf", "--outfile", str(gguf_file), "--model-dir", str(temp_dir)]
