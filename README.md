@@ -13,9 +13,7 @@ pip install -e .
 # For MLX support (Apple Silicon only):
 pip install mlx
 ```
-
 ---
-
 ## CLI Quick Start
 
 ### Command Overview
@@ -41,13 +39,13 @@ modelconvert version                        # Show version
 
 ```sh
 # Inspect model format
-modelconvert inspect ./models/llama.bin
+modelconvert inspect meta-llama/Llama-2-7b-hf
 
-# Convert model (auto-detect format, output path auto-completed)
-modelconvert convert ./models/llama.bin --to gguf
+# ONNX conversion (HuggingFace Hub, output path auto-completed)
+modelconvert convert bert-base-uncased --to onnx
 
-# Convert model with custom output path
-modelconvert convert ./models/llama.bin --output ./outputs/llama.gguf --to gguf
+# ONNX conversion (local model, MUST specify --output)
+modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
 
 # Quantized conversion (output path auto-completed)
 modelconvert convert facebook/opt-125m --to gptq --quant 4bit
@@ -62,7 +60,7 @@ modelconvert list formats
 modelconvert list quantizations
 
 # Validate model file
-modelconvert validate ./outputs/llama.gguf
+modelconvert validate ./outputs/llama-2-7b.gguf
 
 # Show history and cache
 modelconvert history
@@ -73,6 +71,10 @@ modelconvert config show
 modelconvert config set cache_dir ./mycache
 ```
 
+> **Warning:**
+> - GGUF conversion only supports Llama/Mistral/Gemma family models (e.g., meta-llama/Llama-2-7b-hf, TinyLlama/TinyLlama-1.1B-Chat-v1.0, arnir0/Tiny-LLM). OPT, GPT2, BERT, etc. are **not** supported for GGUF by llama.cpp.
+> - **If you use a local model path (e.g., ./models/llama.bin), you MUST specify --output.** Otherwise, the tool will treat it as a HuggingFace repo id and report an error.
+
 ---
 
 ## Basic Conversion Examples
@@ -80,6 +82,9 @@ modelconvert config set cache_dir ./mycache
 ```sh
 # Hugging Face → ONNX
 modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
+
+# Hugging Face → GGUF (Llama/Mistral family)
+modelconvert convert arnir0/Tiny-LLM --output ./outputs/tiny-llm.gguf --to gguf
 
 # Hugging Face → GGUF (Llama/Mistral family)
 modelconvert convert arnir0/Tiny-LLM --output ./outputs/tiny-llm.gguf --to gguf
@@ -117,16 +122,15 @@ modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq --to awq 
 # AWQ quantization (4bit, high quality)
 modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq_high_quality --to awq --quant 4bit --use-large-calibration
 
-# GGUF quantization
+# GGUF quantization (Llama/Mistral/Gemma only)
 modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf --quant q4_k_m
 
 # MLX quantization
 modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx --quant q4_k_m
 ```
 
-**Quantization quality notes:**
-- `--use-large-calibration`: Use a larger calibration dataset for higher quantization quality (increases conversion time). Recommended for GPTQ and AWQ.
-- Use for high-quality quantization scenarios.
+> **Note:**
+> GGUF quantization only supports Llama/Mistral/Gemma family models. Attempting GGUF conversion on other architectures will fail.
 
 ---
 
