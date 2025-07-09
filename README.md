@@ -1,282 +1,156 @@
 # ModelConverterTool
 
-A modern, professional CLI & API tool for converting, validating, and managing machine learning models across multiple formats. **API First, CLI Native**. Supports ONNX, FP16, HuggingFace, TorchScript, GGUF, MLX, GPTQ, AWQ, and more.
+A professional, multi-format machine learning model conversion and management tool. Supports ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace and more. Built-in quantization, validation, and batch processing. **Clean, orthogonal CLI. Easy-to-integrate API.**
 
-## Project Structure
-
-- `model_converter_tool/` — Core library and CLI implementation
-- `tests/` — Minimal tests, strictly corresponding to README examples
-- `configs/` — Example YAML batch configs
-- `outputs/` — Output directory for converted models (created at runtime)
-
-## Features
-- **Multi-Format Support:** ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace
-- **Quantization:** Built-in GPTQ, AWQ, and GGUF quantization support
-- **Batch Processing:** Convert multiple models using YAML configuration
-- **Cross-Platform:** CPU and GPU (CUDA/MPS) with automatic device detection
-- **Validation:** Built-in model validation and compatibility checking
-- **API & CLI:** API-first, CLI-native design
+---
 
 ## Installation
-
-### 1. Clone the repository
 
 ```sh
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-```
-
-### 2. Install Python dependencies
-
-```sh
-pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
-pip install -r requirements.txt
 pip install -e .
+# For MLX support (Apple Silicon only):
+pip install mlx
 ```
 
-> **MLX support (macOS arm64/Apple Silicon only):**
-> To use MLX features, install MLX manually:
-> ```sh
-> pip install mlx
-> ```
-> Or (if supported):
-> ```sh
-> pip install .[mlx]
-> ```
+---
 
-
-### 3. (Optional) Install system dependencies
-
-For best compatibility, run:
-
-```sh
-chmod +x install_system_deps.sh
-./install_system_deps.sh
-```
-
-This will install system tools like git, make, python3, cmake, etc.
-
-## CLI Usage (Recommended)
+## CLI Quick Start
 
 ### Command Overview
 
 ```sh
-model-converter --help                # Show all commands
-model-converter formats               # List supported formats
-model-converter detect <model>        # Detect model format
-model-converter plan <model> <format> --output <path> [options]   # Preview conversion plan
-model-converter execute <model> <format> --output <path> [options] # Execute conversion (recommended)
-model-converter convert <model> <format> --output <path> [options] # One-step conversion (plan+execute)
-model-converter batch <config.yaml>   # Batch conversion via YAML
-model-converter status                # Show workspace status
+modelconvert inspect <model>                # Inspect model format and info
+modelconvert convert <input> <output> [--to FORMAT] [--quant QUANT] [--device cpu/cuda]  # Convert model
+modelconvert list [formats|quantizations]   # List supported formats/quantization types
+modelconvert validate <model> [--output-format FORMAT]  # Validate model or conversion feasibility
+modelconvert cache                          # Show local cache and task status
+modelconvert history                        # Show conversion history
+modelconvert config [show|get|set|list_presets] [key] [value]  # Config management
+modelconvert version                        # Show version
 ```
 
-### 1. Format Information
+> **Tip:**
+> Run `modelconvert --help` to see all available commands and options, or `modelconvert <command> --help` for details on a specific command.
+> 
+> **Output path auto-completion:**
+> If you omit the output path, it will be auto-generated based on the input and target format. For file formats, the correct extension is added automatically; for directory formats, a suitable directory is created.
+
+### Common Examples
 
 ```sh
-model-converter formats                   # List all supported formats
-model-converter formats --matrix          # Show format conversion matrix
-model-converter formats --input huggingface   # Show details for input format
-model-converter formats --output gguf         # Show details for output format
+# Inspect model format
+modelconvert inspect ./models/llama.bin
+
+# Convert model (auto-detect format, output path auto-completed)
+modelconvert convert ./models/llama.bin --to gguf
+
+# Quantized conversion (output path auto-completed)
+modelconvert convert facebook/opt-125m --to gptq --quant 4bit
+
+# List supported formats
+modelconvert list formats
+
+# List quantization types
+modelconvert list quantizations
+
+# Validate model file
+modelconvert validate ./outputs/llama.gguf
+
+# Show history and cache
+modelconvert history
+modelconvert cache
+
+# Config management
+modelconvert config show
+modelconvert config set cache_dir ./mycache
 ```
 
-### 2. Model Detection
+---
 
-```sh
-model-converter detect ./my_model
-model-converter detect bert-base-uncased
-```
-
-### 3. Plan-Execute Workflow (Recommended)
-
-#### Step 1: Plan
-
-```sh
-model-converter plan bert-base-uncased onnx --output ./outputs/bert.onnx
-model-converter plan TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outputs/tinyllama.gguf --quantization q4_k_m
-```
-
-#### Step 2: Execute
-
-```sh
-model-converter execute bert-base-uncased onnx --output ./outputs/bert.onnx
-model-converter execute TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outputs/tinyllama.gguf --quantization q4_k_m
-```
-
-### 4. One-Step Conversion (Quick Mode)
-
-```sh
-model-converter convert gpt2 mlx --output ./outputs/gpt2.mlx
-model-converter convert sshleifer/tiny-gpt2 fp16 --output ./outputs/tiny_gpt2_fp16
-model-converter convert facebook/opt-125m gptq --output ./outputs/opt_125m_gptq --quantization 4bit
-```
-
-### 5. Advanced Options
-
-```sh
-# Specify model type
-model-converter plan bert-base-uncased onnx --output ./bert.onnx --type feature-extraction
-
-# Specify device
-model-converter execute gpt2 gptq --output ./gpt2-4bit.safetensors --quantization 4bit --device cuda
-
-# Use large calibration set (for quantization)
-model-converter plan facebook/opt-125m gptq --output ./opt_125m_gptq --quantization 4bit --use-large-calibration
-
-# Execute with large calibration
-model-converter execute facebook/opt-125m gptq --output ./opt_125m_gptq --quantization 4bit --use-large-calibration
-```
-
-### 6. 常用转换示例（Basic Conversion & Quantization）
-
-#### Basic Conversion
+## Basic Conversion Examples
 
 ```sh
 # Hugging Face → ONNX
-model-converter convert bert-base-uncased onnx --output ./outputs/bert.onnx
+modelconvert convert bert-base-uncased ./outputs/bert.onnx --to onnx
 
-# Hugging Face → GGUF (仅支持 Llama/Mistral 类模型)
-model-converter convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outputs/tinyllama.gguf
+# Hugging Face → GGUF (Llama/Mistral family)
+modelconvert convert arnir0/Tiny-LLM ./outputs/tiny-llm.gguf --to gguf
 
 # Hugging Face → MLX
-model-converter convert gpt2 mlx --output ./outputs/gpt2.mlx
+modelconvert convert gpt2 ./outputs/gpt2.mlx --to mlx
 
 # Hugging Face → FP16
-model-converter convert sshleifer/tiny-gpt2 fp16 --output ./outputs/tiny_gpt2_fp16
+modelconvert convert sshleifer/tiny-gpt2 ./outputs/tiny_gpt2_fp16 --to fp16
 
 # Hugging Face → TorchScript
-model-converter convert bert-base-uncased torchscript --output ./outputs/bert.pt
+modelconvert convert bert-base-uncased ./outputs/bert.pt --to torchscript
 
 # Hugging Face → SafeTensors
-model-converter convert gpt2 safetensors --output ./outputs/gpt2_safetensors
+modelconvert convert gpt2 ./outputs/gpt2_safetensors --to safetensors
 
-# Hugging Face → HF (重新保存)
-model-converter convert gpt2 hf --output ./outputs/gpt2_hf
+# Hugging Face → HF (re-save)
+modelconvert convert gpt2 ./outputs/gpt2_hf --to hf
 ```
 
-#### Quantization
+---
+
+## Quantization Demo
 
 ```sh
-# GPTQ 量化 (4bit)
-model-converter convert facebook/opt-125m gptq --output ./outputs/opt_125m_gptq --quantization 4bit
+# GPTQ quantization (4bit)
+modelconvert convert facebook/opt-125m ./outputs/opt_125m_gptq --to gptq --quant 4bit
 
-# GPTQ 量化 (4bit) - 使用大校准集提高质量
-model-converter convert facebook/opt-125m gptq --output ./outputs/opt_125m_gptq_high_quality --quantization 4bit --use-large-calibration
+# GPTQ quantization (4bit, high quality)
+modelconvert convert facebook/opt-125m ./outputs/opt_125m_gptq_high_quality --to gptq --quant 4bit --use-large-calibration
 
-# AWQ 量化 (4bit)
-model-converter convert facebook/opt-125m awq --output ./outputs/opt_125m_awq --quantization 4bit
+# AWQ quantization (4bit)
+modelconvert convert facebook/opt-125m ./outputs/opt_125m_awq --to awq --quant 4bit
 
-# AWQ 量化 (4bit) - 使用大校准集提高质量
-model-converter convert facebook/opt-125m awq --output ./outputs/opt_125m_awq_high_quality --quantization 4bit --use-large-calibration
+# AWQ quantization (4bit, high quality)
+modelconvert convert facebook/opt-125m ./outputs/opt_125m_awq_high_quality --to awq --quant 4bit --use-large-calibration
 
-# GGUF 量化
-model-converter convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 gguf --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --quantization q4_k_m
+# GGUF quantization
+modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf --quant q4_k_m
 
-# MLX 量化
-model-converter convert gpt2 mlx --output ./outputs/gpt2.mlx --quantization q4_k_m
+# MLX quantization
+modelconvert convert gpt2 ./outputs/gpt2.mlx --to mlx --quant q4_k_m
 ```
 
-**量化质量说明：**
-- `--use-large-calibration`: 使用更大的校准数据集进行量化，可以提高量化质量但会增加转换时间
-- 适用于 GPTQ 和 AWQ 量化格式
-- 建议在追求高质量量化时使用此选项
+**Quantization quality notes:**
+- `--use-large-calibration`: Use a larger calibration dataset for higher quantization quality (increases conversion time). Recommended for GPTQ and AWQ.
+- Use for high-quality quantization scenarios.
 
-### 7. Batch Conversion
+---
 
-#### YAML Configuration Example
+## Supported Formats & Quantization
 
-Create `configs/batch_example.yaml`:
+- **Input formats:** HuggingFace, ONNX, GGUF, TorchScript, SafeTensors
+- **Output formats:** ONNX, GGUF, TorchScript, FP16, GPTQ, AWQ, SafeTensors, MLX
+- **Quantization options:** GGUF/MLX (`q4_k_m` etc.), GPTQ/AWQ (`4bit`/`8bit`)
 
-```yaml
-tasks:
-  - model_path: "meta-llama/Llama-2-7b-hf"
-    output_format: "gguf"
-    output_path: "./outputs/llama2-7b.gguf"
-    quantization: "q4_k_m"
-    model_type: "text-generation"
-    device: "cpu"
-  
-  - model_path: "bert-base-uncased"
-    output_format: "onnx"
-    output_path: "./outputs/bert.onnx"
-    model_type: "feature-extraction"
-    device: "cpu"
-  
-  - model_path: "gpt2"
-    output_format: "mlx"
-    output_path: "./outputs/gpt2.mlx"
-    quantization: "q4_k_m"
-    model_type: "text-generation"
-    device: "cpu"
-  
-  - model_path: "facebook/opt-125m"
-    output_format: "gptq"
-    output_path: "./outputs/opt_125m_gptq_high_quality"
-    quantization: "4bit"
-    model_type: "text-generation"
-    device: "cpu"
-    use_large_calibration: true
-```
+---
 
-#### Batch Commands
+## Design Philosophy
 
-```sh
-model-converter batch configs/batch_example.yaml
-model-converter batch configs/batch_example.yaml --max-workers 4
-model-converter batch configs/batch_example.yaml --validate-only
-model-converter batch configs/batch_example.yaml --max-retries 3
-```
+- **Orthogonal & Simple:** Each command does one thing, clear parameters.
+- **Professional & Reliable:** Built-in format detection, conversion, quantization, validation, batch processing.
+- **Extensible:** API/CLI layered, easy to integrate and extend.
 
-### 8. Supported Formats
+---
 
-#### Input Formats
-- **Hugging Face**: 包含 `config.json` 和模型文件的目录
-- **ONNX**: `.onnx` 文件
-- **GGUF**: `.gguf` 文件 (llama.cpp 格式)
-- **TorchScript**: `.pt`, `.pth` 文件
-- **SafeTensors**: `.safetensors` 文件
-
-#### Output Formats
-- **ONNX**: 跨平台推理标准
-- **GGUF**: llama.cpp 优化格式
-- **TorchScript**: PyTorch 优化格式
-- **FP16**: 半精度格式
-- **GPTQ**: GPTQ 量化格式
-- **AWQ**: AWQ 量化格式
-- **SafeTensors**: 安全存储格式
-- **MLX**: Apple Silicon 优化格式
-
-#### Quantization Options
-- **GGUF**: `q4_k_m`, `q8_0`, `q5_k_m`, `q4_0`, `q4_1`
-- **GPTQ**: `4bit`, `8bit`
-- **AWQ**: `4bit`, `8bit`
-- **MLX**: `q4_k_m`, `q8_0`, `q5_k_m`
-
-## API Usage (For Advanced Users)
-
-> **推荐优先使用CLI。API适合集成或高级定制场景。**
+## API Usage (Advanced)
 
 ```python
 from model_converter_tool.api import ModelConverterAPI
 api = ModelConverterAPI()
-
-# Detect model format
-detect_info = api.detect_model("gpt2")
-print(detect_info)
-
-# Plan and execute conversion
-plan = api.plan_conversion("gpt2", "onnx", "./outputs/gpt2.onnx", model_type="text-generation", device="cpu")
-result = api.execute_conversion(plan)
-print(result.success, result.output_path)
-
-# Batch conversion (see configs/batch_example.yaml)
-# ...
+info = api.detect_model("gpt2")
+result = api.converter.convert(model_name="gpt2", output_format="onnx", output_path="./gpt2.onnx")
 ```
 
-## Why Plan-Execute?
-- **安全**：先预览计划，确认无误再执行，防止误操作
-- **透明**：提前看到资源消耗、兼容性、潜在风险
-- **专业**：适合大模型/大数据场景
 ---
 
-如需更多帮助，请使用 `model-converter --help` 或查阅文档。
+## Help & Documentation
+
+See `modelconvert --help` or the `docs/` directory for more usage details.

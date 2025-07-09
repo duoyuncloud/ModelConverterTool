@@ -266,10 +266,11 @@ def load_model_with_cache(model_name: str, model_class=None, **kwargs):
     if model_class is None:
         from transformers import AutoModel
         model_class = AutoModel
-    
+    # Always set trust_remote_code=True unless explicitly set
+    if "trust_remote_code" not in kwargs:
+        kwargs["trust_remote_code"] = True
     # 尝试获取本地缓存路径
     local_path = get_local_cache_path(model_name)
-    
     try:
         # 优先尝试使用本地缓存
         logger.info(f"尝试从本地缓存加载模型: {local_path}")
@@ -291,10 +292,11 @@ def load_tokenizer_with_cache(model_name: str, **kwargs):
         加载的tokenizer对象
     """
     from transformers import AutoTokenizer
-    
+    # Always set trust_remote_code=True unless explicitly set
+    if "trust_remote_code" not in kwargs:
+        kwargs["trust_remote_code"] = True
     # 尝试获取本地缓存路径
     local_path = get_local_cache_path(model_name)
-    
     try:
         # 优先尝试使用本地缓存
         logger.info(f"尝试从本地缓存加载tokenizer: {local_path}")

@@ -9,6 +9,6 @@ def __getattr__(name):
         from .converter import ConversionResult
         return ConversionResult
     elif name == "app":
-        from .cli_native import app
+        from .cli import app
         return app
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
