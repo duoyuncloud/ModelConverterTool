@@ -42,7 +42,7 @@ def output_dir():
 DEMO_TASKS = [
     {"input_model": "bert-base-uncased", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
     # Use a stable, official model for GGUF
-    {"input_model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "output_format": "gguf", "output_file": "tinyllama-1.1b-chat-v1.0.gguf", "model_type": "text-generation"},
+    {"input_model": "Qwen/Qwen1_0-0.5B", "output_format": "gguf", "output_file": "Qwen1_0-0.5B.gguf", "model_type": "qwen"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     {"input_model": "sshleifer/tiny-gpt2", "output_format": "fp16", "output_file": "tiny_gpt2_fp16", "model_type": "text-generation"},
     {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},

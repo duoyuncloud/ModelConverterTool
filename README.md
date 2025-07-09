@@ -86,8 +86,8 @@ modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
 # Hugging Face → GGUF (Llama/Mistral family)
 modelconvert convert arnir0/Tiny-LLM --output ./outputs/tiny-llm.gguf --to gguf
 
-# Hugging Face → GGUF (Llama/Mistral family) #[FIND A SMALLER MODEL]
-modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf
+# Hugging Face → GGUF (Llama/Mistral family)
+modelconvert convert Qwen/Qwen1_0-0.5B --to gguf --model-type qwen
 
 # Hugging Face → MLX
 modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx
