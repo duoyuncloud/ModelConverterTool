@@ -2,6 +2,10 @@ import typer
 import os
 from model_converter_tool.core.conversion import convert_model
 
+# 美化参数 help
+ARG_REQUIRED = "[bold red][required][/bold red]"
+ARG_OPTIONAL = "[dim][optional][/dim]"
+
 def auto_complete_output_path(input_path, output_path, to_format):
     file_exts = {
         'onnx': '.onnx',
@@ -31,18 +35,24 @@ def auto_complete_output_path(input_path, output_path, to_format):
                     return output_path[: -len(ext)]
     return output_path
 
+
 def convert(
-    input: str,
-    output: str = typer.Option(None, help="Output path (auto-completed if omitted)"),
-    to: str = typer.Option(None, help="Output format"),
-    quant: str = typer.Option(None, help="Quantization type"),
-    model_type: str = typer.Option("auto", help="Model type"),
-    device: str = typer.Option("auto", help="Device (cpu/cuda)"),
-    use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization")
+    input: str = typer.Argument(..., help="Input model path or repo id."),
+    to: str = typer.Option(..., help="Output format."),
+    output: str = typer.Option(None, help="Output file path (auto-completed if omitted)."),
+    quant: str = typer.Option(None, help="Quantization type."),
+    model_type: str = typer.Option("auto", help="Model type. Default: auto"),
+    device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
+    use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False")
 ):
     """
+    [dim]Examples:
+      modelconvert convert bert-base-uncased --to onnx
+      modelconvert convert facebook/opt-125m --to gptq --quant 4bit --output ./outputs/opt_125m_gptq[/dim]
+
+    Output formats: onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx
+
     Convert a model to another format, with optional quantization.
-    Output path will be auto-completed if omitted or mismatched.
     """
     output_path = auto_complete_output_path(input, output, to)
     result = convert_model(input, output_path, to, quant, model_type, device, use_large_calibration)

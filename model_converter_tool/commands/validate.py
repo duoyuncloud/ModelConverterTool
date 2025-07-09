@@ -1,11 +1,18 @@
 import typer
 from model_converter_tool.core.validation import validate_model
 
+ARG_REQUIRED = "[bold red][required][/bold red]"
+ARG_OPTIONAL = "[dim][optional][/dim]"
+
 def validate(
-    model: str,
-    output_format: str = typer.Option(None, help="Target output format (optional)")
+    model: str = typer.Argument(..., help="Model file path."),
+    output_format: str = typer.Option(None, help="Target output format.")
 ):
     """
+    [dim]Examples:
+      modelconvert validate ./outputs/llama-2-7b.gguf
+      modelconvert validate ./outputs/bert.onnx --output-format gguf[/dim]
+
     Validate a model file or check if conversion is feasible.
     """
     result = validate_model(model, output_format)

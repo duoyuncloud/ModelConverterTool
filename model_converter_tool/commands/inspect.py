@@ -1,9 +1,13 @@
 import typer
 from model_converter_tool.core.inspect import inspect_model
 
-def inspect(model: str):
+ARG_REQUIRED = "[bold red][required][/bold red]"
+
+def inspect(model: str = typer.Argument(..., help=f"Model path or repo id. {ARG_REQUIRED}")):
     """
-    Inspect and display detailed model information.
+    Inspect and display detailed model information.\n
+    Arguments:
+      model   Model path or repo id. (required)
     """
     info = inspect_model(model)
     typer.echo(f"Path: {info.get('path')}")

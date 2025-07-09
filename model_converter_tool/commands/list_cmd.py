@@ -1,10 +1,16 @@
 import typer
 from model_converter_tool.core.listing import list_supported
 
+ARG_OPTIONAL = "[dim][optional][/dim]"
+
 def list(
-    target: str = typer.Argument("formats", help="What to list: formats or quantizations")
+    target: str = typer.Argument("formats", help="What to list: formats or quantizations. Default: formats")
 ):
     """
+    [dim]Examples:
+      modelconvert list formats
+      modelconvert list quantizations[/dim]
+
     List supported formats or quantization types.
     """
     data = list_supported(target)

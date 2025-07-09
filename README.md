@@ -164,3 +164,11 @@ result = api.converter.convert(model_name="gpt2", output_format="onnx", output_p
 ## Help & Documentation
 
 See `modelconvert --help` or the `docs/` directory for more usage details.
+
+## Running All Tests
+
+To run all tests, execute:
+
+```bash
+./run_all_tests.sh
+```

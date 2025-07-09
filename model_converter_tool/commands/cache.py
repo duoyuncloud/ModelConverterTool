@@ -1,8 +1,14 @@
 import typer
 from model_converter_tool.core.cache import manage_cache
 
-def cache(action: str = typer.Option("show", help="Cache action (default: show)")):
+ARG_OPTIONAL = "[dim][optional][/dim]"
+
+def cache(action: str = typer.Option("show", help="Cache action. Default: show")):
     """
+    [dim]Examples:
+      modelconvert cache
+      modelconvert cache --action show[/dim]
+
     Show local cache and workspace status.
     """
     result = manage_cache(action)

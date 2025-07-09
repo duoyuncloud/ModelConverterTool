@@ -10,7 +10,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 MLX_EXAMPLES_REPO = "https://github.com/ml-explore/mlx-examples.git"
-MLX_EXAMPLES_DIR = "mlx-examples"
+MLX_EXAMPLES_DIR = "examples/mlx"
 CONVERT_SCRIPT = "convert_checkpoint.py"
 
 def _auto_setup_mlx_examples():

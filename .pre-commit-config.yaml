@@ -1,9 +1,9 @@
 repos:
-  - repo: local
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
     hooks:
-      - id: pytest
-        name: Run pytest before commit
-        entry: pytest -v tests/test_basic_conversions.py tests/test_quantization.py tests/test_api_usage.py tests/test_batch_conversion.py --tb=short --maxfail=3
-        language: system
-        pass_filenames: false
-        always_run: true 
+      - id: black
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.4.1
+    hooks:
+      - id: ruff 
