@@ -59,7 +59,14 @@ def convert(
     if not check_and_handle_disk_space(input, to, quant):
         typer.echo("Conversion aborted due to insufficient disk space.")
         raise typer.Exit(1)
-    
+
+    # 在转换前做模型有效性和可转化性检查（集成validate逻辑）
+    from model_converter_tool.core.validation import validate_model
+    val_result = validate_model(input, to)
+    if not (isinstance(val_result, dict) and val_result.get('valid', False)):
+        typer.echo(f"[red]模型验证失败，无法转换：{val_result}[/red]")
+        raise typer.Exit(1)
+
     output_path = auto_complete_output_path(input, output, to)
     result = convert_model(input, output_path, to, quant, model_type, device, use_large_calibration)
     typer.echo(f"[Output path used]: {output_path}")

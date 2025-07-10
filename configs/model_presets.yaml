@@ -1,0 +1,75 @@
+common_models:
+  bert-base-uncased:
+    default_format: onnx
+    description: BERT base uncased model
+    model_type: text-classification
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+  distilbert-base-uncased:
+    default_format: onnx
+    description: DistilBERT base uncased model
+    model_type: text-classification
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+  gpt2:
+    default_format: onnx
+    description: GPT-2 base model
+    model_type: text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+  t5-small:
+    default_format: onnx
+    description: T5 small model
+    model_type: text2text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+    - torchscript
+llm_models:
+  meta-llama/Llama-2-7b-hf:
+    default_format: gguf
+    description: Llama 2 7B model
+    model_type: text-generation
+    quantization_options:
+    - q4_k_m
+    - q8_0
+    - q5_k_m
+    supported_formats:
+    - gguf
+    - onnx
+    - mlx
+  microsoft/DialoGPT-medium:
+    default_format: onnx
+    description: DialoGPT medium model
+    model_type: text-generation
+    supported_formats:
+    - onnx
+    - gguf
+    - mlx
+vision_models:
+  google/vit-base-patch16-224:
+    default_format: onnx
+    description: ViT base model
+    model_type: image-classification
+    supported_formats:
+    - onnx
+    - mlx
+    - torchscript
+  microsoft/resnet-50:
+    default_format: onnx
+    description: ResNet-50 model
+    model_type: image-classification
+    supported_formats:
+    - onnx
+    - mlx
+    - torchscript

@@ -1,12 +1,12 @@
-conversions:
-  - input: path/to/input_model.bin
-    output: path/to/output_model.gguf
-    to: gguf
-    quant: q4
+models:
+  - model_path: path/to/input_model.bin
+    output_path: path/to/output_model.gguf
+    output_format: gguf
+    quantization: q4
     model_type: auto
     device: auto
-  - input: path/to/input_model2.bin
-    output: path/to/output_model2.onnx
-    to: onnx
+  - model_path: path/to/input_model2.bin
+    output_path: path/to/output_model2.onnx
+    output_format: onnx
     model_type: bert
     device: cpu

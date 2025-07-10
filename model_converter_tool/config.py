@@ -59,13 +59,20 @@ class ConversionConfig:
 
 
 class ConfigManager:
-    """Manages configuration presets and settings"""
+    """Manages configuration presets, settings, and global config"""
+
+    GLOBAL_CONFIG_PATH = Path.home() / ".model_converter_tool_config.yaml"
+    DEFAULT_GLOBAL_CONFIG = {
+        "cache_dir": str(Path.home() / ".cache" / "model_converter_tool"),
+        "default_output_dir": str(Path.cwd() / "outputs"),
+    }
 
     def __init__(self, config_dir: str = "configs"):
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(exist_ok=True)
         self.presets_file = self.config_dir / "model_presets.yaml"
         self._ensure_default_presets()
+        self.global_config = self._load_global_config()
 
     def _ensure_default_presets(self):
         """Ensure default presets exist"""
@@ -134,6 +141,39 @@ class ConfigManager:
 
         with open(self.presets_file, "w") as f:
             yaml.dump(default_presets, f, default_flow_style=False, indent=2)
+
+    def _load_global_config(self):
+        import yaml
+        if not self.GLOBAL_CONFIG_PATH.exists():
+            self._save_global_config(self.DEFAULT_GLOBAL_CONFIG)
+            return self.DEFAULT_GLOBAL_CONFIG.copy()
+        try:
+            with open(self.GLOBAL_CONFIG_PATH, "r") as f:
+                data = yaml.safe_load(f)
+                if not isinstance(data, dict):
+                    return self.DEFAULT_GLOBAL_CONFIG.copy()
+                # 合并默认配置和已有配置
+                merged = self.DEFAULT_GLOBAL_CONFIG.copy()
+                merged.update(data)
+                return merged
+        except Exception:
+            return self.DEFAULT_GLOBAL_CONFIG.copy()
+
+    def _save_global_config(self, config_dict):
+        import yaml
+        with open(self.GLOBAL_CONFIG_PATH, "w") as f:
+            yaml.dump(config_dict, f, default_flow_style=False, indent=2)
+
+    def all(self):
+        return self.global_config.copy()
+
+    def get(self, key):
+        return self.global_config.get(key, None)
+
+    def set(self, key, value):
+        self.global_config[key] = value
+        self._save_global_config(self.global_config)
+        return value
 
     def load_presets(self) -> Dict[str, Any]:
         """Load model presets from file"""

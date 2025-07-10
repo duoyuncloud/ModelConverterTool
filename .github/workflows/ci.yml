@@ -17,38 +17,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Upgrade pip and install build tools
+      - name: Install all dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-
-      - name: Install core dependencies (including torch)
-        run: |
-          pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
-
-      - name: Install remaining dependencies
-        run: |
           pip install --no-cache-dir -r requirements.txt
-
-      - name: Install model_converter_tool package
-        run: |
+          pip install --no-cache-dir -r llama.cpp/requirements.txt
           pip install -e .
+          pip install typer
 
-      - name: Install llama.cpp Python dependencies
+      - name: Check llama.cpp/convert_hf_to_gguf.py exists
         run: |
-          if [ -d "llama.cpp/requirements" ]; then
-            for req in llama.cpp/requirements/*.txt; do
-              pip install --no-cache-dir -r "$req"
-            done
-          else
-            echo "Warning: llama.cpp requirements not found, please check your repo."
-          fi
+          test -f llama.cpp/convert_hf_to_gguf.py || (echo "convert_hf_to_gguf.py missing!" && exit 1)
 
-      - name: Update submodules
-        run: git submodule update --init --recursive
-
-      - name: Check convert_hf_to_gguf.py exists
+      - name: Check gguf source directory exists
         run: |
-          ls -l llama.cpp/convert_hf_to_gguf.py
+          test -d llama.cpp/gguf-py/gguf || (echo "llama.cpp/gguf-py/gguf/ directory missing!" && exit 1)
+
+      - name: GGUF conversion smoke test (Qwen2-0.5B)
+        run: |
+          python -m model_converter_tool.cli convert Qwen/Qwen2-0.5B --output ./outputs/qwen2-0.5B.gguf --to gguf --model-type qwen
+          test -f ./outputs/qwen2-0.5B.gguf || (echo "GGUF conversion failed!" && exit 1)
 
       - name: Run all tests
         run: |

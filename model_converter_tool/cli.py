@@ -33,14 +33,12 @@ Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/
 )
 
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, list_cmd, validate, cache, history, config, version, batch
+from model_converter_tool.commands import inspect, convert, list_cmd, history, config, version, batch
 
 app.command()(inspect.inspect)
 app.command()(convert.convert)
 app.command()(batch.batch)
 app.command(name="list")(list_cmd.list)
-app.command()(validate.validate)
-app.command()(cache.cache)
 app.command()(history.history)
 app.command()(config.config)
 app.command()(version.version)
