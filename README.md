@@ -6,14 +6,35 @@ A professional, multi-format machine learning model conversion and management to
 
 ## Installation
 
+**Recommended (automatic, user-friendly):**
+
 ```sh
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-pip install -e .
-# For MLX support (Apple Silicon only):
-./install.sh --enable-mlx
-# Note: torch will be installed automatically by install.sh if not present. You do not need to install torch manually.
+python3 -m venv venv
+source venv/bin/activate
+./install.sh [--enable-mlx]
 ```
+- The script will install `torch` first (required for some packages), then all other dependencies.
+- For Apple Silicon users, add `--enable-mlx` for MLX support.
+- If you see errors about `gptqmodel` or `auto-gptq`, try:
+  ```sh
+  pip install gptqmodel || pip install auto-gptq
+  ```
+- **If you encounter persistent build errors (especially with gptqmodel or auto-gptq), try downgrading pip:**
+  ```sh
+  pip install pip==23.2.1
+  ./install.sh
+  ```
+- See the FAQ in README.md for more troubleshooting tips.
+
+**Alternative (editable install, advanced users):**
+
+```sh
+pip install -e .
+pip install -r requirements.txt
+```
+
 ---
 ## CLI Quick Start
 
@@ -85,10 +106,7 @@ modelconvert config set cache_dir ./mycache
 modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
 
 # Hugging Face → GGUF (Llama/Mistral family)
-modelconvert convert arnir0/Tiny-LLM --output ./outputs/tiny-llm.gguf --to gguf
-
-# Hugging Face → GGUF (Llama/Mistral family)
-modelconvert convert Qwen/Qwen1_0-0.5B --to gguf --model-type qwen
+modelconvert convert Qwen/Qwen2-0.5B --output ./outputs/qwen2-0.5B.gguf --to gguf --model-type qwen
 
 # Hugging Face → MLX
 modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx

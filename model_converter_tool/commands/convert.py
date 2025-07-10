@@ -70,4 +70,14 @@ def convert(
         if result.extra_info:
             typer.echo(f"Extra info: {result.extra_info}")
     else:
+        # Remove invalid output file if it exists (to prevent user confusion)
+        import os
+        from pathlib import Path
+        output_file = Path(output_path)
+        if output_file.exists() and output_file.is_file():
+            try:
+                output_file.unlink()
+                typer.echo(f"[Cleanup] Deleted invalid output file: {output_file}")
+            except Exception as e:
+                typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}") 
