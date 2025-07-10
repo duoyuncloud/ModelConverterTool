@@ -17,9 +17,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install all dependencies
+      - name: Install torch first
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          pip install --no-cache-dir torch>=2.0.0
+
+      - name: Install all other dependencies
+        run: |
           pip install --no-cache-dir -r requirements.txt
           pip install --no-cache-dir -r llama.cpp/requirements.txt
           pip install -e .
