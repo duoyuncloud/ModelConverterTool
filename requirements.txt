@@ -9,7 +9,7 @@ onnx>=1.14.0
 onnxruntime>=1.15.0
 
 # Optional: GGUF conversion
-llama-cpp-python>=0.2.0
+# llama-cpp-python>=0.2.0
 
 # Quantization libraries (install after torch, optional)
 gptqmodel
