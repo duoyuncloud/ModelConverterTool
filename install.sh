@@ -15,7 +15,15 @@ source venv/bin/activate
 pip install -e .
 
 # 自动安装 llama.cpp 的 Python 依赖
-pip install --no-cache-dir -r llama.cpp/requirements.txt
+if [ -f "llama.cpp/requirements.txt" ]; then
+  pip install --no-cache-dir -r llama.cpp/requirements.txt
+elif [ -d "llama.cpp/requirements" ]; then
+  for req in llama.cpp/requirements/*.txt; do
+    pip install --no-cache-dir -r "$req"
+  done
+else
+  echo "Warning: llama.cpp requirements not found, please check your repo."
+fi
 
 echo "\nInstallation complete!"
 echo "Activate your environment with: source venv/bin/activate"

@@ -1,9 +1,0 @@
-============================= test session starts ==============================
-platform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- /Users/duoyun/Desktop/ModelConverterTool/venv/bin/python3.13
-cachedir: .pytest_cache
-rootdir: /Users/duoyun/Desktop/ModelConverterTool
-configfile: pyproject.toml
-collecting ... collected 7 items
-
-tests/test_basic_conversions.py::test_readme_demo[task0] PASSED          [ 14%]
-tests/test_basic_conversions.py::test_readme_demo[task1] 
