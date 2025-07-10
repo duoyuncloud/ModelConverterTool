@@ -3,3 +3,5 @@
 #
 # Package versions must stay compatible across all top-level python scripts.
 #
+# For GGUF inference in Python, you may need llama-cpp-python:
+# llama-cpp-python  # Uncomment if you want to run GGUF inference in Python. Not required for conversion.
