@@ -11,7 +11,8 @@ git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
 pip install -e .
 # For MLX support (Apple Silicon only):
-pip install mlx
+./install.sh --enable-mlx
+# Note: torch will be installed automatically by install.sh if not present. You do not need to install torch manually.
 ```
 ---
 ## CLI Quick Start

@@ -18,23 +18,23 @@ def test_batch_conversion_from_yaml(converter, output_dir):
     batch_config = {
         "conversions": [
             {
-                "input": "bert-base-uncased",
-                "output": str(output_dir / "bert.onnx"),
-                "to": "onnx",
+                "model_name": "bert-base-uncased",
+                "output_path": str(output_dir / "bert.onnx"),
+                "output_format": "onnx",
                 "model_type": "feature-extraction",
                 "device": "cpu",
             },
             {
-                "input": "sshleifer/tiny-gpt2",
-                "output": str(output_dir / "tiny_gpt2_fp16"),
-                "to": "fp16",
+                "model_name": "sshleifer/tiny-gpt2",
+                "output_path": str(output_dir / "tiny_gpt2_fp16"),
+                "output_format": "fp16",
                 "model_type": "text-generation",
                 "device": "cpu",
             },
             {
-                "input": "bert-base-uncased",
-                "output": str(output_dir / "bert.pt"),
-                "to": "torchscript",
+                "model_name": "bert-base-uncased",
+                "output_path": str(output_dir / "bert.pt"),
+                "output_format": "torchscript",
                 "model_type": "feature-extraction",
                 "device": "cpu",
             },
@@ -47,6 +47,6 @@ def test_batch_conversion_from_yaml(converter, output_dir):
         tasks = yaml.safe_load(f)["conversions"]
     results = converter.batch_convert(tasks)
     for i, task in enumerate(batch_config["conversions"]):
-        if not os.path.exists(task["output"]):
+        if not os.path.exists(task["output_path"]):
             print(f"[DEBUG] Task {i} failed: {results[i].error}")
-        assert os.path.exists(task["output"]), f"Output not found: {task['output']}"
+        assert os.path.exists(task["output_path"]), f"Output not found: {task['output_path']}"
