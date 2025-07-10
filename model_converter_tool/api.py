@@ -328,12 +328,12 @@ class ModelConverterAPI:
         """Estimate conversion size, memory, and time"""
         import os
         try:
-            # 判断是否为本地文件
+            # Check if it's a local file
             if os.path.exists(plan.model_path):
                 model_size = os.path.getsize(plan.model_path)
                 size_note = ""
             else:
-                # 针对常见模型名给出典型大小
+                # Give typical sizes for common model names
                 lower_name = plan.model_path.lower()
                 if "bert-base" in lower_name:
                     model_size = 420 * 1024 ** 2  # 420MB
@@ -345,7 +345,7 @@ class ModelConverterAPI:
                     model_size = 500 * 1024 ** 2  # 500MB
                     size_note = " (estimated for GPT-2)"
                 else:
-                    model_size = 1 * 1024 ** 3  # 默认1GB
+                    model_size = 1 * 1024 ** 3  # Default 1GB
                     size_note = " (default estimate)"
             estimated_size = f"{model_size / (1024**2):.2f} MB{size_note}"
             estimated_memory = f"{model_size * 3 / (1024**3):.2f} GB{size_note}"

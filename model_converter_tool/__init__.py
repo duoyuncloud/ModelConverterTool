@@ -1,4 +1,4 @@
-# 延迟导入，避免在包导入时加载所有引擎模块
+# Lazy import to avoid loading all engine modules during package import
 __all__ = ["ModelConverter", "ConversionResult", "app"]
 
 def __getattr__(name):

@@ -13,14 +13,14 @@ def convert_to_fp16(
     device: str
 ) -> tuple:
     """
-    将模型导出为 FP16 safetensors 格式。
+    Export model to FP16 safetensors format.
     Args:
-        model: 已加载的模型对象
-        tokenizer: 已加载的分词器对象
-        model_name: 源模型名称或路径
-        output_path: 输出文件路径
-        model_type: 模型类型
-        device: 设备
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output file path
+        model_type: Model type
+        device: Device
     Returns:
         (success: bool, extra_info: dict or None)
     """
@@ -61,14 +61,14 @@ def convert_to_fp16(
 
 def validate_fp16_file(fp16_dir: Path, _: Any) -> bool:
     """
-    验证 FP16 safetensors 文件有效性。
+    Validate FP16 safetensors file validity.
     Args:
-        fp16_dir: 输出目录
+        fp16_dir: Output directory
     Returns:
-        bool: 是否有效
+        bool: Whether valid
     """
     try:
-        # 只要目录存在且包含 model.safetensors 或 config.json 即认为有效
+        # Consider valid as long as directory exists and contains model.safetensors or config.json
         if not fp16_dir.exists():
             logger.warning(f"FP16 output dir does not exist: {fp16_dir}")
             return False

@@ -13,14 +13,14 @@ def convert_to_hf(
     device: str
 ) -> tuple:
     """
-    将模型保存为 HuggingFace 原生格式。
+    Save model in HuggingFace native format.
     Args:
-        model: 已加载的模型对象
-        tokenizer: 已加载的分词器对象
-        model_name: 源模型名称或路径
-        output_path: 输出文件路径
-        model_type: 模型类型
-        device: 设备
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output file path
+        model_type: Model type
+        device: Device
     Returns:
         (success: bool, extra_info: dict or None)
     """

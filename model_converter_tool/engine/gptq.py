@@ -15,16 +15,16 @@ def convert_to_gptq(
     use_large_calibration: bool = False
 ) -> tuple:
     """
-    将模型导出为 GPTQ 量化格式。
+    Export model to GPTQ quantization format.
     Args:
-        model: 已加载的模型对象
-        tokenizer: 已加载的分词器对象
-        model_name: 源模型名称或路径
-        output_path: 输出文件路径
-        model_type: 模型类型
-        device: 设备
-        quantization: 量化参数（可选）
-        use_large_calibration: 是否使用大校准集
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output file path
+        model_type: Model type
+        device: Device
+        quantization: Quantization parameters (optional)
+        use_large_calibration: Whether to use large calibration set
     Returns:
         (success: bool, extra_info: dict or None)
     """
@@ -49,9 +49,9 @@ def convert_to_gptq(
                 calibration_dataset = [x["text"] for x in ds.select(range(1000)) if len(x["text"].split()) > 32]
                 if len(calibration_dataset) < 1000:
                     calibration_dataset += ["The quick brown fox jumps over the lazy dog."] * (1000 - len(calibration_dataset))
-                logger.info(f"[GPTQ] 使用 HuggingFace openwebtext 采样 {len(calibration_dataset)} 条高质量校准文本")
+                logger.info(f"[GPTQ] Using HuggingFace openwebtext sampling {len(calibration_dataset)} high-quality calibration texts")
             except Exception as e:
-                logger.warning(f"加载高质量校准集失败，回退到内置样本: {e}")
+                logger.warning(f"Failed to load high-quality calibration set, falling back to built-in samples: {e}")
                 calibration_dataset = [
                     "The quick brown fox jumps over the lazy dog. " * 20,
                     "GPTQ high-precision calibration sentence. " * 20,
@@ -74,11 +74,11 @@ def convert_to_gptq(
 
 def validate_gptq_file(gptq_dir: Path, _: Any) -> bool:
     """
-    验证 GPTQ 量化模型有效性。
+    Validate GPTQ quantized model validity.
     Args:
-        gptq_dir: 输出目录
+        gptq_dir: Output directory
     Returns:
-        bool: 是否有效
+        bool: Whether valid
     """
     try:
         from gptqmodel import GPTQModel, QuantizeConfig
@@ -95,7 +95,7 @@ def validate_gptq_file(gptq_dir: Path, _: Any) -> bool:
                 bits = quant_config.get("bits", 4)
                 group_size = quant_config.get("group_size", 128)
                 quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
-                # 设备自动适配
+                # Device auto-adaptation
                 model = GPTQModel.from_pretrained(str(gptq_dir), quantize_config=quantize_config)
                 device = torch.device("cpu")
                 dummy_input = torch.ones((1, 8), dtype=torch.long, device=device)
@@ -104,7 +104,7 @@ def validate_gptq_file(gptq_dir: Path, _: Any) -> bool:
                 return True
             except Exception as e:
                 logger.warning(f"GPTQ model inference failed: {e}")
-                # 推理失败但模型文件存在，视为转换成功
+                # Inference failed but model files exist, consider conversion successful
                 return True
         logger.warning(f"GPTQ output missing config.json: {gptq_dir}")
         return False

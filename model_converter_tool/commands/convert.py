@@ -2,7 +2,7 @@ import typer
 import os
 from model_converter_tool.core.conversion import convert_model
 
-# 美化参数 help
+# Beautify parameter help
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
 

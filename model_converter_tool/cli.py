@@ -3,7 +3,7 @@ from rich import print as rprint
 import os
 import shutil
 import sys
-os.environ["HF_ENDPOINT"] = "https://huggingface.co"
+# os.environ["HF_ENDPOINT"] = "https://huggingface.co"
 
 EXAMPLES = """
 [bold cyan]Examples:[/bold cyan]
@@ -31,7 +31,7 @@ Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/
     rich_markup_mode="rich"
 )
 
-# 子命令注册
+# Subcommand registration
 from model_converter_tool.commands import inspect, convert, list_cmd, validate, cache, history, config, version
 
 app.command()(inspect.inspect)

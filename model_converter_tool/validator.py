@@ -1,135 +1,93 @@
-"""
-高级推理验证与量化质量评测工具
-"""
+# Advanced inference validation and quantization quality evaluation tool
+
 import logging
-import os
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-class ModelQualityEvaluator:
+class ModelValidator:
     """
-    高级推理验证与量化模型质量评测
+    Advanced inference validation and quantized model quality evaluation
     """
-    @staticmethod
-    def validate_quantization_quality(
-        original_model_path: str,
-        quantized_model_path: str,
-        quantization_type: str,
-        model_type: str = "text-generation",
-    ) -> Dict[str, Any]:
+    
+    def __init__(self, original_model_path: str, quantized_model_path: str):
+        self.original_model_path = original_model_path
+        self.quantized_model_path = quantized_model_path
+        
+    def compare_models(self, test_cases: List[str]) -> Dict[str, Any]:
         """
-        对比原始模型与量化模型的推理输出、困惑度、相似度等质量指标。
+        Compare inference outputs, perplexity, similarity and other quality metrics between original and quantized models.
         """
+        results = {}
+        
+        # Load original model
         try:
             import torch
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-            # 加载原始模型
-            original_model = AutoModelForCausalLM.from_pretrained(original_model_path)
-            tokenizer = AutoTokenizer.from_pretrained(original_model_path)
-            # 加载量化模型
-            if quantization_type.lower() == "gptq":
-                try:
-                    from gptqmodel import GPTQModel
-                    quantized_model = GPTQModel.load(quantized_model_path)
-                except ImportError:
-                    return {"success": False, "error": "gptqmodel not available for quality validation"}
-            elif quantization_type.lower() == "awq":
-                try:
-                    from gptqmodel import GPTQModel
-                    quantized_model = GPTQModel.load(quantized_model_path)
-                except ImportError:
-                    return {"success": False, "error": "gptqmodel not available for quality validation"}
-            else:
-                quantized_model = AutoModelForCausalLM.from_pretrained(quantized_model_path)
-            # 测试用例
-            test_cases = [
-                "Hello world",
-                "The quick brown fox",
-                "Machine learning is",
-                "In the beginning",
-                "To be or not to be",
-            ]
-            quality_metrics: Dict[str, Any] = {
-                "perplexity_diff": [],
-                "output_similarity": [],
-                "inference_speed": [],
-                "memory_usage": [],
-            }
-            for test_text in test_cases:
-                try:
-                    inputs = tokenizer(test_text, return_tensors="pt")
-                    # 原始模型推理
-                    with torch.no_grad():
-                        original_outputs = original_model(**inputs)
-                    original_logits = original_outputs.logits
-                    # 量化模型推理
-                    if quantization_type.lower() in ["gptq", "awq"]:
-                        # Use gptqmodel's generate method
-                        result = quantized_model.generate(test_text, max_length=len(inputs["input_ids"][0]) + 5)
-                        quantized_logits = original_logits  # 占位，实际应获取真实 logits
-                    else:
-                        with torch.no_grad():
-                            quantized_outputs = quantized_model(**inputs)
-                        quantized_logits = quantized_outputs.logits
-                    # 计算输出相似度
-                    if original_logits.shape == quantized_logits.shape:
-                        similarity = torch.cosine_similarity(
-                            original_logits.flatten(), quantized_logits.flatten(), dim=0
-                        ).item()
-                        quality_metrics["output_similarity"].append(similarity)
-                        # 计算困惑度差异
-                        orig_probs = torch.softmax(original_logits, dim=-1)
-                        quant_probs = torch.softmax(quantized_logits, dim=-1)
-                        perplexity_diff = torch.abs(orig_probs - quant_probs).mean().item()
-                        quality_metrics["perplexity_diff"].append(perplexity_diff)
-                except Exception as e:
-                    logger.warning(f"Quality test failed for '{test_text}': {e}")
-            # 计算平均指标
-            avg_similarity = (
-                np.mean(quality_metrics["output_similarity"]) if quality_metrics["output_similarity"] else 0
-            )
-            avg_perplexity_diff = (
-                np.mean(quality_metrics["perplexity_diff"]) if quality_metrics["perplexity_diff"] else 0
-            )
-            # 计算模型大小差异
-            original_size = sum(p.numel() * p.element_size() for p in original_model.parameters())
-            quantized_size = 0
-            if os.path.exists(quantized_model_path):
-                for root, dirs, files in os.walk(quantized_model_path):
-                    for file in files:
-                        quantized_size += os.path.getsize(os.path.join(root, file))
-            else:
-                quantized_size = original_size  # Fallback
-            compression_ratio = original_size / quantized_size if quantized_size > 0 else 1
-            return {
-                "success": True,
-                "avg_similarity": avg_similarity,
-                "avg_perplexity_diff": avg_perplexity_diff,
-                "compression_ratio": compression_ratio,
-                "details": quality_metrics,
-            }
+            from transformers import AutoModel, AutoTokenizer
+            original_model = AutoModel.from_pretrained(self.original_model_path)
+            original_tokenizer = AutoTokenizer.from_pretrained(self.original_model_path)
         except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    @staticmethod
-    def batch_quality_evaluation(
-        model_pairs: List[Dict[str, str]],
-        quantization_type: str,
-        model_type: str = "text-generation",
-    ) -> List[Dict[str, Any]]:
-        """
-        批量评测多个模型对的量化质量。
-        model_pairs: List of dicts with keys: original_model_path, quantized_model_path
-        """
-        results = []
-        for pair in model_pairs:
-            result = ModelQualityEvaluator.validate_quantization_quality(
-                pair["original_model_path"],
-                pair["quantized_model_path"],
-                quantization_type,
-                model_type,
-            )
-            results.append(result)
+            logger.error(f"Failed to load original model: {e}")
+            return {"error": f"Original model loading failed: {e}"}
+            
+        # Load quantized model
+        try:
+            # Try different loading methods based on format
+            if self.quantized_model_path.endswith(".gguf"):
+                import llama_cpp
+                quantized_model = llama_cpp.Llama(model_path=self.quantized_model_path)
+            else:
+                quantized_model = AutoModel.from_pretrained(self.quantized_model_path)
+                quantized_tokenizer = AutoTokenizer.from_pretrained(self.quantized_model_path)
+        except Exception as e:
+            logger.error(f"Failed to load quantized model: {e}")
+            return {"error": f"Quantized model loading failed: {e}"}
+            
+        # Test cases
+        for i, test_case in enumerate(test_cases):
+            try:
+                # Original model inference
+                original_output = self._inference(original_model, original_tokenizer, test_case)
+                quantized_output = self._inference(quantized_model, quantized_tokenizer, test_case)
+                
+                # Calculate metrics
+                similarity = self._calculate_similarity(original_output, quantized_output)
+                perplexity_diff = self._calculate_perplexity_diff(original_output, quantized_output)
+                
+                results[f"test_case_{i}"] = {
+                    "input": test_case,
+                    "similarity": similarity,
+                    "perplexity_diff": perplexity_diff,
+                    "original_output": original_output,
+                    "quantized_output": quantized_output
+                }
+            except Exception as e:
+                logger.error(f"Test case {i} failed: {e}")
+                results[f"test_case_{i}"] = {"error": str(e)}
+                
         return results
+    
+    def _inference(self, model, tokenizer, text: str) -> str:
+        """Perform inference on a model"""
+        try:
+            inputs = tokenizer(text, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(**inputs)
+            return tokenizer.decode(outputs.logits.argmax(dim=-1)[0])
+        except Exception as e:
+            logger.error(f"Inference failed: {e}")
+            return ""
+    
+    def _calculate_similarity(self, output1: str, output2: str) -> float:
+        """Calculate similarity between two outputs"""
+        # Simple character-level similarity
+        if not output1 or not output2:
+            return 0.0
+        return sum(1 for a, b in zip(output1, output2) if a == b) / max(len(output1), len(output2))
+    
+    def _calculate_perplexity_diff(self, output1: str, output2: str) -> float:
+        """Calculate perplexity difference between outputs"""
+        # Simplified perplexity calculation
+        return abs(len(output1) - len(output2)) / max(len(output1), len(output2), 1)

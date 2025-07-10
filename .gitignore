@@ -1,109 +1,50 @@
-# 忽略模型缓存和 HuggingFace 相关文件
+# Ignore model cache and HuggingFace related files
+.cache/
+models/
 model_cache/
-*.safetensors
-*.bin
-*.pt
+huggingface/
+transformers_cache/
 
-# 忽略输出文件
+# Ignore output files
 outputs/
-*.onnx
+test_outputs/
+uploads/
 
-# 忽略数据库和临时文件
-dump.rdb
-*.lock
-
-# 忽略 Python 编译文件
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-venv/
+# Ignore database and temporary files
+*.db
+*.sqlite
 temp/
+tmp/
 
-# Virtual environments
-venv311/
-venv/
+# Ignore Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Other common ignores
+.DS_Store
+.env
+.venv
 env/
+venv/
 ENV/
 env.bak/
 venv.bak/
-
-# 其他常见忽略
-.env
-.env.*
-venv311/
-
-# Test outputs
-test_outputs/
-*.gguf
-*.ggml
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs and temporary files
-*.log
-*.tmp
-*.temp
-
-# Environment variables
-.env
-.env.*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Test artifacts
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# Pyre type checker
-.pyre/
-
-# Uploads
-uploads/

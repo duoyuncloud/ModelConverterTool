@@ -38,11 +38,11 @@ flake8>=6.0.0
 # Optional/advanced quantization dependencies
 optimum
 peft
-# triton  # OpenAI Triton，仅限部分Linux+Python3.8~3.10环境需要
+# triton  # OpenAI Triton, only needed for some Linux+Python3.8~3.10 environments
 lm-eval
 evalplus
-# intel-extension-for-pytorch  # 仅限Linux+Intel XPU/CPU优化环境需要
-# bitblas  # 仅部分高级量化/推理开发者需要，普通用户可忽略
+# intel-extension-for-pytorch  # Only needed for Linux+Intel XPU/CPU optimization environments
+# bitblas  # Only needed for some advanced quantization/inference developers, can be ignored by regular users
 
 random_word>=1.0.8
 numpy

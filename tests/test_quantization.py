@@ -13,7 +13,7 @@ import pytest
 
 from model_converter_tool.converter import ModelConverter
 
-# 在CI环境下跳过macOS量化测试
+# Skip macOS quantization tests in CI environment
 is_ci = os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'
 if sys.platform == 'darwin' and is_ci:
     pytest.skip('Skip quantization tests on macOS CI due to known ABI/runner issues', allow_module_level=True)
@@ -37,7 +37,7 @@ def output_dir():
     ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
 ])
 def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization, model_type):
-    # 自动跳过MLX测试（非Apple Silicon）
+    # Automatically skip MLX tests (non-Apple Silicon)
     if output_format == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
         pytest.skip("MLX only supported on Apple Silicon macOS")
     

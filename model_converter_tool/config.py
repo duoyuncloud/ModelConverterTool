@@ -277,4 +277,4 @@ class PresetManager:
         return {preset["name"]: preset for preset in self.presets}
 
 
-# 移除重复的空函数定义
+# Remove duplicate empty function definitions

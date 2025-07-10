@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 
 logger = logging.getLogger(__name__)
 
-# 支持的格式列表
+# Supported format list
 SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "fp16", "awq", "gptq", "hf", "safetensors", "mlx"]
 
 @dataclass
@@ -19,11 +19,11 @@ class ConversionResult:
 class ModelConverter:
     """
     Model converter with engine-based logic and unified dispatch.
-    API-First: 参数全部显式、类型安全、文档齐全，返回 dataclass。
+    API-First: All parameters explicit, type-safe, well-documented, returns dataclass.
     """
     
     def _get_converter_functions(self, output_format: str):
-        """延迟导入转换器函数"""
+        """Lazy import converter functions"""
         if output_format == "onnx":
             from .engine.onnx import convert_to_onnx, validate_onnx_file
             return convert_to_onnx, validate_onnx_file
@@ -66,7 +66,7 @@ class ModelConverter:
         """
         path = Path(input_model)
         
-        # 首先检查文件扩展名（即使文件不存在）
+        # First check file extension (even if file doesn't exist)
         suffix = path.suffix.lower()
         if suffix == ".onnx":
             return "onnx", str(path)
@@ -79,9 +79,9 @@ class ModelConverter:
         elif suffix == ".npz":
             return "mlx", str(path)
         
-        # 如果本地不存在，且没有明确的文件扩展名，则认为是 Hugging Face Hub 名称
+        # If local doesn't exist and no clear file extension, consider it Hugging Face Hub name
         if not path.exists():
-            # 检查是否包含斜杠（可能是组织/模型名格式）或者是不带扩展名的模型名
+            # Check if it contains slashes (might be organization/model name format) or model name without extension
             if "/" in input_model or "\\" in input_model or (not suffix and not input_model.startswith(".")):
                 return "huggingface", input_model
             else:
@@ -89,7 +89,7 @@ class ModelConverter:
         
         # Check if it's a local file
         if path.is_file():
-            # 文件存在但没有支持的扩展名
+            # File exists but no supported extension
             return "unknown", str(path)
         
         # Check if it's a directory (likely Hugging Face format)
@@ -170,21 +170,21 @@ class ModelConverter:
         """
         Convert a model to the specified format.
         Args:
-            model: 已加载的模型对象（可选）
-            tokenizer: 已加载的分词器对象（可选）
-            model_name: 源模型名称或路径（可选，若未传model/tokenizer则自动加载）
-            output_format: 目标格式
-            output_path: 输出路径
-            model_type: 模型类型
-            device: 设备
-            quantization: 量化参数（可选）
-            use_large_calibration: 是否使用大范围校准
+            model: Loaded model object (optional)
+            tokenizer: Loaded tokenizer object (optional)
+            model_name: Source model name or path (optional, auto-load if model/tokenizer not provided)
+            output_format: Target format
+            output_path: Output path
+            model_type: Model type
+            device: Device
+            quantization: Quantization parameters (optional)
+            use_large_calibration: Whether to use large-scale calibration
         Returns:
             ConversionResult dataclass
         """
         result = ConversionResult(success=False)
         try:
-            # 自动加载 transformers 模型和分词器
+            # Auto-load transformers model and tokenizer
             if (model is None or tokenizer is None) and model_name is not None:
                 from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
                 model = load_model_with_cache(model_name)
@@ -222,13 +222,13 @@ class ModelConverter:
         max_retries: int = 1,
     ) -> List[ConversionResult]:
         """
-        Batch convert models with unified API.
+        Batch convert multiple models.
         Args:
-            tasks: 任务列表，每个任务为 dict，参数同 convert
-            max_workers: 并发数
-            max_retries: 最大重试次数
+            tasks: Task list, each task is a dict with same parameters as convert
+            max_workers: Number of concurrent workers
+            max_retries: Maximum retry attempts
         Returns:
-            List[ConversionResult]
+            List of ConversionResult
         """
         results: List[ConversionResult] = []
         for task in tasks:

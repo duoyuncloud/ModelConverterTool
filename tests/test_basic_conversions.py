@@ -38,7 +38,7 @@ def output_dir():
     d.mkdir(parents=True, exist_ok=True)
     return d
 
-# 用dict驱动所有README demo
+# Use dict to drive all README demos
 DEMO_TASKS = [
     {"input_model": "bert-base-uncased", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
     # Use a stable, official model for GGUF
@@ -60,7 +60,7 @@ def is_hf_model_available(model_id):
 
 @pytest.mark.parametrize("task", DEMO_TASKS)
 def test_readme_demo(converter, output_dir, task):
-    # 如果是MLX任务且非Apple Silicon，自动跳过
+    # If it's an MLX task and not Apple Silicon, automatically skip
     if task["output_format"] == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
         pytest.skip("MLX only supported on Apple Silicon macOS")
     # GGUF conversion requires llama-cpp-python and a supported model family

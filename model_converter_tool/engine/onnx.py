@@ -1,8 +1,6 @@
-"""
-ONNX 格式模型转换、后处理与验证模块
-"""
+# ONNX format model conversion, post-processing and validation module
 
-# 依赖项按需导入
+# Import dependencies as needed
 import os
 from pathlib import Path
 import logging
@@ -10,7 +8,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# ONNX 相关核心方法
+# ONNX related core methods
 
 def _get_max_onnx_opset() -> int:
     try:
@@ -38,12 +36,12 @@ def _get_max_onnx_opset() -> int:
 
 def validate_onnx_file(onnx_file: Path, opset: int) -> bool:
     """
-    验证 ONNX 文件有效性。
+    Validate ONNX file validity.
     Args:
-        onnx_file: ONNX 文件路径
-        opset: 导出时使用的 opset 版本
+        onnx_file: ONNX file path
+        opset: opset version used for export
     Returns:
-        bool: 是否有效
+        bool: Whether valid
     """
     try:
         import onnx
@@ -188,14 +186,14 @@ def convert_to_onnx(
     device: str
 ) -> tuple:
     """
-    将模型导出为 ONNX 格式。
+    Export model to ONNX format.
     Args:
-        model: 已加载的模型对象
-        tokenizer: 已加载的分词器对象
-        model_name: 源模型名称或路径
-        output_path: 输出文件路径
-        model_type: 模型类型
-        device: 设备
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output file path
+        model_type: Model type
+        device: Device
     Returns:
         (success: bool, extra_info: dict or None)
     """
@@ -210,7 +208,7 @@ def convert_to_onnx(
         export_success = False
         last_error = None
         used_opset = None
-        # 1. 常规导出
+        # 1. Regular export
         for opset in range(max_opset, 10, -1):
             try:
                 logger.info(f"Trying torch.onnx export with opset {opset}...")
@@ -257,7 +255,7 @@ def convert_to_onnx(
             except Exception as e:
                 last_error = e
                 logger.warning(f"torch.onnx export failed (opset {opset}): {e}")
-        # 2. functional fallback
+        # 2. Functional fallback
         if not export_success:
             try:
                 logger.info("Creating functional ONNX model...")

@@ -22,22 +22,22 @@ def _auto_setup_mlx_examples():
         logger.info("[MLX] Cloning latest mlx-examples...")
         subprocess.check_call(["git", "clone", MLX_EXAMPLES_REPO, str(repo_dir)])
     try:
-        # 延迟执行，避免在模块导入时执行
-        # 移除模块级别的函数调用，改为在需要时调用
+        # Delayed execution to avoid execution during module import
+        # Remove module-level function calls, change to call when needed
         if not repo_dir.exists():
-            clone_repo()  # 在实际需要时才克隆
+            clone_repo()  # Clone when actually needed
         convert_scripts = list(repo_dir.rglob("*convert*.py"))
         if not convert_scripts:
             py_files = list(repo_dir.rglob("*.py"))
-            logger.error("[MLX] 未找到任何包含 'convert' 的脚本。当前仓库下可用 Python 脚本如下：")
+            logger.error("[MLX] No scripts containing 'convert' found. Available Python scripts in current repository:")
             for f in py_files:
                 logger.error(f"    - {f.relative_to(repo_dir)}")
             raise RuntimeError(
-                f"[MLX] 未找到任何转换脚本，可能是官方仓库结构变动或网络/代理问题。请检查上方脚本列表，或手动适配最新转换脚本。仓库地址：{MLX_EXAMPLES_REPO}"
+                f"[MLX] No conversion scripts found, possibly due to official repository structure changes or network/proxy issues. Please check the script list above, or manually adapt the latest conversion script. Repository address: {MLX_EXAMPLES_REPO}"
             )
         root_scripts = [s for s in convert_scripts if s.parent == repo_dir]
         script_path = root_scripts[0] if root_scripts else convert_scripts[0]
-        logger.info(f"[MLX] 自动选择转换脚本: {script_path.relative_to(repo_dir)}")
+        logger.info(f"[MLX] Automatically selected conversion script: {script_path.relative_to(repo_dir)}")
         if script_path.name == "convert.py":
             script_type = "convert_py"
         elif script_path.name == "convert_checkpoint.py":
@@ -58,10 +58,10 @@ def convert_to_mlx(
     device: str
 ) -> tuple:
     """
-    增强版MLX转换，直接用PyTorch->MLX权重转换，自动保存tokenizer/config/mlx_config/model_card。
+    Enhanced MLX conversion, directly convert PyTorch->MLX weights, automatically save tokenizer/config/mlx_config/model_card.
     """
     try:
-        # 依赖检查
+        # Dependency check
         try:
             import mlx.core as mx
             import numpy as np
@@ -75,7 +75,7 @@ def convert_to_mlx(
             return False, None
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
-        # 加载模型
+        # Load model
         try:
             if model is None:
                 from model_converter_tool.utils import load_model_with_cache
@@ -91,13 +91,13 @@ def convert_to_mlx(
         except Exception as e:
             logger.error(f"Failed to load model for MLX conversion: {e}")
             return False, None
-        # 转换权重
+        # Convert weights
         mlx_model = _convert_pytorch_to_mlx(model)
         mlx_file = output_dir / "model.npz"
         np.savez(str(mlx_file), **{k: np.array(v) for k, v in mlx_model.items()})
-        # 保存tokenizer/config
+        # Save tokenizer/config
         _save_hf_format_files(model_name, output_dir, tokenizer, getattr(model, 'config', None), "mlx")
-        # 保存mlx_config
+        # Save mlx_config
         mlx_config = {
             "model_type": model_type,
             "format": "mlx",
@@ -107,7 +107,7 @@ def convert_to_mlx(
         }
         with open(output_dir / "mlx_config.json", "w") as f:
             json.dump(mlx_config, f, indent=2)
-        # 保存model_card
+        # Save model_card
         _create_model_card(output_dir, model_name, "mlx", model_type)
         logger.info(f"MLX conversion completed: {output_dir}")
         return True, None
@@ -201,7 +201,7 @@ for your framework.
 
 def validate_mlx_file(mlx_path: Path, _: Any) -> bool:
     """
-    增强版MLX模型验证：检查npz文件存在性，若有mlx-transformers则尝试加载。
+    Enhanced MLX model validation: Check npz file existence, try to load if mlx-transformers is available.
     """
     try:
         import numpy as np
@@ -212,28 +212,28 @@ def validate_mlx_file(mlx_path: Path, _: Any) -> bool:
             logger.warning(f"No MLX files found: {model_dir}")
             return False
         mlx_file = mlx_files[0]
-        # 自动降级：如未安装mlx_transformers，仅做文件存在性检查
+        # Auto fallback: If mlx_transformers is not installed, only do file existence check
         try:
             import mlx_transformers
         except ImportError:
-            logger.info("未检测到 mlx-transformers，仅做文件存在性检查，未做推理验证。")
+            logger.info("mlx-transformers not detected, only doing file existence check, no inference validation.")
             return True
-        # 依赖已安装，尝试新版/旧版 API
+        # Dependency installed, try new/old API
         try:
             from mlx_transformers import AutoTokenizer, MLXModel
-            # 这里只做加载级验证，不做推理
-            logger.info("MLXModel类存在，仅做加载级验证。")
+            # Only do loading-level validation here, no inference
+            logger.info("MLXModel class exists, only doing loading-level validation.")
             return True
         except ImportError:
             try:
                 from mlx_transformers import GenerationConfig, load
-                logger.info("load/GenerationConfig存在，仅做加载级验证。")
+                logger.info("load/GenerationConfig exists, only doing loading-level validation.")
                 return True
             except ImportError:
-                logger.info("mlx-transformers依赖异常，仅做文件存在性检查。")
+                logger.info("mlx-transformers dependency exception, only doing file existence check.")
                 return True
         except Exception as e:
-            logger.info(f"mlx-transformers 加载异常，仅做文件存在性检查。{e}")
+            logger.info(f"mlx-transformers loading exception, only doing file existence check. {e}")
             return True
     except Exception as e:
         logger.warning(f"MLX validation error: {e}")
