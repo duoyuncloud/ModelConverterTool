@@ -45,11 +45,6 @@ jobs:
         run: |
           test -d llama.cpp/gguf-py/gguf || (echo "llama.cpp/gguf-py/gguf/ directory missing!" && exit 1)
 
-      - name: GGUF conversion smoke test (Qwen2-0.5B)
-        run: |
-          python -m model_converter_tool.cli convert Qwen/Qwen2-0.5B --output ./outputs/qwen2-0.5B.gguf --to gguf --model-type qwen
-          test -f ./outputs/qwen2-0.5B.gguf || (echo "GGUF conversion failed!" && exit 1)
-
       - name: Run all tests
         run: |
           pytest --maxfail=1 --disable-warnings -v

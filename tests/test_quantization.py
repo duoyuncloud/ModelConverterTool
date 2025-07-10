@@ -33,7 +33,7 @@ def output_dir():
 @pytest.mark.parametrize("input_model,output_format,output_file,quantization,model_type", [
     ("facebook/opt-125m", "gptq", "opt_125m_gptq", "4bit", "text-generation"),
     ("facebook/opt-125m", "awq", "opt_125m_awq", "4bit", "text-generation"),
-    ("TinyLlama/TinyLlama-1.1B-Chat-v1.0", "gguf", "tinyllama-1.1b-chat-v1.0.gguf", "q4_k_m", "text-generation"),
+    ("Qwen/Qwen2-0.5B", "gguf", "qwen2-0.5b.gguf", "q4_k_m", "text-generation"),
     ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
 ])
 def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization, model_type):

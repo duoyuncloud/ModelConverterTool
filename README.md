@@ -131,7 +131,7 @@ modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq --to awq 
 modelconvert convert facebook/opt-125m --output ./outputs/opt_125m_awq_high_quality --to awq --quant 4bit --use-large-calibration
 
 # GGUF quantization (Llama/Mistral/Gemma only)
-modelconvert convert TinyLlama/TinyLlama-1.1B-Chat-v1.0 --output ./outputs/tinyllama-1.1b-chat-v1.0.gguf --to gguf --quant q4_k_m
+modelconvert convert Qwen/Qwen2-0.5B --output ./outputs/qwen2-0.5B.gguf --to gguf --quant q4_k_m
 
 # MLX quantization
 modelconvert convert gpt2 --output ./outputs/gpt2.mlx --to mlx --quant q4_k_m
