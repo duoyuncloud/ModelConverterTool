@@ -1,111 +1,12 @@
-# Batch model conversion configuration file template
-# Supports conversion tasks with multiple input and output formats
-
-# Task list
-tasks:
-  # Example 1: Hugging Face -> GGUF (quantization)
-  - model_path: "meta-llama/Llama-2-7b-hf"
-    output_format: "gguf"
-    output_path: "./outputs/llama2-7b-q4_k_m.gguf"
-    model_type: "text-generation"
-    quantization: "q4_k_m"
-    device: "auto"
-    use_large_calibration: false
-
-  # Example 2: Hugging Face -> ONNX (cross-platform inference)
-  - model_path: "bert-base-uncased"
-    output_format: "onnx"
-    output_path: "./outputs/bert-base-uncased.onnx"
-    model_type: "text-classification"
-    device: "auto"
-
-  # Example 3: Hugging Face -> MLX (Apple Silicon optimization)
-  - model_path: "microsoft/DialoGPT-medium"
-    output_format: "mlx"
-    output_path: "./outputs/dialogpt-medium.mlx"
-    model_type: "text-generation"
-    quantization: "q4_k_m"
-    device: "auto"
-
-  # Example 4: Hugging Face -> GPTQ (GPU quantization)
-  - model_path: "gpt2"
-    output_format: "gptq"
-    output_path: "./outputs/gpt2-4bit.safetensors"
-    model_type: "text-generation"
-    quantization: "4bit"
-    device: "cuda"
-    use_large_calibration: true
-
-  # Example 5: Hugging Face -> AWQ (activation-aware quantization)
-  - model_path: "microsoft/DialoGPT-small"
-    output_format: "awq"
-    output_path: "./outputs/dialogpt-small-awq.safetensors"
-    model_type: "text-generation"
-    quantization: "4bit"
-    device: "cuda"
-
-  # Example 6: Hugging Face -> TorchScript (PyTorch optimization)
-  - model_path: "distilbert-base-uncased"
-    output_format: "torchscript"
-    output_path: "./outputs/distilbert-base-uncased.pt"
-    model_type: "text-classification"
-    device: "auto"
-
-  # Example 7: Hugging Face -> FP16 (half precision)
-  - model_path: "t5-small"
-    output_format: "fp16"
-    output_path: "./outputs/t5-small-fp16.safetensors"
-    model_type: "text2text-generation"
-    device: "auto"
-
-  # Example 8: Hugging Face -> SafeTensors (secure format)
-  - model_path: "google/vit-base-patch16-224"
-    output_format: "safetensors"
-    output_path: "./outputs/vit-base-patch16-224.safetensors"
-    model_type: "image-classification"
-    device: "auto"
-
-# Global configuration (optional)
-global_config:
-  max_workers: 2  # Number of concurrent workers
-  max_retries: 3  # Number of retries
-  output_dir: "./outputs"  # Output directory
-  log_level: "INFO"  # Log level
-
-# Format description:
-# 
-# Supported input formats:
-# - huggingface: Hugging Face Transformers format (directory containing config.json)
-# - safetensors: SafeTensors format file
-# - torchscript: TorchScript format file (.pt/.pth)
-# - onnx: ONNX format file (.onnx)
-# - gguf: GGUF format file (.gguf)
-#
-# Supported output formats:
-# - onnx: ONNX format - cross-platform inference standard
-# - gguf: GGUF format - llama.cpp optimized format (supports quantization)
-# - torchscript: TorchScript format - PyTorch optimization
-# - fp16: FP16 half precision format
-# - gptq: GPTQ quantization format (supports 4bit/8bit)
-# - awq: AWQ quantization format (supports 4bit/8bit)
-# - safetensors: SafeTensors secure format
-# - mlx: MLX format - Apple Silicon optimization (supports quantization)
-#
-# Quantization options:
-# - GGUF: q4_k_m, q8_0, q5_k_m, q4_0, q4_1
-# - GPTQ: 4bit, 8bit
-# - AWQ: 4bit, 8bit
-# - MLX: q4_k_m, q8_0, q5_k_m
-#
-# Device options:
-# - auto: auto-detect
-# - cuda: NVIDIA GPU
-# - cpu: CPU
-# - mps: Apple Silicon GPU
-#
-# Model types:
-# - auto: auto-detect
-# - text-generation: text generation
-# - text-classification: text classification
-# - image-classification: image classification
-# - text2text-generation: text-to-text generation
+conversions:
+  - input: path/to/input_model.bin
+    output: path/to/output_model.gguf
+    to: gguf
+    quant: q4
+    model_type: auto
+    device: auto
+  - input: path/to/input_model2.bin
+    output: path/to/output_model2.onnx
+    to: onnx
+    model_type: bert
+    device: cpu

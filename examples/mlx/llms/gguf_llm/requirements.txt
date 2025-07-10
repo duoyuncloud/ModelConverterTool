@@ -1,5 +1,0 @@
-mlx>=0.8
-numpy
-protobuf==3.20.2
-sentencepiece
-huggingface_hub
