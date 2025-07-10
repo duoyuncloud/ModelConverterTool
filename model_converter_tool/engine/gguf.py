@@ -92,7 +92,8 @@ def convert_to_gguf(
     model_name: str,
     output_path: str,
     model_type: str,
-    device: str
+    device: str,
+    quantization: str = None  # Add quantization param for compatibility
 ) -> tuple:
     """
     Enhanced GGUF conversion, prioritize llama.cpp/convert_hf_to_gguf.py command line, automatically adapt parameters and output paths.
@@ -110,9 +111,18 @@ def convert_to_gguf(
             # Neither directory nor .gguf file, default to file completion
             output_dir.mkdir(parents=True, exist_ok=True)
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-        # 2. Prioritize llama.cpp/convert_hf_to_gguf.py
-        llama_cpp_script = Path("llama.cpp/convert_hf_to_gguf.py")
-        if llama_cpp_script.exists():
+
+        # 2. Find the conversion script in both possible locations
+        script_candidates = [
+            Path("llama.cpp/convert_hf_to_gguf.py"),
+            Path("llama.cpp/scripts/convert_hf_to_gguf.py")
+        ]
+        llama_cpp_script = None
+        for candidate in script_candidates:
+            if candidate.exists():
+                llama_cpp_script = candidate
+                break
+        if llama_cpp_script:
             # Automatically download model to temporary directory (if input is not local directory)
             from transformers import AutoModel, AutoTokenizer
             import tempfile
@@ -134,14 +144,33 @@ def convert_to_gguf(
                 help_args = help_proc.stdout + help_proc.stderr
             except Exception:
                 pass
+            # Quantization mapping
+            quant_map = {
+                "q4_k_m": "q4_0",
+                "q8_0": "q8_0",
+                "f16": "f16",
+                "auto": "auto",
+                None: "auto",
+                "": "auto"
+            }
+            outtype = quant_map.get(quantization, quantization if quantization else "auto")
+            # Build command
             if "--in" in help_args and "--out" in help_args:
                 cmd = [sys.executable, str(llama_cpp_script), "--in", model_dir, "--out", str(gguf_file)]
+                if outtype:
+                    cmd += ["--outtype", outtype]
             elif "--input" in help_args and "--output" in help_args:
                 cmd = [sys.executable, str(llama_cpp_script), "--input", model_dir, "--output", str(gguf_file)]
+                if outtype:
+                    cmd += ["--outtype", outtype]
             elif "--outfile" in help_args:
                 cmd = [sys.executable, str(llama_cpp_script), model_dir, "--outfile", str(gguf_file)]
+                if outtype:
+                    cmd += ["--outtype", outtype]
             else:
                 cmd = [sys.executable, str(llama_cpp_script), model_dir, "--outfile", str(gguf_file)]
+                if outtype:
+                    cmd += ["--outtype", outtype]
             logger.info(f"[GGUF] Running: {' '.join(map(str, cmd))}")
             result = subprocess.run(cmd, capture_output=True, text=True)
             if not Path(gguf_file).exists() or result.returncode != 0:
@@ -150,7 +179,7 @@ def convert_to_gguf(
             logger.info(f"GGUF conversion completed: {gguf_file}")
             return True, None
         # 删除所有无效兜底分支（llama_cpp.convert_hf_to_gguf 及手动header fallback）
-        logger.error("GGUF conversion failed: No valid conversion method available. Please ensure llama.cpp/scripts/convert_hf_to_gguf.py exists and dependencies are installed.")
+        logger.error("GGUF conversion failed: No valid conversion method available. Please ensure llama.cpp/convert_hf_to_gguf.py exists and dependencies are installed.")
         return False, None
     except Exception as e:
         logger.error(f"GGUF conversion error: {e}")

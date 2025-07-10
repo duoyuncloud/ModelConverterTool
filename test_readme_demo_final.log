@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- /Users/duoyun/Desktop/ModelConverterTool/venv/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/duoyun/Desktop/ModelConverterTool
+configfile: pyproject.toml
+collecting ... collected 7 items
+
+tests/test_basic_conversions.py::test_readme_demo[task0] PASSED          [ 14%]
+tests/test_basic_conversions.py::test_readme_demo[task1] SKIPPED (Model
+HuggingFaceM4/tiny-random-LlamaForCausalLM not available on HuggingFace) [ 28%]
+tests/test_basic_conversions.py::test_readme_demo[task2] PASSED          [ 42%]
+tests/test_basic_conversions.py::test_readme_demo[task3] PASSED          [ 57%]
+tests/test_basic_conversions.py::test_readme_demo[task4] PASSED          [ 71%]
+tests/test_basic_conversions.py::test_readme_demo[task5] PASSED          [ 85%]
+tests/test_basic_conversions.py::test_readme_demo[task6] PASSED          [100%]
+
+=============================== warnings summary ===============================
+tests/test_basic_conversions.py::test_readme_demo[task0]
+  /Users/duoyun/Desktop/ModelConverterTool/venv/lib/python3.13/site-packages/torch/onnx/utils.py:185: DeprecationWarning: The feature will be removed. Please remove usage of this function
+    setup_onnx_logging(verbose) as log_ctx,
+
+tests/test_basic_conversions.py::test_readme_demo[task0]
+tests/test_basic_conversions.py::test_readme_demo[task4]
+  /Users/duoyun/Desktop/ModelConverterTool/venv/lib/python3.13/site-packages/transformers/modeling_attn_mask_utils.py:196: TracerWarning: torch.tensor results are registered as constants in the trace. You can safely ignore this warning if you use this function to create tensors out of constant variables that would be the same every time you call this function. In any other case, this might cause the trace to be incorrect.
+    inverted_mask = torch.tensor(1.0, dtype=dtype) - expanded_mask
+
+tests/test_basic_conversions.py::test_readme_demo[task4]
+  /Users/duoyun/Desktop/ModelConverterTool/venv/lib/python3.13/site-packages/torch/jit/annotations.py:388: UserWarning: TorchScript will treat type annotations of Tensor dtype-specific subtypes as if they are normal Tensors. dtype constraints are not enforced in compilation either.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 6 passed, 1 skipped, 4 warnings in 12.82s ===================

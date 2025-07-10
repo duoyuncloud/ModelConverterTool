@@ -41,8 +41,8 @@ def output_dir():
 # Use dict to drive all README demos
 DEMO_TASKS = [
     {"input_model": "bert-base-uncased", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
-    # Use a stable, official model for GGUF
-    {"input_model": "Qwen/Qwen1.5-0.5B-Chat", "output_format": "gguf", "output_file": "Qwen1.5-0.5B-Chat.gguf", "model_type": "qwen"},
+    # Use Qwen/Qwen2-0.5B for GGUF
+    {"input_model": "Qwen/Qwen2-0.5B", "output_format": "gguf", "output_file": "qwen2-0.5b.gguf", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     {"input_model": "sshleifer/tiny-gpt2", "output_format": "fp16", "output_file": "tiny_gpt2_fp16", "model_type": "text-generation"},
     {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},
@@ -53,7 +53,7 @@ DEMO_TASKS = [
 def is_hf_model_available(model_id):
     url = f"https://huggingface.co/{model_id}/resolve/main/config.json"
     try:
-        r = requests.head(url, timeout=5)
+        r = requests.head(url, timeout=5, allow_redirects=True)
         return r.status_code == 200
     except Exception:
         return False
