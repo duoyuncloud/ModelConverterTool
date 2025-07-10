@@ -17,18 +17,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install torch first
+      - name: Upgrade pip and install build tools
         run: |
-          pip install --no-cache-dir torch>=2.0.0
+          python -m pip install --upgrade pip setuptools wheel
 
-      - name: Install all other dependencies
+      - name: Install core dependencies (including torch)
+        run: |
+          pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
+
+      - name: Install remaining dependencies
         run: |
           pip install --no-cache-dir -r requirements.txt
-          pip install --no-cache-dir -r llama.cpp/requirements.txt
-          pip install -e .
-          pip install typer
 
-      - name: Check llama.cpp/convert_hf_to_gguf.py exists
+      - name: Install model_converter_tool package
+        run: |
+          pip install -e .
+
+      - name: Install llama.cpp Python dependencies
+        run: |
+          pip install --no-cache-dir -r llama.cpp/requirements.txt
+
+      - name: Check convert_hf_to_gguf.py exists
         run: |
           test -f llama.cpp/convert_hf_to_gguf.py || (echo "convert_hf_to_gguf.py missing!" && exit 1)
 
