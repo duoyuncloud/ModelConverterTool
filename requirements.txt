@@ -47,3 +47,5 @@ evalplus
 random_word>=1.0.8
 numpy
 typer 
+# For GGUF inference in Python, you may need llama-cpp-python:
+# llama-cpp-python  # Uncomment if you want to run GGUF inference in Python. Not required for conversion. 
