@@ -1,6 +1,3 @@
-[submodule "llama.cpp"]
-	path = llama.cpp
-	url = https://github.com/ggerganov/llama.cpp.git
 [submodule "mlx-examples"]
 	path = mlx-examples
 	url = https://github.com/ml-explore/mlx-examples.git
