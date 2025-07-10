@@ -11,22 +11,11 @@ A professional, multi-format machine learning model conversion and management to
 ```sh
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-python3 -m venv venv
+./install.sh
 source venv/bin/activate
-./install.sh [--enable-mlx]
 ```
-- The script will install `torch` first (required for some packages), then all other dependencies.
-- For Apple Silicon users, add `--enable-mlx` for MLX support.
-- If you see errors about `gptqmodel` or `auto-gptq`, try:
-  ```sh
-  pip install gptqmodel || pip install auto-gptq
-  ```
-- **If you encounter persistent build errors (especially with gptqmodel or auto-gptq), try downgrading pip:**
-  ```sh
-  pip install pip==23.2.1
-  ./install.sh
-  ```
-- See the FAQ in README.md for more troubleshooting tips.
+- This script will create a Python virtual environment (if not present), activate it, and install the package in editable mode.
+- After activation, you can use the `modelconvert` CLI directly.
 
 **Alternative (editable install, advanced users):**
 
@@ -94,7 +83,7 @@ modelconvert config set cache_dir ./mycache
 ```
 
 > **Warning:**
-> - GGUF conversion only supports Llama/Mistral/Gemma family models (e.g., meta-llama/Llama-2-7b-hf, TinyLlama/TinyLlama-1.1B-Chat-v1.0, arnir0/Tiny-LLM). OPT, GPT2, BERT, etc. are **not** supported for GGUF by llama.cpp.
+> - GGUF conversion only supports Llama/Mistral/Gemma family models (e.g., meta-llama/Llama-2-7b-hf, TinyLlama/TinyLlama-1.1B-Chat-v1.0, arnir0/Tiny-LLM, Qwen/Qwen2-0.5B). OPT, GPT2, BERT, etc. are **not** supported for GGUF by llama.cpp.
 > - **If you use a local model path (e.g., ./models/llama.bin), you MUST specify --output.** Otherwise, the tool will treat it as a HuggingFace repo id and report an error.
 
 ---
@@ -105,7 +94,7 @@ modelconvert config set cache_dir ./mycache
 # Hugging Face → ONNX
 modelconvert convert bert-base-uncased --output ./outputs/bert.onnx --to onnx
 
-# Hugging Face → GGUF (Llama/Mistral family)
+# Hugging Face → GGUF (Llama/Mistral family, recommended: Qwen/Qwen2-0.5B)
 modelconvert convert Qwen/Qwen2-0.5B --output ./outputs/qwen2-0.5B.gguf --to gguf --model-type qwen
 
 # Hugging Face → MLX
