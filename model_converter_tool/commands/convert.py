@@ -1,6 +1,7 @@
 import typer
 import os
 from model_converter_tool.core.conversion import convert_model
+from model_converter_tool.utils import check_and_handle_disk_space
 
 # Beautify parameter help
 ARG_REQUIRED = "[bold red][required][/bold red]"
@@ -54,6 +55,11 @@ def convert(
 
     Convert a model to another format, with optional quantization.
     """
+    # Check disk space before starting conversion
+    if not check_and_handle_disk_space(input, to, quant):
+        typer.echo("Conversion aborted due to insufficient disk space.")
+        raise typer.Exit(1)
+    
     output_path = auto_complete_output_path(input, output, to)
     result = convert_model(input, output_path, to, quant, model_type, device, use_large_calibration)
     typer.echo(f"[Output path used]: {output_path}")

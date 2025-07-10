@@ -10,6 +10,7 @@ EXAMPLES = """
   modelconvert inspect meta-llama/Llama-2-7b-hf
   modelconvert convert bert-base-uncased --to onnx
   modelconvert convert facebook/opt-125m --to gptq --quant 4bit
+  modelconvert batch configs/batch_template.yaml
   modelconvert list formats
   modelconvert validate ./outputs/llama-2-7b.gguf
   modelconvert cache
@@ -32,26 +33,17 @@ Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/
 )
 
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, list_cmd, validate, cache, history, config, version
+from model_converter_tool.commands import inspect, convert, list_cmd, validate, cache, history, config, version, batch
 
 app.command()(inspect.inspect)
 app.command()(convert.convert)
+app.command()(batch.batch)
 app.command(name="list")(list_cmd.list)
 app.command()(validate.validate)
 app.command()(cache.cache)
 app.command()(history.history)
 app.command()(config.config)
 app.command()(version.version)
-
-def check_disk_space(min_gb=5):
-    total, used, free = shutil.disk_usage("/")
-    free_gb = free / (1024 ** 3)
-    if free_gb < min_gb:
-        print(f"[ERROR] Not enough disk space. At least {min_gb}GiB required. Aborting.")
-        sys.exit(1)
-
-# Call this at the start of main CLI entry
-check_disk_space()
 
 if __name__ == "__main__":
     app() 
