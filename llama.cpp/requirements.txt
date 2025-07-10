@@ -3,4 +3,3 @@
 #
 # Package versions must stay compatible across all top-level python scripts.
 #
-# 已移除所有 -r requirements/xxx.txt 相关行，只保留 pip 包和 gguf 依赖
