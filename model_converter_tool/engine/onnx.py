@@ -43,11 +43,10 @@ def convert_to_onnx(
         lower_name = model_name.lower()
         if lower_name.startswith("bert") or "bert" in lower_name:
             task = "feature-extraction"
-    
-    is_qwen = model_name and ("qwen2" in model_name.lower() or "qwen" in model_name.lower())
+
     # Load model and tokenizer if not provided
-    if model is None or tokenizer is None or (is_qwen and getattr(tokenizer, "pad_token", None) is None):
-        try:
+    try:
+        if model is None or tokenizer is None or (getattr(tokenizer, "pad_token", None) is None):
             from transformers import AutoTokenizer, AutoModelForCausalLM
             import torch
             if model is None:
@@ -56,38 +55,19 @@ def convert_to_onnx(
                 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
             if getattr(tokenizer, "pad_token", None) is None:
                 tokenizer.pad_token = tokenizer.eos_token
-        except Exception as e:
-            logger.error(f"Failed to load model/tokenizer: {e}")
-            return False, None
+    except Exception:
+        logger.info("Failed to load the model or tokenizer. Please check your model name, network connection, and ensure the model is supported by transformers. You may retry or consult the documentation: https://huggingface.co/docs/transformers/main/en/model_doc/auto")
+        return False, None
 
-    if is_qwen:
-        try:
-            logger.info("Detected Qwen/Qwen2 model, using optimum Python API with custom_onnx_configs.")
-            from optimum.exporters.onnx import export
-            import importlib.util
-            qwen_config_path = Path(__file__).parent.parent.parent / "qwen2_onnx_config.py"
-            spec = importlib.util.spec_from_file_location("qwen2_onnx_config", str(qwen_config_path))
-            qwen2_onnx_config = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(qwen2_onnx_config)
-            custom_onnx_configs = {"causal-lm": qwen2_onnx_config.get_config(model_name, task="causal-lm")}
-            export(
-                model=model,
-                config=custom_onnx_configs["causal-lm"],
-                opset=17,
-                output=Path(onnx_file),
-                device=device,
-            )
-            if validate_onnx_file(onnx_file):
-                logger.info("ONNX export and validation succeeded for Qwen/Qwen2.")
-                extra_info = {"opset": 17, "custom_onnx_configs": True}
-                return True, extra_info
-            else:
-                logger.error("ONNX export or validation failed for Qwen/Qwen2.")
-                return False, None
-        except Exception as e:
-            logger.error(f"Qwen/Qwen2 ONNX export failed: {e}")
-            return False, None
-    # Default: use CLI for other models
+    # Remove Qwen/Qwen2/Qwen3 custom config logic
+    # Only use the default ONNX export logic for all models
+    lower_name = model_name.lower() if model_name else ""
+    if "qwen" in lower_name:
+        logger.warning(
+            "Note: Qwen/Qwen2/Qwen3 models are exported using the default ONNX logic because custom export configs are not available in this version. "
+            "The exported ONNX model may have limited compatibility or performance. For optimal results, please follow future updates from HuggingFace Optimum "
+            "or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model"
+        )
     command = [
         sys.executable, "-m", "optimum.exporters.onnx",
         "--model", model_name,
@@ -97,30 +77,26 @@ def convert_to_onnx(
         "--sequence_length", str(sequence_length)
     ]
     logger.info(f"Running: {' '.join(command)}")
-    result = subprocess.run(command, capture_output=True, text=True)
-    # Rename model.onnx to the desired output_path if needed
-    default_onnx = str(output_dir / "model.onnx")
-    if onnx_file != default_onnx and Path(default_onnx).exists():
-        try:
-            Path(onnx_file).unlink(missing_ok=True)
-            Path(default_onnx).rename(onnx_file)
-        except Exception as e:
-            logger.error(f"Failed to rename ONNX file: {e}")
+    try:
+        result = subprocess.run(command, capture_output=True, text=True)
+        # Rename model.onnx to the desired output_path if needed
+        default_onnx = str(output_dir / "model.onnx")
+        if onnx_file != default_onnx and Path(default_onnx).exists():
+            try:
+                Path(onnx_file).unlink(missing_ok=True)
+                Path(default_onnx).rename(onnx_file)
+            except Exception as e:
+                logger.error(f"Failed to rename ONNX file: {e}")
+                return False, None
+        if result.returncode == 0 and validate_onnx_file(onnx_file):
+            logger.info(f"ONNX export and validation succeeded. Output: {onnx_file}")
+            extra_info = {"opset": 17, "custom_onnx_configs": False}
+            return True, extra_info
+        else:
+            logger.info("ONNX export did not complete successfully. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
             return False, None
-    if result.returncode == 0 and validate_onnx_file(onnx_file):
-        logger.info("ONNX export and validation succeeded.")
-        extra_info = {"opset": 17, "custom_onnx_configs": False}
-        return True, extra_info
-    else:
-        logger.error(f"ONNX export or validation failed.\nStdout: {result.stdout}\nStderr: {result.stderr}")
-        if (
-            "custom or unsupported architecture" in result.stderr or
-            "custom_onnx_configs" in result.stderr or
-            (model_name and ("qwen2" in model_name.lower() or "qwen" in model_name.lower()))
-        ):
-            logger.error(
-                "Qwen/Qwen2 models require Python API + custom_onnx_configs export. See: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model#custom-export-of-transformers-models"
-            )
+    except Exception:
+        logger.info("ONNX export failed due to an unexpected error. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
         return False, None
 
 def validate_onnx_file(onnx_file: str) -> bool:
