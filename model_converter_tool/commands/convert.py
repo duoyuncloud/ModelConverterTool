@@ -39,8 +39,8 @@ def auto_complete_output_path(input_path, output_path, to_format):
 
 def convert(
     input: str = typer.Argument(..., help="Input model path or repo id."),
-    to: str = typer.Option(..., help="Output format."),
-    output: str = typer.Option(None, help="Output file path (auto-completed if omitted)."),
+    output: str = typer.Argument(..., help="Output format."),
+    path: str = typer.Option(None, help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
@@ -48,43 +48,48 @@ def convert(
 ):
     """
     [dim]Examples:
-      modelconvert convert bert-base-uncased --to onnx
-      modelconvert convert facebook/opt-125m --to gptq --quant 4bit --output ./outputs/opt_125m_gptq[/dim]
+      modelconvert convert bert-base-uncased onnx
+      modelconvert convert facebook/opt-125m gptq --quant 4bit --path ./outputs/opt_125m_gptq[/dim]
 
     Output formats: onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx
 
-    Supported input formats and descriptions:
-      - hf: HuggingFace Transformers
-      - onnx: ONNX format
-      - gguf: GGUF format
-      - torchscript: TorchScript format
-      - fp16: FP16 format
-      - gptq: GPTQ quantized format
-      - awq: AWQ quantized format
-      - safetensors: SafeTensors format
-      - mlx: MLX format
+    Supported conversion matrix:
+
+      Input Format   | Supported Output Formats
+      --------------|----------------------------------------------------------
+      huggingface   | onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx, hf
+      safetensors   | onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx, hf
+      torchscript   | onnx, torchscript, hf
+      onnx          | onnx, hf
+      gguf          | gguf, hf
+      mlx           | mlx, hf
 
     Supported quantization types:
       - gptq: 4bit, 8bit
       - awq: 4bit, 8bit
       - gguf: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
+      - mlx: q4_k_m, q8_0, q5_k_m
 
     Convert a model to another format, with optional quantization.
     """
     # Check disk space before starting conversion
-    if not check_and_handle_disk_space(input, to, quant):
+    if not check_and_handle_disk_space(input, output, quant):
         typer.echo("Conversion aborted due to insufficient disk space.")
         raise typer.Exit(1)
 
     # 在转换前做模型有效性和可转化性检查（集成validate逻辑）
     from model_converter_tool.core.validation import validate_model
-    val_result = validate_model(input, to)
+    val_result = validate_model(input, output)
     if not (isinstance(val_result, dict) and val_result.get('valid', False)):
-        typer.echo(f"[red]模型验证失败，无法转换：{val_result}[/red]")
+        errors = val_result.get('errors', [])
+        if errors:
+            typer.echo(f"[red]Model validation failed, cannot convert: {'; '.join(errors)}[/red]")
+        else:
+            typer.echo(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
         raise typer.Exit(1)
 
-    output_path = auto_complete_output_path(input, output, to)
-    result = convert_model(input, output_path, to, quant, model_type, device, use_large_calibration)
+    output_path = auto_complete_output_path(input, path, output)
+    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration)
     typer.echo(f"[Output path used]: {output_path}")
     if result.success:
         typer.echo(f"Conversion succeeded! Output: {result.output_path}")

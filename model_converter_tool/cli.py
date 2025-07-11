@@ -31,13 +31,6 @@ Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/
 """,
     rich_markup_mode="rich",
     add_completion=False,
-)
-
-# Add --version support
-app = typer.Typer(
-    help=app.help,
-    rich_markup_mode="rich",
-    add_completion=False,
     no_args_is_help=True,
 )
 
@@ -46,10 +39,16 @@ def version_callback(value: bool):
         typer.echo("modelconvertertool version 1.0.0")
         raise typer.Exit()
 
-app.callback()(typer.Option(None, "--version", callback=version_callback, is_eager=True, help="Show the tool version and exit."))
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None, "--version", callback=version_callback, is_eager=True, help="Show the tool version and exit."
+    )
+):
+    pass
 
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, list_cmd, history, config, batch
+from model_converter_tool.commands import inspect, convert, history, config, batch
 
 app.command()(inspect.inspect)
 app.command()(convert.convert)

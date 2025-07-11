@@ -86,7 +86,7 @@ def _export_simplified_onnx(model, tokenizer, onnx_file: Path, model_type: str) 
                 nodes, "simplified_gpt2", [input_tensor], [output_tensor], initializer=[embedding_tensor, linear_tensor]
             )
             onnx_model = helper.make_model(
-                graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 11)]
+                graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 14)]
             )
             onnx.save(onnx_model, str(onnx_file))
             return True
@@ -170,7 +170,7 @@ def _create_functional_onnx(model_name: str, output_path: str, model_type: str, 
             nodes, f"{model_name}_functional", [input_tensor], [output_tensor], initializer=initializers
         )
         onnx_model = helper.make_model(
-            graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 11)]
+            graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 14)]
         )
         onnx.save(onnx_model, output_path)
     except Exception as e:
@@ -204,7 +204,7 @@ def convert_to_onnx(
         onnx_file = Path(output_path)
         output_dir = onnx_file.parent
         output_dir.mkdir(parents=True, exist_ok=True)
-        max_opset = _get_max_onnx_opset()
+        max_opset = 14  # Use opset 14 for best compatibility
         export_success = False
         last_error = None
         used_opset = None
