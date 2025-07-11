@@ -26,10 +26,11 @@ def test_batch_conversion_from_yaml(converter, output_dir):
             },
             {
                 "model_name": "sshleifer/tiny-gpt2",
-                "output_path": str(output_dir / "tiny_gpt2_fp16"),
-                "output_format": "fp16",
+                "output_path": str(output_dir / "tiny_gpt2_fp16_safetensors"),
+                "output_format": "safetensors",
                 "model_type": "text-generation",
                 "device": "cpu",
+                "dtype": "fp16",
             },
             {
                 "model_name": "bert-base-uncased",

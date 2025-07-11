@@ -98,6 +98,15 @@ def convert_to_onnx(
     ]
     logger.info(f"Running: {' '.join(command)}")
     result = subprocess.run(command, capture_output=True, text=True)
+    # Rename model.onnx to the desired output_path if needed
+    default_onnx = str(output_dir / "model.onnx")
+    if onnx_file != default_onnx and Path(default_onnx).exists():
+        try:
+            Path(onnx_file).unlink(missing_ok=True)
+            Path(default_onnx).rename(onnx_file)
+        except Exception as e:
+            logger.error(f"Failed to rename ONNX file: {e}")
+            return False, None
     if result.returncode == 0 and validate_onnx_file(onnx_file):
         logger.info("ONNX export and validation succeeded.")
         extra_info = {"opset": 17, "custom_onnx_configs": False}

@@ -70,7 +70,7 @@ def test_estimate_model_size():
     
     # Test format effects
     size_onnx = estimate_model_size("gpt2", "onnx")
-    size_fp16 = estimate_model_size("gpt2", "fp16")
+    size_fp16 = estimate_model_size("gpt2", "safetensors", "fp16")
     assert size_fp16 < size_onnx
 
 

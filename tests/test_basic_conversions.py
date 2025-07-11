@@ -44,7 +44,8 @@ DEMO_TASKS = [
     # Use Qwen/Qwen2-0.5B for GGUF
     {"input_model": "Qwen/Qwen2-0.5B", "output_format": "gguf", "output_file": "qwen2-0.5b.gguf", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
-    {"input_model": "sshleifer/tiny-gpt2", "output_format": "fp16", "output_file": "tiny_gpt2_fp16", "model_type": "text-generation"},
+    # fp16 is now tested as a safetensors variant
+    {"input_model": "sshleifer/tiny-gpt2", "output_format": "safetensors", "output_file": "tiny_gpt2_fp16_safetensors", "model_type": "text-generation", "dtype": "fp16"},
     {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},
     {"input_model": "gpt2", "output_format": "safetensors", "output_file": "gpt2_safetensors", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
@@ -68,12 +69,15 @@ def test_readme_demo(converter, output_dir, task):
         if not is_hf_model_available(task["input_model"]):
             pytest.skip(f"Model {task['input_model']} not available on HuggingFace")
     output_path = str(output_dir / task["output_file"])
-    result = converter.convert(
+    convert_kwargs = dict(
         model_name=task["input_model"],
         output_format=task["output_format"],
         output_path=output_path,
         model_type=task["model_type"],
         device="cpu",
     )
+    if "dtype" in task:
+        convert_kwargs["dtype"] = task["dtype"]
+    result = converter.convert(**convert_kwargs)
     assert result.success, f"{task['output_format']} conversion failed: {result.error}"
     assert os.path.exists(output_path)
