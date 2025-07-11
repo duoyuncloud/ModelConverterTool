@@ -7,9 +7,7 @@ accelerate>=0.20.0
 # Model conversion libraries
 onnx>=1.14.0
 onnxruntime>=1.15.0
-
-# Optional: GGUF conversion
-# llama-cpp-python>=0.2.0
+optimum>=1.8.0
 
 # Quantization libraries (install after torch, optional)
 gptqmodel
@@ -24,6 +22,7 @@ safetensors
 pyyaml>=6.0
 rich>=13.0.0
 tqdm>=4.65.0
+typer
 
 # Optional: For better performance
 sentencepiece>=0.1.99
@@ -36,7 +35,6 @@ black>=23.0.0
 flake8>=6.0.0
 
 # Optional/advanced quantization dependencies
-optimum
 peft
 # triton  # OpenAI Triton, only needed for some Linux+Python3.8~3.10 environments
 lm-eval
@@ -46,8 +44,5 @@ evalplus
 
 random_word>=1.0.8
 numpy
-typer 
 # For GGUF inference in Python, you may need llama-cpp-python:
 # llama-cpp-python  # Uncomment if you want to run GGUF inference in Python. Not required for conversion. 
-
-sentencepiece>=0.1.99 
