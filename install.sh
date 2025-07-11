@@ -2,29 +2,38 @@
 
 set -e
 
+echo "=== ModelConverterTool Installation ==="
+
+# Check Python version
+PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+RECOMMENDED="3.8 3.9 3.10 3.11"
+if [[ ! " $RECOMMENDED " =~ " $PYTHON_VERSION " ]]; then
+  echo "Warning: Your Python version is $PYTHON_VERSION. Recommended: 3.8~3.11 for best compatibility."
+fi
+
 # Create venv if it doesn't exist
 if [ ! -d "venv" ]; then
   python3 -m venv venv
-  echo "Virtual environment created. Run 'source venv/bin/activate' to activate."
+  echo "Virtual environment created at ./venv"
 fi
 
 # Activate venv
 source venv/bin/activate
 
-# Install in editable mode
-pip install -e .
+# Upgrade pip
+pip install --upgrade pip
 
-# 自动安装 llama.cpp 的 Python 依赖
+# Install/upgrade dependencies
+pip install -U -r requirements.txt
+
+# Optionally, install extra requirements for submodules
 if [ -f "llama.cpp/requirements.txt" ]; then
   pip install --no-cache-dir -r llama.cpp/requirements.txt
-elif [ -d "llama.cpp/requirements" ]; then
-  for req in llama.cpp/requirements/*.txt; do
-    pip install --no-cache-dir -r "$req"
-  done
-else
-  echo "Warning: llama.cpp requirements not found, please check your repo."
 fi
 
-echo "\nInstallation complete!"
-echo "Activate your environment with: source venv/bin/activate"
-echo "You can now use the CLI: modelconvert --help" 
+echo ""
+echo "=== Installation complete! ==="
+echo "To activate your environment, run:"
+echo "  source venv/bin/activate"
+echo ""
+echo "For best results, always use the virtual environment!" 

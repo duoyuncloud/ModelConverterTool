@@ -1,6 +1,6 @@
 # ModelConverterTool
 
-A multi-format, **API-first and CLI-native** tool for machine learning model conversion and management.  
+A professional, **API-first and CLI-native** tool for machine learning model conversion and management.  
 Supports ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace, and more.  
 Clean, orthogonal CLI. Easy-to-integrate, extensible API. 
 

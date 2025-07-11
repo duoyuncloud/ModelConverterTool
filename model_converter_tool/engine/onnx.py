@@ -241,7 +241,18 @@ def convert_to_onnx(
             from pathlib import Path as _Path
             feature = guess_onnx_feature(model)
             logger.info(f"Auto-selected ONNX export feature: {feature}")
-            onnx_config_cls = FeaturesManager.get_config(model=model, feature=feature)
+
+            # PATCH: Use correct signature for get_config (transformers >=4.35)
+            model_type_name = getattr(getattr(model, 'config', None), 'model_type', None)
+            if model_type_name is None:
+                model_type_name = model.__class__.__name__.lower()
+
+            # Qwen2 and similar models are not supported for ONNX export
+            if "qwen" in model_type_name:
+                logger.error("ONNX export is not currently supported for Qwen/Qwen2 models. Please use a supported model (e.g., GPT-2, BERT).")
+                return False, None
+
+            onnx_config_cls = FeaturesManager.get_config(model_type_name, feature=feature)
             onnx_config = onnx_config_cls(model.config)
             hf_onnx_export(
                 preprocessor=tokenizer,
