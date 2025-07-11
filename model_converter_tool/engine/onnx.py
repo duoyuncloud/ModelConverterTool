@@ -26,46 +26,50 @@ def convert_to_onnx(
     Returns (True, extra_info) if export succeeded and ONNX file is valid, (False, None) otherwise.
     """
     logger = logging.getLogger(__name__)
-    # Support both old and new signatures for backward compatibility
-    # If only model_name is given, treat as old signature
     if model_name is None and isinstance(model, str):
         model_name = model
         model = None
-    # Determine output_dir and onnx_file
-    if output_path and output_path.endswith(".onnx"):
+    if output_path:
         onnx_file = str(Path(output_path))
         output_dir = Path(output_path).parent
     else:
-        output_dir = Path(output_path) if output_path else Path("outputs/onnx")
+        output_dir = Path("outputs/onnx")
         onnx_file = str(output_dir / "model.onnx")
     output_dir.mkdir(parents=True, exist_ok=True)
     extra_info = {}
 
-    # Detect Qwen/Qwen2 model
+    # Auto-detect task type for certain models
+    if task == "causal-lm" and model_name:
+        lower_name = model_name.lower()
+        if lower_name.startswith("bert") or "bert" in lower_name:
+            task = "feature-extraction"
+    
     is_qwen = model_name and ("qwen2" in model_name.lower() or "qwen" in model_name.lower())
-    if is_qwen:
+    # Load model and tokenizer if not provided
+    if model is None or tokenizer is None or (is_qwen and getattr(tokenizer, "pad_token", None) is None):
         try:
-            logger.info("Detected Qwen/Qwen2 model, using optimum Python API with custom_onnx_configs.")
-            from optimum.exporters.onnx import export
             from transformers import AutoTokenizer, AutoModelForCausalLM
             import torch
-            import importlib.util
-            # Load custom Qwen2 OnnxConfig
-            qwen_config_path = Path(__file__).parent.parent.parent / "qwen2_onnx_config.py"
-            spec = importlib.util.spec_from_file_location("qwen2_onnx_config", str(qwen_config_path))
-            qwen2_onnx_config = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(qwen2_onnx_config)
-            # Load model and tokenizer if not provided
             if model is None:
                 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", trust_remote_code=True)
             if tokenizer is None:
                 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-            # Ensure pad_token exists
             if getattr(tokenizer, "pad_token", None) is None:
                 tokenizer.pad_token = tokenizer.eos_token
-            # Prepare custom_onnx_configs
+        except Exception as e:
+            logger.error(f"Failed to load model/tokenizer: {e}")
+            return False, None
+
+    if is_qwen:
+        try:
+            logger.info("Detected Qwen/Qwen2 model, using optimum Python API with custom_onnx_configs.")
+            from optimum.exporters.onnx import export
+            import importlib.util
+            qwen_config_path = Path(__file__).parent.parent.parent / "qwen2_onnx_config.py"
+            spec = importlib.util.spec_from_file_location("qwen2_onnx_config", str(qwen_config_path))
+            qwen2_onnx_config = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(qwen2_onnx_config)
             custom_onnx_configs = {"causal-lm": qwen2_onnx_config.get_config(model_name, task="causal-lm")}
-            # Export to ONNX
             export(
                 model=model,
                 config=custom_onnx_configs["causal-lm"],
@@ -100,7 +104,6 @@ def convert_to_onnx(
         return True, extra_info
     else:
         logger.error(f"ONNX export or validation failed.\nStdout: {result.stdout}\nStderr: {result.stderr}")
-        # Friendly error for Qwen/Qwen2
         if (
             "custom or unsupported architecture" in result.stderr or
             "custom_onnx_configs" in result.stderr or
