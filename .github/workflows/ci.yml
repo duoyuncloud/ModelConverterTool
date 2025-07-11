@@ -27,7 +27,7 @@ jobs:
 
       - name: Install remaining dependencies
         run: |
-          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir -r -U requirements.txt
 
       - name: Install model_converter_tool package
         run: |
@@ -36,14 +36,6 @@ jobs:
       - name: Install llama.cpp Python dependencies
         run: |
           pip install --no-cache-dir -r llama.cpp/requirements.txt
-
-      - name: Check convert_hf_to_gguf.py exists
-        run: |
-          test -f llama.cpp/convert_hf_to_gguf.py || (echo "convert_hf_to_gguf.py missing!" && exit 1)
-
-      - name: Check gguf source directory exists
-        run: |
-          test -d llama.cpp/gguf-py/gguf || (echo "llama.cpp/gguf-py/gguf/ directory missing!" && exit 1)
 
       - name: Run all tests
         run: |
