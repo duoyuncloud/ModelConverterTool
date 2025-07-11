@@ -1,1 +1,1 @@
-from . import inspect, convert, list_cmd, history, config, version, batch 
+from . import inspect, convert, history, config, batch 

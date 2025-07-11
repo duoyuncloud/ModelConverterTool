@@ -53,6 +53,22 @@ def convert(
 
     Output formats: onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx
 
+    Supported input formats and descriptions:
+      - hf: HuggingFace Transformers
+      - onnx: ONNX format
+      - gguf: GGUF format
+      - torchscript: TorchScript format
+      - fp16: FP16 format
+      - gptq: GPTQ quantized format
+      - awq: AWQ quantized format
+      - safetensors: SafeTensors format
+      - mlx: MLX format
+
+    Supported quantization types:
+      - gptq: 4bit, 8bit
+      - awq: 4bit, 8bit
+      - gguf: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
+
     Convert a model to another format, with optional quantization.
     """
     # Check disk space before starting conversion

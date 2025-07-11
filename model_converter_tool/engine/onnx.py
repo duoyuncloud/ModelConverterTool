@@ -208,53 +208,103 @@ def convert_to_onnx(
         export_success = False
         last_error = None
         used_opset = None
-        # 1. Regular export
-        for opset in range(max_opset, 10, -1):
-            try:
-                logger.info(f"Trying torch.onnx export with opset {opset}...")
-                model.eval()
-                if model_type == "image-classification":
-                    dummy_input = torch.randn(
-                        1, 3, 224, 224, dtype=torch.float16 if device == "cuda" else torch.float32
+        # 0. Try HuggingFace transformers ONNX export first, with automated feature selection
+        def guess_onnx_feature(model):
+            model_type = getattr(getattr(model, 'config', None), 'model_type', None)
+            if model_type is None:
+                model_type = model.__class__.__name__.lower()
+            mapping = {
+                "gpt2": "causal-lm",
+                "llama": "causal-lm",
+                "bloom": "causal-lm",
+                "bert": "sequence-classification",
+                "roberta": "sequence-classification",
+                "distilbert": "sequence-classification",
+                "deberta": "sequence-classification",
+                "t5": "seq2seq-lm",
+                "bart": "seq2seq-lm",
+                # Add more as needed
+            }
+            feature = mapping.get(model_type)
+            if feature is None:
+                try:
+                    from transformers.onnx.features import FeaturesManager
+                    features = FeaturesManager.supported_features_for_model_type(model_type)
+                    if features:
+                        feature = features[0]
+                except Exception:
+                    feature = "default"
+            return feature or "default"
+        try:
+            from transformers.onnx import export as hf_onnx_export
+            from transformers.onnx.features import FeaturesManager
+            from pathlib import Path as _Path
+            feature = guess_onnx_feature(model)
+            logger.info(f"Auto-selected ONNX export feature: {feature}")
+            onnx_config_cls = FeaturesManager.get_config(model=model, feature=feature)
+            onnx_config = onnx_config_cls(model.config)
+            hf_onnx_export(
+                preprocessor=tokenizer,
+                model=model,
+                config=onnx_config,
+                opset=max_opset,
+                output=_Path(onnx_file),
+            )
+            if validate_onnx_file(onnx_file, max_opset):
+                export_success = True
+                used_opset = max_opset
+                logger.info(f"transformers.onnx export successful (opset {max_opset})")
+        except Exception as e:
+            last_error = e
+            logger.warning(f"transformers.onnx export failed: {e}")
+        # 1. Regular export (torch.onnx)
+        if not export_success:
+            for opset in range(max_opset, 10, -1):
+                try:
+                    logger.info(f"Trying torch.onnx export with opset {opset}...")
+                    model.eval()
+                    if model_type == "image-classification":
+                        dummy_input = torch.randn(
+                            1, 3, 224, 224, dtype=torch.float16 if device == "cuda" else torch.float32
+                        )
+                        input_names = ["pixel_values"]
+                        dynamic_axes = {"pixel_values": {0: "batch_size"}, "logits": {0: "batch_size"}}
+                    else:
+                        vocab_size = tokenizer.vocab_size if tokenizer else 50257
+                        dummy_input = torch.randint(0, vocab_size, (1, 8), dtype=torch.long)
+                        dummy_mask = torch.ones_like(dummy_input)
+                    dummy_input = {"input_ids": dummy_input, "attention_mask": dummy_mask}
+                    input_names = ["input_ids", "attention_mask"]
+                    dynamic_axes = {
+                        "input_ids": {0: "batch_size", 1: "sequence"},
+                        "attention_mask": {0: "batch_size", 1: "sequence"},
+                        "logits": {0: "batch_size", 1: "sequence"},
+                    }
+                    torch.onnx.export(
+                        model,
+                        dummy_input,
+                        onnx_file,
+                        export_params=True,
+                        opset_version=opset,
+                        do_constant_folding=True,
+                        input_names=input_names,
+                        output_names=["logits"],
+                        dynamic_axes=dynamic_axes,
+                        verbose=False,
+                        training=torch.onnx.TrainingMode.EVAL,
+                        keep_initializers_as_inputs=False,
+                        custom_opsets=None,
                     )
-                    input_names = ["pixel_values"]
-                    dynamic_axes = {"pixel_values": {0: "batch_size"}, "logits": {0: "batch_size"}}
-                else:
-                    vocab_size = tokenizer.vocab_size if tokenizer else 50257
-                    dummy_input = torch.randint(0, vocab_size, (1, 8), dtype=torch.long)
-                    dummy_mask = torch.ones_like(dummy_input)
-                dummy_input = {"input_ids": dummy_input, "attention_mask": dummy_mask}
-                input_names = ["input_ids", "attention_mask"]
-                dynamic_axes = {
-                    "input_ids": {0: "batch_size", 1: "sequence"},
-                    "attention_mask": {0: "batch_size", 1: "sequence"},
-                    "logits": {0: "batch_size", 1: "sequence"},
-                }
-                torch.onnx.export(
-                    model,
-                    dummy_input,
-                    onnx_file,
-                    export_params=True,
-                    opset_version=opset,
-                    do_constant_folding=True,
-                    input_names=input_names,
-                    output_names=["logits"],
-                    dynamic_axes=dynamic_axes,
-                    verbose=False,
-                    training=torch.onnx.TrainingMode.EVAL,
-                    keep_initializers_as_inputs=False,
-                    custom_opsets=None,
-                )
-                if validate_onnx_file(onnx_file, opset):
-                    export_success = True
-                    used_opset = opset
-                    logger.info(f"torch.onnx export successful (opset {opset})")
-                    break
-                else:
-                    logger.warning(f"ONNX file validation failed for opset {opset}")
-            except Exception as e:
-                last_error = e
-                logger.warning(f"torch.onnx export failed (opset {opset}): {e}")
+                    if validate_onnx_file(onnx_file, opset):
+                        export_success = True
+                        used_opset = opset
+                        logger.info(f"torch.onnx export successful (opset {opset})")
+                        break
+                    else:
+                        logger.warning(f"ONNX file validation failed for opset {opset}")
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"torch.onnx export failed (opset {opset}): {e}")
         # 2. Functional fallback
         if not export_success:
             try:
@@ -264,6 +314,10 @@ def convert_to_onnx(
                     export_success = True
                     used_opset = 11
                     logger.info("Functional ONNX model created successfully")
+                    logger.warning(
+                        "[Fallback Warning] The exported ONNX model only preserves basic embedding and output layers. "
+                        "This is NOT a full model and is only suitable for structure inspection or debugging, not for inference or deployment."
+                    )
             except Exception as e:
                 last_error = e
                 logger.warning(f"Functional ONNX creation failed: {e}")

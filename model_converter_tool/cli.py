@@ -29,19 +29,33 @@ Built-in quantization, validation, and batch processing.
 
 Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/green] for details.
 """,
-    rich_markup_mode="rich"
+    rich_markup_mode="rich",
+    add_completion=False,
 )
 
+# Add --version support
+app = typer.Typer(
+    help=app.help,
+    rich_markup_mode="rich",
+    add_completion=False,
+    no_args_is_help=True,
+)
+
+def version_callback(value: bool):
+    if value:
+        typer.echo("modelconvertertool version 1.0.0")
+        raise typer.Exit()
+
+app.callback()(typer.Option(None, "--version", callback=version_callback, is_eager=True, help="Show the tool version and exit."))
+
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, list_cmd, history, config, version, batch
+from model_converter_tool.commands import inspect, convert, list_cmd, history, config, batch
 
 app.command()(inspect.inspect)
 app.command()(convert.convert)
 app.command()(batch.batch)
-app.command(name="list")(list_cmd.list)
 app.command()(history.history)
 app.command()(config.config)
-app.command()(version.version)
 
 if __name__ == "__main__":
     app() 
