@@ -27,7 +27,7 @@ jobs:
 
       - name: Install remaining dependencies
         run: |
-          pip install --no-cache-dir -r -U requirements.txt
+          pip install --no-cache-dir -U -r requirements.txt
 
       - name: Install model_converter_tool package
         run: |
