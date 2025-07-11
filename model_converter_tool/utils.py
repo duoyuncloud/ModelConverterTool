@@ -258,18 +258,25 @@ def get_local_cache_path(model_name: str) -> str:
 def load_model_with_cache(model_name: str, model_class=None, **kwargs):
     """
     Unified model loading function, prioritize local cache, allow network download if cache is incomplete
-    
     Args:
         model_name: Model name or path
         model_class: Model class (e.g., AutoModel, AutoModelForCausalLM, etc.)
         **kwargs: Other parameters passed to from_pretrained
-    
     Returns:
         Loaded model object
     """
+    # Detect Qwen model type and use correct class
     if model_class is None:
-        from transformers import AutoModel
-        model_class = AutoModel
+        from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
+        try:
+            config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+            model_type = getattr(config, 'model_type', None)
+            if model_type is not None and ("qwen" in model_type):
+                model_class = AutoModelForCausalLM
+            else:
+                model_class = AutoModel
+        except Exception:
+            model_class = AutoModel
     # Always set trust_remote_code=True unless explicitly set
     if "trust_remote_code" not in kwargs:
         kwargs["trust_remote_code"] = True

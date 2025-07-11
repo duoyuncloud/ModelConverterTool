@@ -63,8 +63,10 @@ class ConfigManager:
 
     GLOBAL_CONFIG_PATH = Path.home() / ".model_converter_tool_config.yaml"
     DEFAULT_GLOBAL_CONFIG = {
-        "cache_dir": str(Path.home() / ".cache" / "model_converter_tool"),
-        "default_output_dir": str(Path.cwd() / "outputs"),
+        # HuggingFace Hub默认cache路径
+        "cache_dir": str(Path.home() / ".cache" / "huggingface" / "hub"),
+        # 输出目录默认到用户家目录下，避免源码路径
+        "default_output_dir": str(Path.home() / "model_converter_tool" / "outputs"),
     }
 
     def __init__(self, config_dir: str = "configs"):

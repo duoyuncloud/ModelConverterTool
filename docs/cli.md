@@ -7,14 +7,14 @@ The CLI allows users to convert, quantize, and manage machine learning models di
 
 ## Command Syntax
 ```bash
-python -m model_converter_tool.cli convert <input_model> --to <format> --output <output_path> [options]
+python -m model_converter_tool.cli convert <input_model> --to <format> -o <output_path> [options]
 python -m model_converter_tool.cli batch <config_path>
 ```
 
 ## Options
 - `<input_model>`: Path to the input model file or repo id (required, positional argument)
-- `--to`: Target output format (e.g., gguf, onnx, fp16, etc.) (required)
-- `--output`: Path to the output model file or directory (optional, auto-completed if omitted)
+- `--to`: Target output format (e.g., gguf, onnx, safetensors, etc.) (required)
+- `-o`, `--output-path`: Path to the output model file or directory (optional, auto-completed if omitted)
 - `--quant`: Quantization type (optional)
 - `--model-type`: Model type (optional)
 - `--device`: Device to use (optional)
@@ -22,14 +22,14 @@ python -m model_converter_tool.cli batch <config_path>
 - `--help`: Show help message and exit
 
 ## Examples
-Convert a model to GGUF format:
+Convert a model to SafeTensors (fp16):
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to gguf --output path/to/output_model.gguf
+python -m model_converter_tool.cli convert path/to/input_model --to safetensors --dtype fp16 -o path/to/output_model.safetensors
 ```
 
 Quantize a model:
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to gguf --output path/to/output_model-q4.gguf --quant q4
+python -m model_converter_tool.cli convert path/to/input_model --to gguf -o path/to/output_model-q4.gguf --quant q4
 ```
 
 Batch conversion using a config file:

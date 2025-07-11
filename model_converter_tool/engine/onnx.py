@@ -1,342 +1,133 @@
 # ONNX format model conversion, post-processing and validation module
 
-# Import dependencies as needed
-import os
+import subprocess
+import sys
 from pathlib import Path
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# ONNX related core methods
-
-def _get_max_onnx_opset() -> int:
-    try:
-        import onnxruntime as ort
-        ort_version = ort.__version__
-        logger.info(f"ONNX Runtime version: {ort_version}")
-        if ort_version.startswith("1.15") or ort_version.startswith("1.16"):
-            max_opset = 18
-        elif ort_version.startswith("1.14"):
-            max_opset = 17
-        elif ort_version.startswith("1.13"):
-            max_opset = 16
-        else:
-            max_opset = 15
-    except Exception:
-        max_opset = 15
-    try:
-        import onnx
-        onnx_max = onnx.defs.onnx_opset_version()
-        max_opset = min(max_opset, onnx_max)
-    except Exception:
-        pass
-    logger.info(f"Using ONNX opset: {max_opset}")
-    return max_opset
-
-def validate_onnx_file(onnx_file: Path, opset: int) -> bool:
+def convert_to_onnx(
+    model: Any = None,
+    tokenizer: Any = None,
+    model_name: Optional[str] = None,
+    output_path: Optional[str] = None,
+    model_type: str = "auto",
+    task: str = "causal-lm",
+    batch_size: int = 1,
+    sequence_length: int = 8,
+    device: str = "cpu",
+    **kwargs
+) -> Tuple[bool, Optional[dict]]:
     """
-    Validate ONNX file validity.
-    Args:
-        onnx_file: ONNX file path
-        opset: opset version used for export
-    Returns:
-        bool: Whether valid
+    Export a HuggingFace model to ONNX format using optimum.
+    For Qwen/Qwen2 models, use optimum Python API with custom_onnx_configs.
+    Returns (True, extra_info) if export succeeded and ONNX file is valid, (False, None) otherwise.
     """
+    logger = logging.getLogger(__name__)
+    # Support both old and new signatures for backward compatibility
+    # If only model_name is given, treat as old signature
+    if model_name is None and isinstance(model, str):
+        model_name = model
+        model = None
+    # Determine output_dir and onnx_file
+    if output_path and output_path.endswith(".onnx"):
+        onnx_file = str(Path(output_path))
+        output_dir = Path(output_path).parent
+    else:
+        output_dir = Path(output_path) if output_path else Path("outputs/onnx")
+        onnx_file = str(output_dir / "model.onnx")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    extra_info = {}
+
+    # Detect Qwen/Qwen2 model
+    is_qwen = model_name and ("qwen2" in model_name.lower() or "qwen" in model_name.lower())
+    if is_qwen:
+        try:
+            logger.info("Detected Qwen/Qwen2 model, using optimum Python API with custom_onnx_configs.")
+            from optimum.exporters.onnx import export
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            import torch
+            import importlib.util
+            # Load custom Qwen2 OnnxConfig
+            qwen_config_path = Path(__file__).parent.parent.parent / "qwen2_onnx_config.py"
+            spec = importlib.util.spec_from_file_location("qwen2_onnx_config", str(qwen_config_path))
+            qwen2_onnx_config = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(qwen2_onnx_config)
+            # Load model and tokenizer if not provided
+            if model is None:
+                model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", trust_remote_code=True)
+            if tokenizer is None:
+                tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            # Ensure pad_token exists
+            if getattr(tokenizer, "pad_token", None) is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            # Prepare custom_onnx_configs
+            custom_onnx_configs = {"causal-lm": qwen2_onnx_config.get_config(model_name, task="causal-lm")}
+            # Export to ONNX
+            export(
+                model=model,
+                config=custom_onnx_configs["causal-lm"],
+                opset=17,
+                output=Path(onnx_file),
+                device=device,
+            )
+            if validate_onnx_file(onnx_file):
+                logger.info("ONNX export and validation succeeded for Qwen/Qwen2.")
+                extra_info = {"opset": 17, "custom_onnx_configs": True}
+                return True, extra_info
+            else:
+                logger.error("ONNX export or validation failed for Qwen/Qwen2.")
+                return False, None
+        except Exception as e:
+            logger.error(f"Qwen/Qwen2 ONNX export failed: {e}")
+            return False, None
+    # Default: use CLI for other models
+    command = [
+        sys.executable, "-m", "optimum.exporters.onnx",
+        "--model", model_name,
+        str(output_dir),
+        "--task", task,
+        "--batch_size", str(batch_size),
+        "--sequence_length", str(sequence_length)
+    ]
+    logger.info(f"Running: {' '.join(command)}")
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode == 0 and validate_onnx_file(onnx_file):
+        logger.info("ONNX export and validation succeeded.")
+        extra_info = {"opset": 17, "custom_onnx_configs": False}
+        return True, extra_info
+    else:
+        logger.error(f"ONNX export or validation failed.\nStdout: {result.stdout}\nStderr: {result.stderr}")
+        # Friendly error for Qwen/Qwen2
+        if (
+            "custom or unsupported architecture" in result.stderr or
+            "custom_onnx_configs" in result.stderr or
+            (model_name and ("qwen2" in model_name.lower() or "qwen" in model_name.lower()))
+        ):
+            logger.error(
+                "Qwen/Qwen2 models require Python API + custom_onnx_configs export. See: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model#custom-export-of-transformers-models"
+            )
+        return False, None
+
+def validate_onnx_file(onnx_file: str) -> bool:
     try:
         import onnx
         import onnxruntime
         import numpy as np
-        if not onnx_file.exists() or onnx_file.stat().st_size < 100:
+        from pathlib import Path
+        if not Path(onnx_file).exists() or Path(onnx_file).stat().st_size < 100:
             return False
-        onnx_model = onnx.load(str(onnx_file))
-        session = onnxruntime.InferenceSession(str(onnx_file))
-        input_names = [inp.name for inp in session.get_inputs()]
-        input_feed = {name: np.ones((1, 8), dtype=np.int64) for name in input_names}
+        model = onnx.load(onnx_file)
+        session = onnxruntime.InferenceSession(onnx_file)
+        input_feed = {}
+        for inp in session.get_inputs():
+            shape = [d if isinstance(d, int) and d > 0 else 8 for d in inp.shape]
+            dtype = np.int64 if inp.type == 'tensor(int64)' else np.float32
+            input_feed[inp.name] = np.ones(shape, dtype=dtype)
         _ = session.run(None, input_feed)
         return True
-    except Exception:
-        return False
-
-def _export_simplified_onnx(model, tokenizer, onnx_file: Path, model_type: str) -> bool:
-    try:
-        import numpy as np
-        import onnx
-        from onnx import helper, numpy_helper
-        model.eval()
-        if model_type == "text-generation":
-            input_shape = [1, 8]
-            output_shape = [1, 8, 50257]
-            input_tensor = helper.make_tensor_value_info("input_ids", onnx.TensorProto.INT64, input_shape)
-            output_tensor = helper.make_tensor_value_info("logits", onnx.TensorProto.FLOAT, output_shape)
-            nodes = []
-            embedding_weight = np.random.randn(50257, 768).astype(np.float32)
-            embedding_tensor = numpy_helper.from_array(embedding_weight, "embedding_weight")
-            embedding_node = helper.make_node(
-                "Gather", inputs=["embedding_weight", "input_ids"], outputs=["embeddings"], name="embedding"
-            )
-            nodes.append(embedding_node)
-            linear_weight = np.random.randn(768, 50257).astype(np.float32)
-            linear_tensor = numpy_helper.from_array(linear_weight, "linear_weight")
-            linear_node = helper.make_node(
-                "MatMul", inputs=["embeddings", "linear_weight"], outputs=["logits"], name="linear"
-            )
-            nodes.append(linear_node)
-            graph = helper.make_graph(
-                nodes, "simplified_gpt2", [input_tensor], [output_tensor], initializer=[embedding_tensor, linear_tensor]
-            )
-            onnx_model = helper.make_model(
-                graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 14)]
-            )
-            onnx.save(onnx_model, str(onnx_file))
-            return True
     except Exception as e:
-        logger.error(f"Simplified ONNX export failed: {e}")
-        return False
-
-def _create_functional_onnx(model_name: str, output_path: str, model_type: str, model, tokenizer) -> None:
-    try:
-        import numpy as np
-        import onnx
-        from onnx import helper, numpy_helper
-        state_dict = model.state_dict()
-        input_shape = [1, 8]
-        output_shape = [1, 8, 50257]
-        input_tensor = helper.make_tensor_value_info("input_ids", onnx.TensorProto.INT64, input_shape)
-        output_tensor = helper.make_tensor_value_info("logits", onnx.TensorProto.FLOAT, output_shape)
-        nodes = []
-        initializers = []
-        if "transformer.wte.weight" in state_dict:
-            wte_weight = state_dict["transformer.wte.weight"].cpu().numpy()
-            wte_tensor = numpy_helper.from_array(wte_weight, "wte_weight")
-            initializers.append(wte_tensor)
-            wte_node = helper.make_node(
-                "Gather", inputs=["wte_weight", "input_ids"], outputs=["embeddings"], name="token_embedding"
-            )
-            nodes.append(wte_node)
-        else:
-            wte_weight = np.random.randn(50257, 768).astype(np.float32)
-            wte_tensor = numpy_helper.from_array(wte_weight, "wte_weight")
-            initializers.append(wte_tensor)
-            wte_node = helper.make_node(
-                "Gather", inputs=["wte_weight", "input_ids"], outputs=["embeddings"], name="token_embedding"
-            )
-            nodes.append(wte_node)
-        if "transformer.wpe.weight" in state_dict:
-            wpe_weight = state_dict["transformer.wpe.weight"].cpu().numpy()
-            wpe_tensor = numpy_helper.from_array(wpe_weight, "wpe_weight")
-            initializers.append(wpe_tensor)
-            pos_ids = np.arange(8).reshape(1, -1).astype(np.int64)
-            pos_ids_tensor = numpy_helper.from_array(pos_ids, "position_ids")
-            initializers.append(pos_ids_tensor)
-            wpe_node = helper.make_node(
-                "Gather", inputs=["wpe_weight", "position_ids"], outputs=["pos_embeddings"], name="position_embedding"
-            )
-            nodes.append(wpe_node)
-            add_node = helper.make_node(
-                "Add", inputs=["embeddings", "pos_embeddings"], outputs=["combined_embeddings"], name="add_embeddings"
-            )
-            nodes.append(add_node)
-        else:
-            add_node = helper.make_node(
-                "Identity", inputs=["embeddings"], outputs=["combined_embeddings"], name="identity_embeddings"
-            )
-            nodes.append(add_node)
-        if "lm_head.weight" in state_dict:
-            lm_weight = state_dict["lm_head.weight"].cpu().numpy()
-            lm_tensor = numpy_helper.from_array(lm_weight, "lm_head_weight")
-            initializers.append(lm_tensor)
-            if "lm_head.bias" in state_dict:
-                lm_bias = state_dict["lm_head.bias"].cpu().numpy()
-                lm_bias_tensor = numpy_helper.from_array(lm_bias, "lm_head_bias")
-                initializers.append(lm_bias_tensor)
-                gemm_node = helper.make_node(
-                    "Gemm", inputs=["combined_embeddings", "lm_head_weight", "lm_head_bias"], outputs=["logits"], name="lm_head"
-                )
-            else:
-                gemm_node = helper.make_node(
-                    "Gemm", inputs=["combined_embeddings", "lm_head_weight"], outputs=["logits"], name="lm_head"
-                )
-            nodes.append(gemm_node)
-        else:
-            lm_weight = wte_weight.T
-            lm_tensor = numpy_helper.from_array(lm_weight, "lm_head_weight")
-            initializers.append(lm_tensor)
-            gemm_node = helper.make_node(
-                "Gemm", inputs=["combined_embeddings", "lm_head_weight"], outputs=["logits"], name="lm_head"
-            )
-            nodes.append(gemm_node)
-        graph = helper.make_graph(
-            nodes, f"{model_name}_functional", [input_tensor], [output_tensor], initializer=initializers
-        )
-        onnx_model = helper.make_model(
-            graph, producer_name="model_converter", opset_imports=[helper.make_opsetid("", 14)]
-        )
-        onnx.save(onnx_model, output_path)
-    except Exception as e:
-        logger.error(f"Failed to create functional ONNX: {e}")
-        raise
-
-def convert_to_onnx(
-    model: Any,
-    tokenizer: Any,
-    model_name: str,
-    output_path: str,
-    model_type: str,
-    device: str
-) -> tuple:
-    """
-    Export model to ONNX format.
-    Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
-        model_name: Source model name or path
-        output_path: Output file path
-        model_type: Model type
-        device: Device
-    Returns:
-        (success: bool, extra_info: dict or None)
-    """
-    try:
-        import torch
-        from pathlib import Path
-        logger.info(f"Converting {model_name} to ONNX format")
-        onnx_file = Path(output_path)
-        output_dir = onnx_file.parent
-        output_dir.mkdir(parents=True, exist_ok=True)
-        max_opset = 14  # Use opset 14 for best compatibility
-        export_success = False
-        last_error = None
-        used_opset = None
-        # 0. Try HuggingFace transformers ONNX export first, with automated feature selection
-        def guess_onnx_feature(model):
-            model_type = getattr(getattr(model, 'config', None), 'model_type', None)
-            if model_type is None:
-                model_type = model.__class__.__name__.lower()
-            mapping = {
-                "gpt2": "causal-lm",
-                "llama": "causal-lm",
-                "bloom": "causal-lm",
-                "bert": "sequence-classification",
-                "roberta": "sequence-classification",
-                "distilbert": "sequence-classification",
-                "deberta": "sequence-classification",
-                "t5": "seq2seq-lm",
-                "bart": "seq2seq-lm",
-                # Add more as needed
-            }
-            feature = mapping.get(model_type)
-            if feature is None:
-                try:
-                    from transformers.onnx.features import FeaturesManager
-                    features = FeaturesManager.supported_features_for_model_type(model_type)
-                    if features:
-                        feature = features[0]
-                except Exception:
-                    feature = "default"
-            return feature or "default"
-        try:
-            from transformers.onnx import export as hf_onnx_export
-            from transformers.onnx.features import FeaturesManager
-            from pathlib import Path as _Path
-            feature = guess_onnx_feature(model)
-            logger.info(f"Auto-selected ONNX export feature: {feature}")
-
-            # PATCH: Use correct signature for get_config (transformers >=4.35)
-            model_type_name = getattr(getattr(model, 'config', None), 'model_type', None)
-            if model_type_name is None:
-                model_type_name = model.__class__.__name__.lower()
-
-            # Qwen2 and similar models are not supported for ONNX export
-            if "qwen" in model_type_name:
-                logger.error("ONNX export is not currently supported for Qwen/Qwen2 models. Please use a supported model (e.g., GPT-2, BERT).")
-                return False, None
-
-            onnx_config_cls = FeaturesManager.get_config(model_type_name, feature=feature)
-            onnx_config = onnx_config_cls(model.config)
-            hf_onnx_export(
-                preprocessor=tokenizer,
-                model=model,
-                config=onnx_config,
-                opset=max_opset,
-                output=_Path(onnx_file),
-            )
-            if validate_onnx_file(onnx_file, max_opset):
-                export_success = True
-                used_opset = max_opset
-                logger.info(f"transformers.onnx export successful (opset {max_opset})")
-        except Exception as e:
-            last_error = e
-            logger.warning(f"transformers.onnx export failed: {e}")
-        # 1. Regular export (torch.onnx)
-        if not export_success:
-            for opset in range(max_opset, 10, -1):
-                try:
-                    logger.info(f"Trying torch.onnx export with opset {opset}...")
-                    model.eval()
-                    if model_type == "image-classification":
-                        dummy_input = torch.randn(
-                            1, 3, 224, 224, dtype=torch.float16 if device == "cuda" else torch.float32
-                        )
-                        input_names = ["pixel_values"]
-                        dynamic_axes = {"pixel_values": {0: "batch_size"}, "logits": {0: "batch_size"}}
-                    else:
-                        vocab_size = tokenizer.vocab_size if tokenizer else 50257
-                        dummy_input = torch.randint(0, vocab_size, (1, 8), dtype=torch.long)
-                        dummy_mask = torch.ones_like(dummy_input)
-                    dummy_input = {"input_ids": dummy_input, "attention_mask": dummy_mask}
-                    input_names = ["input_ids", "attention_mask"]
-                    dynamic_axes = {
-                        "input_ids": {0: "batch_size", 1: "sequence"},
-                        "attention_mask": {0: "batch_size", 1: "sequence"},
-                        "logits": {0: "batch_size", 1: "sequence"},
-                    }
-                    torch.onnx.export(
-                        model,
-                        dummy_input,
-                        onnx_file,
-                        export_params=True,
-                        opset_version=opset,
-                        do_constant_folding=True,
-                        input_names=input_names,
-                        output_names=["logits"],
-                        dynamic_axes=dynamic_axes,
-                        verbose=False,
-                        training=torch.onnx.TrainingMode.EVAL,
-                        keep_initializers_as_inputs=False,
-                        custom_opsets=None,
-                    )
-                    if validate_onnx_file(onnx_file, opset):
-                        export_success = True
-                        used_opset = opset
-                        logger.info(f"torch.onnx export successful (opset {opset})")
-                        break
-                    else:
-                        logger.warning(f"ONNX file validation failed for opset {opset}")
-                except Exception as e:
-                    last_error = e
-                    logger.warning(f"torch.onnx export failed (opset {opset}): {e}")
-        # 2. Functional fallback
-        if not export_success:
-            try:
-                logger.info("Creating functional ONNX model...")
-                _create_functional_onnx(model_name, str(onnx_file), model_type, model, tokenizer)
-                if validate_onnx_file(onnx_file, 11):
-                    export_success = True
-                    used_opset = 11
-                    logger.info("Functional ONNX model created successfully")
-                    logger.warning(
-                        "[Fallback Warning] The exported ONNX model only preserves basic embedding and output layers. "
-                        "This is NOT a full model and is only suitable for structure inspection or debugging, not for inference or deployment."
-                    )
-            except Exception as e:
-                last_error = e
-                logger.warning(f"Functional ONNX creation failed: {e}")
-        if not export_success:
-            logger.error(f"All ONNX export methods failed. Last error: {last_error}")
-            return False, None
-        logger.info(f"ONNX conversion completed: {onnx_file}")
-        return True, used_opset
-    except Exception as e:
-        logger.error(f"ONNX conversion error: {e}")
-        return False, None 
+        logging.getLogger(__name__).error(f"ONNX validation failed: {e}")
+        return False 

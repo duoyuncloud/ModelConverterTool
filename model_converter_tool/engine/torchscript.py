@@ -56,10 +56,19 @@ def convert_to_torchscript(
         try:
             logger.info("Attempting torch.jit.trace...")
             model.eval()
+            dummy_input = None
+            dummy_mask = None
             if model_type == "image-classification":
                 dummy_input = torch.randn(1, 3, 224, 224)
             elif model_type == "text-generation":
                 dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 10))
+            elif model_type in ("text-classification", "auto"):
+                # For BERT-like models
+                vocab_size = getattr(tokenizer, "vocab_size", 30522)
+                dummy_input = torch.randint(0, min(vocab_size, 1000), (1, 8))
+                dummy_mask = torch.ones_like(dummy_input)
+                if hasattr(model, "forward") and "attention_mask" in str(model.forward.__code__.co_varnames):
+                    dummy_input = (dummy_input, dummy_mask)
             else:
                 dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 32))
                 if hasattr(model, "forward") and "attention_mask" in str(model.forward.__code__.co_varnames):

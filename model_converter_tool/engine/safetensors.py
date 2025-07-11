@@ -10,10 +10,11 @@ def convert_to_safetensors(
     model_name: str,
     output_path: str,
     model_type: str,
-    device: str
+    device: str,
+    dtype: str = None
 ) -> tuple:
     """
-    Save model in safetensors format.
+    Save model in safetensors format, with optional precision control.
     Args:
         model: Loaded model object
         tokenizer: Loaded tokenizer object
@@ -21,6 +22,7 @@ def convert_to_safetensors(
         output_path: Output file path
         model_type: Model type
         device: Device
+        dtype: Precision for weights (e.g., 'fp16', 'fp32')
     Returns:
         (success: bool, extra_info: dict or None)
     """
@@ -28,10 +30,14 @@ def convert_to_safetensors(
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
+            if dtype == "fp16":
+                model = model.half()
+            elif dtype == "fp32":
+                model = model.float()
             model.save_pretrained(str(output_dir), safe_serialization=True)
             if tokenizer:
                 tokenizer.save_pretrained(str(output_dir))
-            logger.info(f"Safetensors conversion completed: {output_dir}")
+            logger.info(f"Safetensors conversion completed: {output_dir} (dtype={dtype or 'default'})")
             return True, None
         except Exception as e:
             logger.error(f"Safetensors conversion failed: {e}")

@@ -3,6 +3,20 @@ from rich import print as rprint
 import os
 import shutil
 import sys
+import subprocess
+
+def upgrade_build_tools():
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+    except Exception as e:
+        print(f"[Warning] Failed to upgrade pip/setuptools/wheel: {e}")
+
+upgrade_build_tools()
 # os.environ["HF_ENDPOINT"] = "https://huggingface.co"
 
 EXAMPLES = """
@@ -10,6 +24,7 @@ EXAMPLES = """
   modelconvert inspect meta-llama/Llama-2-7b-hf
   modelconvert convert bert-base-uncased --to onnx
   modelconvert convert facebook/opt-125m --to gptq --quant 4bit
+  modelconvert convert sshleifer/tiny-gpt2 --to safetensors --dtype fp16 -o ./outputs/tiny_gpt2_fp16
   modelconvert batch configs/batch_template.yaml
   modelconvert list formats
   modelconvert validate ./outputs/llama-2-7b.gguf
@@ -24,7 +39,7 @@ app = typer.Typer(
 [bold]Model Converter Tool[/bold] - Professional, Clean CLI
 
 A professional, multi-format machine learning model conversion and management tool.
-Supports ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace and more.
+Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (with precision options: fp16/fp32), HuggingFace and more.
 Built-in quantization, validation, and batch processing.
 
 Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/green] for details.

@@ -40,38 +40,48 @@ def auto_complete_output_path(input_path, output_path, to_format):
 def convert(
     input: str = typer.Argument(..., help="Input model path or repo id."),
     output: str = typer.Argument(..., help="Output format."),
-    path: str = typer.Option(None, help="Output file path (auto-completed if omitted)."),
+    output_path: str = typer.Option(None, "-o", "--output-path", help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
-    use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False")
+    use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
+    dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format.")
 ):
     """
     [dim]Examples:
-      modelconvert convert bert-base-uncased onnx
-      modelconvert convert facebook/opt-125m gptq --quant 4bit --path ./outputs/opt_125m_gptq[/dim]
+      modelconvert convert bert-base-uncased safetensors --dtype fp16
+      modelconvert convert facebook/opt-125m gptq --quant 4bit -o ./outputs/opt_125m_gptq[/dim]
 
-    Output formats: onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx
+    Output formats: onnx, gguf, torchscript, gptq, awq, safetensors, mlx
+    (fp16 is deprecated, use --to safetensors --dtype fp16)
 
     Supported conversion matrix:
 
       Input Format   | Supported Output Formats
-      --------------|----------------------------------------------------------
-      huggingface   | onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx, hf
-      safetensors   | onnx, gguf, torchscript, fp16, gptq, awq, safetensors, mlx, hf
-      torchscript   | onnx, torchscript, hf
-      onnx          | onnx, hf
-      gguf          | gguf, hf
-      mlx           | mlx, hf
+      -------------- | ----------------------------------------------------------
+      huggingface    | huggingface, safetensors, torchscript, onnx, gguf, mlx
+      safetensors    | huggingface, safetensors
+      torchscript    | torchscript
+      onnx           | onnx
+      gguf           | gguf
+      mlx            | mlx
 
     Supported quantization types:
       - gptq: 4bit, 8bit
       - awq: 4bit, 8bit
       - gguf: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
       - mlx: q4_k_m, q8_0, q5_k_m
+    SafeTensors supports precision options: fp16, fp32 (use --dtype)
 
-    Convert a model to another format, with optional quantization.
+    Convert a model to another format, with optional quantization and precision.
     """
+    # Handle deprecated fp16 format
+    if output.lower() == "fp16":
+        typer.echo("[yellow]Warning: 'fp16' format is deprecated. Use '--to safetensors --dtype fp16' instead.[/yellow]")
+        output = "safetensors"
+        if not dtype:
+            dtype = "fp16"
+
     # Check disk space before starting conversion
     if not check_and_handle_disk_space(input, output, quant):
         typer.echo("Conversion aborted due to insufficient disk space.")
@@ -88,8 +98,8 @@ def convert(
             typer.echo(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
         raise typer.Exit(1)
 
-    output_path = auto_complete_output_path(input, path, output)
-    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration)
+    output_path = auto_complete_output_path(input, output_path, output)
+    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration, dtype=dtype)
     typer.echo(f"[Output path used]: {output_path}")
     if result.success:
         typer.echo(f"Conversion succeeded! Output: {result.output_path}")

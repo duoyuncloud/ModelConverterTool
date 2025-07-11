@@ -1,7 +1,7 @@
 # ModelConverterTool
 
 A professional, **API-first and CLI-native** tool for machine learning model conversion and management.  
-Supports ONNX, GGUF, MLX, TorchScript, FP16, GPTQ, AWQ, SafeTensors, HuggingFace, and more.  
+Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (with precision options: fp16/fp32), HuggingFace, and more.  
 Clean, orthogonal CLI. Easy-to-integrate, extensible API. 
 
 ---
@@ -14,12 +14,6 @@ cd ModelConverterTool
 ./install.sh
 source venv/bin/activate
 ```
-Or, for advanced users:
-```sh
-pip install -e .
-pip install -r requirements.txt
-```
-
 ---
 
 ## CLI Commands
@@ -43,7 +37,7 @@ pip install -r requirements.txt
   Convert a model to another format.  
   - `<input>`: Input model path or repo id (required)
   - `<output>`: Output format (required, e.g. onnx, gguf, mlx, gptq, etc.)
-  - `--path`: Output file path (optional, auto-completed if omitted)
+  - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
   - `--quant`: Quantization type (optional)
   - `--model-type`: Model type (optional)
   - `--device`: Device (cpu/cuda, optional)
@@ -96,25 +90,25 @@ modelconvert config --action set --key cache_dir --value ./mycache
 
 ```sh
 # Hugging Face → ONNX
-modelconvert convert bert-base-uncased onnx --path ./outputs/bert.onnx
+modelconvert convert bert-base-uncased onnx -o ./outputs/bert.onnx
 
 # Hugging Face → GGUF (Llama/Mistral family, recommended: Qwen/Qwen2-0.5B)
-modelconvert convert Qwen/Qwen2-0.5B gguf --path ./outputs/qwen2-0.5B.gguf --model-type qwen
+modelconvert convert Qwen/Qwen2-0.5B gguf -o ./outputs/qwen2-0.5B.gguf --model-type qwen
 
 # Hugging Face → MLX
-modelconvert convert gpt2 mlx --path ./outputs/gpt2.mlx
+modelconvert convert gpt2 mlx -o ./outputs/gpt2.mlx
 
-# Hugging Face → FP16
-modelconvert convert sshleifer/tiny-gpt2 fp16 --path ./outputs/tiny_gpt2_fp16
+# Hugging Face → SafeTensors (fp16)
+modelconvert convert sshleifer/tiny-gpt2 safetensors --dtype fp16 -o ./outputs/tiny_gpt2_fp16
 
 # Hugging Face → TorchScript
-modelconvert convert bert-base-uncased torchscript --path ./outputs/bert.pt
+modelconvert convert bert-base-uncased torchscript -o ./outputs/bert.pt
 
 # Hugging Face → SafeTensors
-modelconvert convert gpt2 safetensors --path ./outputs/gpt2_safetensors
+modelconvert convert gpt2 safetensors -o ./outputs/gpt2_safetensors
 
 # Hugging Face → HF (re-save)
-modelconvert convert gpt2 hf --path ./outputs/gpt2_hf
+modelconvert convert gpt2 hf -o ./outputs/gpt2_hf
 ```
 
 ---
@@ -123,22 +117,22 @@ modelconvert convert gpt2 hf --path ./outputs/gpt2_hf
 
 ```sh
 # GPTQ quantization (4bit)
-modelconvert convert facebook/opt-125m gptq --quant 4bit --path ./outputs/opt_125m_gptq
+modelconvert convert facebook/opt-125m gptq --quant 4bit -o ./outputs/opt_125m_gptq
 
 # GPTQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m gptq --quant 4bit --use-large-calibration --path ./outputs/opt_125m_gptq_high_quality
+modelconvert convert facebook/opt-125m gptq --quant 4bit --use-large-calibration -o ./outputs/opt_125m_gptq_high_quality
 
 # AWQ quantization (4bit)
-modelconvert convert facebook/opt-125m awq --quant 4bit --path ./outputs/opt_125m_awq
+modelconvert convert facebook/opt-125m awq --quant 4bit -o ./outputs/opt_125m_awq
 
 # AWQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m awq --quant 4bit --use-large-calibration --path ./outputs/opt_125m_awq_high_quality
+modelconvert convert facebook/opt-125m awq --quant 4bit --use-large-calibration -o ./outputs/opt_125m_awq_high_quality
 
 # GGUF quantization (Llama/Mistral/Gemma only)
-modelconvert convert Qwen/Qwen2-0.5B gguf --quant q4_k_m --path ./outputs/qwen2-0.5B.gguf
+modelconvert convert Qwen/Qwen2-0.5B gguf --quant q4_k_m -o ./outputs/qwen2-0.5B.gguf
 
 # MLX quantization
-modelconvert convert gpt2 mlx --quant q4_k_m --path ./outputs/gpt2.mlx
+modelconvert convert gpt2 mlx --quant q4_k_m -o ./outputs/gpt2.mlx
 ```
 
 > **Note:**
@@ -146,15 +140,24 @@ modelconvert convert gpt2 mlx --quant q4_k_m --path ./outputs/gpt2.mlx
 
 ---
 
-## Supported Formats & Quantization
+## Supported formats & quantization
 
-- **Input formats:** HuggingFace, ONNX, GGUF, TorchScript, SafeTensors
-- **Output formats:** ONNX, GGUF, TorchScript, FP16, GPTQ, AWQ, SafeTensors, MLX, HF
-- **Quantization options:**  
-  - GPTQ: 4bit, 8bit  
-  - AWQ: 4bit, 8bit  
-  - GGUF: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0  
-  - MLX: q4_k_m, q8_0, q5_k_m
+|               | HuggingFace | SafeTensors | TorchScript | ONNX | GGUF | MLX |
+|---------------|:-----------:|:-----------:|:-----------:|:----:|:----:|:---:|
+| HuggingFace   |      ✓      |      ✓      |      ✓      |  ✓   |  ✓   |  ✓  |
+| SafeTensors   |      ✓      |      ✓      |             |      |      |     |
+| TorchScript   |             |             |      ✓      |      |      |     |
+| ONNX          |             |             |             |  ✓   |      |     |
+| GGUF          |             |             |             |      |  ✓   |     |
+| MLX           |             |             |             |      |      |  ✓  |
+
+
+**Quantization options:**
+- GPTQ: 4bit, 8bit
+- AWQ: 4bit, 8bit
+- GGUF: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
+- MLX: q4_k_m, q8_0, q5_k_m
+- SafeTensors: fp16, fp32
 
 ---
 

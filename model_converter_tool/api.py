@@ -315,14 +315,25 @@ class ModelConverterAPI:
     def _get_supported_outputs(self, input_format: str) -> List[str]:
         """Get supported output formats for input format"""
         format_matrix = {
-            "huggingface": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"],
-            "safetensors": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx"],
-            "torchscript": ["onnx", "torchscript"],
+            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"],
+            "safetensors": ["huggingface", "safetensors"],
+            "torchscript": ["torchscript"],
             "onnx": ["onnx"],
             "gguf": ["gguf"],
             "mlx": ["mlx"]
         }
         return format_matrix.get(input_format, [])
+
+    def _get_conversion_matrix(self) -> Dict[str, List[str]]:
+        """Get conversion compatibility matrix"""
+        return {
+            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"],
+            "safetensors": ["huggingface", "safetensors"],
+            "torchscript": ["torchscript"],
+            "onnx": ["onnx"],
+            "gguf": ["gguf"],
+            "mlx": ["mlx"]
+        }
     
     def _estimate_conversion(self, plan: ConversionPlan) -> Dict[str, str]:
         """Estimate conversion size, memory, and time"""
@@ -429,12 +440,6 @@ class ModelConverterAPI:
                 "use_cases": ["PyTorch ecosystem", "C++ inference", "Mobile"],
                 "quantization": False
             },
-            "fp16": {
-                "description": "FP16 half-precision format",
-                "extensions": [".bin", ".safetensors"],
-                "use_cases": ["GPU inference", "Memory optimization", "Speed optimization"],
-                "quantization": False
-            },
             "gptq": {
                 "description": "GPTQ quantization format",
                 "extensions": [".bin", ".safetensors"],
@@ -450,10 +455,11 @@ class ModelConverterAPI:
                 "quantization_options": ["4bit", "8bit"]
             },
             "safetensors": {
-                "description": "SafeTensors secure format",
+                "description": "SafeTensors secure format (supports precision: fp16, fp32)",
                 "extensions": [".safetensors"],
                 "use_cases": ["Secure storage", "Fast loading", "Hugging Face ecosystem"],
-                "quantization": False
+                "quantization": False,
+                "precision_options": ["fp16", "fp32"]
             },
             "mlx": {
                 "description": "MLX format - Apple Silicon optimized",
@@ -468,15 +474,4 @@ class ModelConverterAPI:
                 "use_cases": ["HuggingFace Hub", "Transformers ecosystem", "Re-upload to hub", "Interoperability"],
                 "quantization": False
             }
-        }
-    
-    def _get_conversion_matrix(self) -> Dict[str, List[str]]:
-        """Get conversion compatibility matrix"""
-        return {
-            "huggingface": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx", "hf"],
-            "safetensors": ["onnx", "gguf", "torchscript", "fp16", "gptq", "awq", "safetensors", "mlx", "hf"],
-            "torchscript": ["onnx", "torchscript", "hf"],
-            "onnx": ["onnx", "hf"],
-            "gguf": ["gguf", "hf"],
-            "mlx": ["mlx", "hf"]
         } 

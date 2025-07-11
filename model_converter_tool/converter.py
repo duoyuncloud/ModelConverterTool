@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union, Tuple
 logger = logging.getLogger(__name__)
 
 # Supported format list
-SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "fp16", "awq", "gptq", "hf", "safetensors", "mlx"]
+SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "awq", "gptq", "hf", "safetensors", "mlx"]
 
 @dataclass
 class ConversionResult:
@@ -33,9 +33,6 @@ class ModelConverter:
         elif output_format == "gguf":
             from .engine.gguf import convert_to_gguf, validate_gguf_file
             return convert_to_gguf, validate_gguf_file
-        elif output_format == "fp16":
-            from .engine.fp16 import convert_to_fp16, validate_fp16_file
-            return convert_to_fp16, validate_fp16_file
         elif output_format == "awq":
             from .engine.awq import convert_to_awq, validate_awq_file
             return convert_to_awq, validate_awq_file
@@ -166,32 +163,58 @@ class ModelConverter:
         device: str = "auto",
         quantization: Optional[str] = None,
         use_large_calibration: bool = False,
+        dtype: str = None,
     ) -> ConversionResult:
         """
         Convert a model to the specified format.
         Args:
-            model: Loaded model object (optional)
-            tokenizer: Loaded tokenizer object (optional)
-            model_name: Source model name or path (optional, auto-load if model/tokenizer not provided)
+            model: Loaded model object (optional, ignored for ONNX)
+            tokenizer: Loaded tokenizer object (optional, ignored for ONNX)
+            model_name: Source model name or path
             output_format: Target format
             output_path: Output path
             model_type: Model type
             device: Device
             quantization: Quantization parameters (optional)
             use_large_calibration: Whether to use large-scale calibration
+            dtype: Precision for weights (e.g., 'fp16', 'fp32')
         Returns:
             ConversionResult dataclass
         """
         result = ConversionResult(success=False)
         try:
-            # Auto-load transformers model and tokenizer
-            if (model is None or tokenizer is None) and model_name is not None:
-                from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
-                model = load_model_with_cache(model_name)
-                tokenizer = load_tokenizer_with_cache(model_name)
-            if output_format in SUPPORTED_FORMATS:
+            # 自动加载 transformers 对象（仅当输入为 huggingface 或 safetensors 目录，且 model/tokenizer 为 None）
+            input_format, norm_path = self._detect_model_format(model_name)
+            if input_format in ("huggingface", "safetensors") and model is None:
+                try:
+                    from transformers import AutoModel, AutoTokenizer
+                    from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+                    model = load_model_with_cache(norm_path, AutoModel)
+                    tokenizer = load_tokenizer_with_cache(norm_path)
+                except Exception as e:
+                    result.error = f"Failed to load model/tokenizer for {input_format}: {e}"
+                    return result
+            # For ONNX, only pass string arguments, do not pass model/tokenizer objects
+            if output_format == "onnx":
                 convert_func, validate_func = self._get_converter_functions(output_format)
-                if output_format in ("awq", "gptq"):
+                success = convert_func(
+                    model_name=model_name,
+                    output_path=output_path,
+                    device=device
+                )
+                result.success = success
+                result.validation = success
+                result.output_path = output_path
+                result.extra_info = None
+                if not success:
+                    result.error = f"ONNX conversion or validation failed for {model_name}"
+            elif output_format in SUPPORTED_FORMATS:
+                convert_func, validate_func = self._get_converter_functions(output_format)
+                if output_format == "safetensors":
+                    success, extra = convert_func(
+                        model, tokenizer, model_name, output_path, model_type, device, dtype
+                    )
+                elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration
                     )

@@ -23,7 +23,7 @@ python -m model_converter_tool.cli convert path/to/input_model --to gguf --outpu
 Detailed command-line interface options and flags.
 
 - `<input_model>`: Path to the input model file or repo id (required, positional argument)
-- `--to`: Target output format (e.g., gguf, onnx, fp16, etc.) (required)
+- `--to`: Target output format (e.g., gguf, onnx, safetensors, etc.) (required)
 - `--output`: Path to the output model file or directory (optional, auto-completed if omitted)
 - `--quant`: Quantization type (optional)
 - `--model-type`: Model type (optional)
@@ -37,7 +37,6 @@ Supported model formats and conversion engines:
 
 - GGUF
 - ONNX
-- FP16
 - AWQ
 - MLX
 - GPTQ
