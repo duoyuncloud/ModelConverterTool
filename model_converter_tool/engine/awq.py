@@ -1,10 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset, patch_quantization_config
 
 logger = logging.getLogger(__name__)
 
@@ -29,25 +26,18 @@ def convert_to_awq(
         model_type: Model type
         device: Device
         quantization: Quantization parameters (optional)
-        use_large_calibration: Whether to use large calibration set
+        use_large_calibration: Whether to use a large calibration set
     Returns:
         (success: bool, extra_info: dict or None)
     """
     try:
         # Robust model/tokenizer auto-loading
-        if model is None or tokenizer is None:
-            if model is None:
-                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                else:
-                    model = load_model_with_cache(model_name, AutoModel)
-            if tokenizer is None:
-                tokenizer = load_tokenizer_with_cache(model_name)
-        import os
+        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
+        # Parse quantization config
         bits = 4
         group_size = 128
         sym = False
@@ -62,32 +52,13 @@ def convert_to_awq(
             if m:
                 bits = int(m.group(1))
                 group_size = int(m.group(2))
-        # 只传递bits/group_size给QuantizeConfig
         quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
-        if use_large_calibration:
-            try:
-                from datasets import load_dataset
-                ds = load_dataset("openwebtext", split="train", trust_remote_code=True)
-                calibration_dataset = [x["text"] for x in ds.select(range(1000)) if len(x["text"].split()) > 32]
-                if len(calibration_dataset) < 1000:
-                    calibration_dataset += ["The quick brown fox jumps over the lazy dog."] * (1000 - len(calibration_dataset))
-                logger.info(f"[AWQ] Using HuggingFace openwebtext sampling {len(calibration_dataset)} high-quality calibration texts")
-            except Exception as e:
-                logger.warning(f"Failed to load high-quality calibration set, falling back to built-in samples: {e}")
-                calibration_dataset = [
-                    "The quick brown fox jumps over the lazy dog. " * 20,
-                    "AWQ high-precision calibration sentence. " * 20,
-                    "This is a long calibration text for high-precision quantization. " * 20,
-                ]
-        else:
-            calibration_dataset = [
-                "This is a much longer calibration sentence that should have more than ten tokens for the quantization process.",
-                "Another example of a calibration sentence that is sufficiently long to pass the minimum length requirement for AWQ quantization.",
-                "Quantization calibration requires sentences that are not too short, so this one is also long enough to be valid for the test."
-            ]
-        model = GPTQModel.from_pretrained(model_name, quantize_config, device="cuda" if device=="cuda" else "cpu")
+        calibration_dataset = get_calibration_dataset(use_large_calibration, tag="AWQ")
+        model = GPTQModel.from_pretrained(model_name, quantize_config, device="cuda" if device == "cuda" else "cpu")
         model.quantize(calibration_dataset)
         model.save_pretrained(str(output_dir))
+        # Patch quantization config for test compatibility
+        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
         logger.info(f"AWQ quantization completed: {output_dir}")
         return True, None
     except Exception as e:
@@ -112,15 +83,14 @@ def validate_awq_file(awq_dir: Path, _: Any) -> bool:
             # Skip inference validation under MPS due to PyTorch compatibility issues
             if torch.backends.mps.is_available():
                 logger.warning(
-                    "Under MPS (Apple Silicon), quantized model inference validation is skipped due to PyTorch compatibility issues, but the model has been truly converted. "
-                    "You can use the model-converter tool in CPU/CUDA environment to automatically complete inference validation."
+                    "On Apple Silicon (MPS), quantized model inference validation is skipped due to PyTorch compatibility issues. "
+                    "You can use the model-converter tool in a CPU/CUDA environment to complete inference validation."
                 )
                 return True
             try:
                 import json
                 with open(awq_dir / "config.json", "r") as f:
                     config = json.load(f)
-                # Read quantization parameters from quantization_config
                 quant_config = config.get("quantization_config", {})
                 bits = quant_config.get("bits", 4)
                 group_size = quant_config.get("group_size", 128)

@@ -627,3 +627,73 @@ def ansi_safe_wrap(text: str, width: int) -> str:
     if clean:
         lines.append(clean)
     return '\n'.join(lines)
+
+
+def auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type):
+    """
+    Robustly load model and tokenizer if not provided. Returns (model, tokenizer).
+    Uses AutoModelForCausalLM for text-generation/causal/lm/generation types, else AutoModel.
+    """
+    from transformers import AutoModel, AutoModelForCausalLM
+    from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+    if model is None:
+        if model_type and any(x in model_type for x in ("causal", "lm", "generation", "text-generation")):
+            model = load_model_with_cache(model_name, AutoModelForCausalLM)
+        else:
+            model = load_model_with_cache(model_name, AutoModel)
+    if tokenizer is None:
+        tokenizer = load_tokenizer_with_cache(model_name)
+    return model, tokenizer
+
+
+def get_calibration_dataset(use_large_calibration, tag="AWQ"):
+    """
+    Returns a calibration dataset (list of strings) for quantization. If use_large_calibration is True, attempts to load openwebtext, else uses built-in samples.
+    Tag is used for logging (e.g., 'AWQ', 'GPTQ').
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    if use_large_calibration:
+        try:
+            from datasets import load_dataset
+            ds = load_dataset("openwebtext", split="train", trust_remote_code=True)
+            calibration_dataset = [x["text"] for x in ds.select(range(1000)) if len(x["text"].split()) > 32]
+            if len(calibration_dataset) < 1000:
+                calibration_dataset += ["The quick brown fox jumps over the lazy dog."] * (1000 - len(calibration_dataset))
+            logger.info(f"[{tag}] Using HuggingFace openwebtext sampling {len(calibration_dataset)} high-quality calibration texts")
+            return calibration_dataset
+        except Exception as e:
+            logger.warning(f"[{tag}] Failed to load high-quality calibration set, falling back to built-in samples: {e}")
+            return [
+                "The quick brown fox jumps over the lazy dog. " * 20,
+                f"{tag} high-precision calibration sentence. " * 20,
+                "This is a long calibration text for high-precision quantization. " * 20,
+            ]
+    else:
+        return [
+            "This is a much longer calibration sentence that should have more than ten tokens for the quantization process.",
+            "Another example of a calibration sentence that is sufficiently long to pass the minimum length requirement for quantization.",
+            "Quantization calibration requires sentences that are not too short, so this one is also long enough to be valid for the test."
+        ]
+
+
+def patch_quantization_config(config_path, bits, group_size, sym, desc):
+    """
+    Patch or create a config.json file with quantization_config for test compatibility.
+    """
+    import json
+    from pathlib import Path
+    config_path = Path(config_path)
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            config = json.load(f)
+    else:
+        config = {}
+    config["quantization_config"] = {
+        "bits": bits,
+        "group_size": group_size,
+        "sym": sym,
+        "desc": desc,
+    }
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)

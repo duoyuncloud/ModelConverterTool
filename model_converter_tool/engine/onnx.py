@@ -5,10 +5,7 @@ import sys
 from pathlib import Path
 import logging
 from typing import Any, Optional, Tuple
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +23,19 @@ def convert_to_onnx(
 ) -> Tuple[bool, Optional[dict]]:
     """
     Export a HuggingFace model to ONNX format using optimum.
-    For Qwen/Qwen2 models, use optimum Python API with custom_onnx_configs.
-    Returns (True, extra_info) if export succeeded and ONNX file is valid, (False, None) otherwise.
+    Args:
+        model: Loaded model object (optional)
+        tokenizer: Loaded tokenizer object (optional)
+        model_name: Model name or path
+        output_path: Output ONNX file path
+        model_type: Model type string
+        task: ONNX export task
+        batch_size: Batch size for export
+        sequence_length: Sequence length for export
+        device: Device string
+    Returns:
+        (success: bool, extra_info: dict or None)
     """
-    logger = logging.getLogger(__name__)
     if model_name is None and isinstance(model, str):
         model_name = model
         model = None
@@ -41,24 +47,13 @@ def convert_to_onnx(
         onnx_file = str(output_dir / "model.onnx")
     output_dir.mkdir(parents=True, exist_ok=True)
     extra_info = {}
-
     # Auto-detect task type for certain models
     if task == "causal-lm" and model_name:
         lower_name = model_name.lower()
         if lower_name.startswith("bert") or "bert" in lower_name:
             task = "feature-extraction"
-
     # Robust model/tokenizer auto-loading
-    if model is None or tokenizer is None:
-        if model is None:
-            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                model = load_model_with_cache(model_name, AutoModel)
-        if tokenizer is None:
-            tokenizer = load_tokenizer_with_cache(model_name)
-
-    # Load model and tokenizer if not provided
+    model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
     try:
         if model is None or tokenizer is None or (getattr(tokenizer, "pad_token", None) is None):
             from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -72,9 +67,6 @@ def convert_to_onnx(
     except Exception:
         logger.info("Failed to load the model or tokenizer. Please check your model name, network connection, and ensure the model is supported by transformers. You may retry or consult the documentation: https://huggingface.co/docs/transformers/main/en/model_doc/auto")
         return False, None
-
-    # Remove Qwen/Qwen2/Qwen3 custom config logic
-    # Only use the default ONNX export logic for all models
     lower_name = model_name.lower() if model_name else ""
     if "qwen" in lower_name:
         logger.warning(
@@ -93,7 +85,6 @@ def convert_to_onnx(
     logger.info(f"Running: {' '.join(command)}")
     try:
         result = subprocess.run(command, capture_output=True, text=True)
-        # Rename model.onnx to the desired output_path if needed
         default_onnx = str(output_dir / "model.onnx")
         if onnx_file != default_onnx and Path(default_onnx).exists():
             try:

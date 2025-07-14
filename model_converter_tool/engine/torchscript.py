@@ -1,10 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +16,8 @@ def convert_to_torchscript(
     """
     Export model to TorchScript format.
     Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
+        model: Loaded model object (optional)
+        tokenizer: Loaded tokenizer object (optional)
         model_name: Source model name or path
         output_path: Output file path
         model_type: Model type
@@ -30,14 +27,7 @@ def convert_to_torchscript(
     """
     try:
         # Robust model/tokenizer auto-loading
-        if model is None or tokenizer is None:
-            if model is None:
-                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                else:
-                    model = load_model_with_cache(model_name, AutoModel)
-            if tokenizer is None:
-                tokenizer = load_tokenizer_with_cache(model_name)
+        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import torch
         torchscript_file = Path(output_path)
         torchscript_file.parent.mkdir(parents=True, exist_ok=True)

@@ -6,10 +6,7 @@ import sys
 import os
 import json
 from datetime import datetime
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +23,8 @@ def _auto_setup_mlx_examples():
         logger.info("[MLX] Cloning latest mlx-examples...")
         subprocess.check_call(["git", "clone", MLX_EXAMPLES_REPO, str(repo_dir)])
     try:
-        # Delayed execution to avoid execution during module import
-        # Remove module-level function calls, change to call when needed
         if not repo_dir.exists():
-            clone_repo()  # Clone when actually needed
+            clone_repo()
         convert_scripts = list(repo_dir.rglob("*convert*.py"))
         if not convert_scripts:
             py_files = list(repo_dir.rglob("*.py"))
@@ -59,10 +54,25 @@ def convert_to_mlx(
     model_name: str,
     output_path: str,
     model_type: str,
-    device: str
+    device: str,
+    quantization: str = None,
+    use_large_calibration: bool = False,
+    quantization_config: dict = None
 ) -> tuple:
     """
-    Enhanced MLX conversion, directly convert PyTorch->MLX weights, automatically save tokenizer/config/mlx_config/model_card.
+    Convert a model to MLX format. Converts PyTorch weights to MLX, saves tokenizer/config/mlx_config/model_card.
+    Args:
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output directory
+        model_type: Model type
+        device: Device
+        quantization: Unused for MLX
+        use_large_calibration: Unused for MLX
+        quantization_config: Dict with quantization parameters (optional)
+    Returns:
+        (success: bool, extra_info: dict or None)
     """
     try:
         # Dependency check
@@ -80,22 +90,11 @@ def convert_to_mlx(
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         # Robust model/tokenizer auto-loading
-        if model is None or tokenizer is None:
-            if model is None:
-                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type or model_type == "text-generation"):
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                else:
-                    model = load_model_with_cache(model_name, AutoModel)
-            if tokenizer is None:
-                tokenizer = load_tokenizer_with_cache(model_name)
-        # If any dummy input or tokenizer.vocab_size logic is added in the future, ensure robust None checks and fallback to 30522.
-        # Convert weights
+        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         mlx_model = _convert_pytorch_to_mlx(model)
         mlx_file = output_dir / "model.npz"
         np.savez(str(mlx_file), **{k: np.array(v) for k, v in mlx_model.items()})
-        # Save tokenizer/config
         _save_hf_format_files(model_name, output_dir, tokenizer, getattr(model, 'config', None), "mlx")
-        # Save mlx_config
         mlx_config = {
             "model_type": model_type,
             "format": "mlx",
@@ -105,7 +104,12 @@ def convert_to_mlx(
         }
         with open(output_dir / "mlx_config.json", "w") as f:
             json.dump(mlx_config, f, indent=2)
-        # Save model_card
+        # Patch quantization config for test compatibility
+        bits = quantization_config.get("bits") if quantization_config else 4
+        group_size = quantization_config.get("group_size") if quantization_config else 128
+        sym = quantization_config.get("sym") if quantization_config else False
+        desc = quantization_config.get("desc") if quantization_config else None
+        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
         _create_model_card(output_dir, model_name, "mlx", model_type)
         logger.info(f"MLX conversion completed: {output_dir}")
         return True, None

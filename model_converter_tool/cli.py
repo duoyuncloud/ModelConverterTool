@@ -3,21 +3,6 @@ from rich import print as rprint
 import os
 import shutil
 import sys
-import subprocess
-
-def upgrade_build_tools():
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True
-        )
-    except Exception as e:
-        print(f"[Warning] Failed to upgrade pip/setuptools/wheel: {e}")
-
-upgrade_build_tools()
-# os.environ["HF_ENDPOINT"] = "https://huggingface.co"
 
 EXAMPLES = """
 [bold cyan]Examples:[/bold cyan]

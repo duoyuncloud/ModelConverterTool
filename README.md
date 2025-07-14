@@ -1,8 +1,7 @@
 # ModelConverterTool
 
-A professional, **API-first and CLI-native** tool for machine learning model conversion and management.  
-Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (with precision options: fp16/fp32), HuggingFace, and more.  
-Clean, orthogonal CLI. Easy-to-integrate, extensible API. 
+A professional, **API-first and CLI-native** tool for machine learning model conversion and management.
+Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (fp16/fp32), HuggingFace, and more.
 
 ---
 
@@ -14,6 +13,7 @@ cd ModelConverterTool
 ./install.sh
 source venv/bin/activate
 ```
+
 ---
 
 ## CLI Commands
@@ -21,40 +21,33 @@ source venv/bin/activate
 | Command | Function |
 |---------|----------|
 | `modelconvert inspect <model>` | Inspect and display model format and metadata. |
-| `modelconvert convert <input> <output> [options]` | Convert a model to another format, with optional quantization. |
+| `modelconvert convert <input_model> <output_format> [options]` | Convert a model to another format, with optional quantization. |
 | `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
-| `modelconvert history` | Show conversion history (completed, failed, active tasks). |
-| `modelconvert config [--action ...] [--key ...] [--value ...]` | Manage tool configuration (show, get, set, list presets). |
+| `modelconvert history` | Show conversion history. |
+| `modelconvert config [--action ...] [--key ...] [--value ...]` | Manage tool configuration. |
 
 ---
 
 ## Command Details
 
-- **inspect**:  
-  Inspect a model file or repo and display its format, metadata, and convertible targets.
-
-- **convert**:  
-  Convert a model to another format.  
-  - `<input>`: Input model path or repo id (required)
-  - `<output>`: Output format (required, e.g. onnx, gguf, mlx, gptq, etc.)
+- **inspect**: Inspect a model file or repo and display its format, metadata, and convertible targets.
+- **convert**: Convert a model to another format.
+  - `<input_model>`: Input model path or repo id (required)
+  - `<output_format>`: Output format (required, e.g. onnx, gguf, mlx, gptq, etc.)
   - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
   - `--quant`: Quantization type (optional)
-  - `--model-type`: Model type (optional)
-  - `--device`: Device (cpu/cuda, optional)
+  - `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
+  - `--model-type`: Model type (optional, default: auto)
+  - `--device`: Device (optional, default: auto)
   - `--use-large-calibration`: Use large calibration dataset (optional)
-
-- **batch**:  
-  Batch convert models using a config file.  
+  - `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
+- **batch**: Batch convert models using a config file.
   - `<config.yaml>`: Path to YAML/JSON config file describing conversion tasks
   - `--max-workers`: Number of concurrent workers (default: 1)
   - `--max-retries`: Max retries per task (default: 1)
   - `--skip-disk-check`: Skip disk space check (not recommended)
-
-- **history**:  
-  Show all completed, failed, and active conversion tasks.
-
-- **config**:  
-  Manage tool configuration.  
+- **history**: Show all completed, failed, and active conversion tasks.
+- **config**: Manage tool configuration.
   - `--action`: show/get/set/list_presets (default: show)
   - `--key`: Config key (for get/set)
   - `--value`: Config value (for set)
@@ -86,61 +79,7 @@ modelconvert config --action set --key cache_dir --value ./mycache
 
 ---
 
-## Basic Conversion Demo
-
-```sh
-# Hugging Face → ONNX
-modelconvert convert bert-base-uncased onnx -o ./outputs/bert.onnx
-
-# Hugging Face → GGUF (Llama/Mistral family, recommended: Qwen/Qwen2-0.5B)
-modelconvert convert Qwen/Qwen2-0.5B gguf -o ./outputs/qwen2-0.5B.gguf --model-type qwen
-
-# Hugging Face → MLX
-modelconvert convert gpt2 mlx -o ./outputs/gpt2.mlx
-
-# Hugging Face → SafeTensors (fp16)
-modelconvert convert sshleifer/tiny-gpt2 safetensors --dtype fp16 -o ./outputs/tiny_gpt2_fp16
-
-# Hugging Face → TorchScript
-modelconvert convert bert-base-uncased torchscript -o ./outputs/bert.pt
-
-# Hugging Face → SafeTensors
-modelconvert convert gpt2 safetensors -o ./outputs/gpt2_safetensors
-
-# Hugging Face → HF (re-save)
-modelconvert convert gpt2 hf -o ./outputs/gpt2_hf
-```
-
----
-
-## Quantization Demo
-
-```sh
-# GPTQ quantization (4bit)
-modelconvert convert facebook/opt-125m gptq --quant 4bit -o ./outputs/opt_125m_gptq
-
-# GPTQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m gptq --quant 4bit --use-large-calibration -o ./outputs/opt_125m_gptq_high_quality
-
-# AWQ quantization (4bit)
-modelconvert convert facebook/opt-125m awq --quant 4bit -o ./outputs/opt_125m_awq
-
-# AWQ quantization (4bit, high quality)
-modelconvert convert facebook/opt-125m awq --quant 4bit --use-large-calibration -o ./outputs/opt_125m_awq_high_quality
-
-# GGUF quantization (Llama/Mistral/Gemma only)
-modelconvert convert Qwen/Qwen2-0.5B gguf --quant q4_k_m -o ./outputs/qwen2-0.5B.gguf
-
-# MLX quantization
-modelconvert convert gpt2 mlx --quant q4_k_m -o ./outputs/gpt2.mlx
-```
-
-> **Note:**
-> GGUF quantization only supports Llama/Mistral/Gemma family models. Attempting GGUF conversion on other architectures will fail.
-
----
-
-## Supported formats & quantization
+## Supported Formats & Quantization
 
 |               | HuggingFace | SafeTensors | TorchScript | ONNX | GGUF | MLX |
 |---------------|:-----------:|:-----------:|:-----------:|:----:|:----:|:---:|
@@ -151,11 +90,10 @@ modelconvert convert gpt2 mlx --quant q4_k_m -o ./outputs/gpt2.mlx
 | GGUF          |             |             |             |      |  ✓   |     |
 | MLX           |             |             |             |      |      |  ✓  |
 
-
 **Quantization options:**
 - GPTQ: 4bit, 8bit
 - AWQ: 4bit, 8bit
-- GGUF: q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
+- GGUF: q4_k_m, q5_k_m, q8_0
 - MLX: q4_k_m, q8_0, q5_k_m
 - SafeTensors: fp16, fp32
 

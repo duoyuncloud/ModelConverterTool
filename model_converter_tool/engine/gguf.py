@@ -4,10 +4,7 @@ from typing import Any
 import subprocess
 import sys
 import tempfile
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
 
 logger = logging.getLogger(__name__)
 
@@ -23,36 +20,38 @@ def convert_to_gguf(
     quantization_config: dict = None
 ) -> tuple:
     """
-    Minimal GGUF conversion: only call llama.cpp/convert_hf_to_gguf.py as external script.
+    Convert a model to GGUF format using llama.cpp/convert_hf_to_gguf.py as an external script.
+    Args:
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object
+        model_name: Source model name or path
+        output_path: Output file path or directory
+        model_type: Model type
+        device: Device
+        quantization: Quantization string (optional)
+        use_large_calibration: Unused for GGUF
+        quantization_config: Dict with quantization parameters (optional)
+    Returns:
+        (success: bool, extra_info: dict or None)
     """
     try:
         # Robust model/tokenizer auto-loading
-        if model is None or tokenizer is None:
-            if model is None:
-                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                else:
-                    model = load_model_with_cache(model_name, AutoModel)
-            if tokenizer is None:
-                tokenizer = load_tokenizer_with_cache(model_name)
+        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         output_dir = Path(output_path)
         if output_dir.exists() and output_dir.is_dir():
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-        elif output_path.endswith(".gguf"):
+        elif str(output_path).endswith(".gguf"):
             gguf_file = Path(output_path)
             output_dir = gguf_file.parent
             output_dir.mkdir(parents=True, exist_ok=True)
         else:
             output_dir.mkdir(parents=True, exist_ok=True)
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-
         llama_cpp_script = Path("llama.cpp/convert_hf_to_gguf.py")
         if llama_cpp_script.exists():
             model_dir = model_name
             if not Path(model_name).exists():
                 temp_dir = tempfile.mkdtemp(prefix="hf_model_")
-                model = load_model_with_cache(model_name, cache_dir=temp_dir)
-                tokenizer = load_tokenizer_with_cache(model_name, cache_dir=temp_dir)
                 model.save_pretrained(temp_dir)
                 tokenizer.save_pretrained(temp_dir)
                 model_dir = temp_dir
@@ -85,6 +84,29 @@ def convert_to_gguf(
                 logger.error(f"GGUF conversion failed: {result.stderr}")
                 return False, None
             logger.info(f"GGUF conversion completed: {gguf_file}")
+            # Parse quantization config
+            bits = quantization_config.get("bits") if quantization_config else None
+            group_size = quantization_config.get("group_size") if quantization_config else None
+            sym = quantization_config.get("sym") if quantization_config else None
+            desc = quantization_config.get("desc") if quantization_config else None
+            # Try to infer from quantization string if not provided
+            if bits is None and quantization:
+                import re
+                m = re.match(r"(\d+)bit", quantization)
+                if m:
+                    bits = int(m.group(1))
+            if group_size is None and quantization:
+                import re
+                m = re.match(r".*g(\d+)", quantization)
+                if m:
+                    group_size = int(m.group(1))
+            if bits is None:
+                bits = 4
+            if group_size is None:
+                group_size = 128
+            if sym is None:
+                sym = False
+            patch_quantization_config(gguf_file.parent / "config.json", bits, group_size, sym, desc)
             return True, None
         logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
         return False, None

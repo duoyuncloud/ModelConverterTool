@@ -3,34 +3,53 @@
 This document describes the command-line interface (CLI) for the Model Converter Tool, including available commands, options, and usage examples.
 
 ## Overview
-The CLI allows users to convert, quantize, and manage machine learning models directly from the terminal.
+The CLI allows users to convert, quantize, inspect, and manage machine learning models directly from the terminal.
 
-## Command Syntax
-```bash
-python -m model_converter_tool.cli convert <input_model> --to <format> -o <output_path> [options]
-python -m model_converter_tool.cli batch <config_path>
-```
+## Commands
+- `convert <input_model> <output_format> [options]`: Convert a model to a different format.
+- `batch <config_path> [options]`: Batch convert models using a YAML/JSON config file.
+- `inspect <model>`: Inspect and display detailed model information.
+- `history`: Show conversion history.
+- `config [--action ...] [--key ...] [--value ...]`: Manage tool configuration.
 
-## Options
+## convert options
 - `<input_model>`: Path to the input model file or repo id (required, positional argument)
-- `--to`: Target output format (e.g., gguf, onnx, safetensors, etc.) (required)
+- `<output_format>`: Target output format (e.g., gguf, onnx, safetensors, etc.) (required, positional argument)
 - `-o`, `--output-path`: Path to the output model file or directory (optional, auto-completed if omitted)
 - `--quant`: Quantization type (optional, e.g. '4bit', 'q4_k_m', etc.)
-- `--quant-config`: Advanced quantization config (optional, JSON string or YAML file). Supports keys like `bits`, `group_size`, `sym`, `desc`.
-- `--model-type`: Model type (optional)
-- `--device`: Device to use (optional)
-- `--use-large-calibration`: Use large calibration dataset (optional)
+- `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
+- `--model-type`: Model type (optional, default: auto)
+- `--device`: Device to use (optional, default: auto)
+- `--use-large-calibration`: Use large calibration dataset for quantization (optional)
+- `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
 - `--help`: Show help message and exit
+
+## batch options
+- `<config_path>`: Path to the batch configuration file (YAML/JSON)
+- `--max-workers`: Maximum number of concurrent workers
+- `--max-retries`: Maximum number of retries per task
+- `--skip-disk-check`: Skip disk space checking (not recommended)
+
+## inspect options
+- `<model>`: Model path or repo id (required)
+
+## history options
+- (No arguments)
+
+## config options
+- `--action`: Action to perform: show/get/set/list_presets (default: show)
+- `--key`: Config key (for get/set)
+- `--value`: Config value (for set)
 
 ## Examples
 Convert a model to SafeTensors (fp16):
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to safetensors --dtype fp16 -o path/to/output_model.safetensors
+python -m model_converter_tool.cli convert path/to/input_model safetensors --dtype fp16 -o path/to/output_model.safetensors
 ```
 
 Quantize a model:
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to gguf -o path/to/output_model-q4.gguf --quant q4
+python -m model_converter_tool.cli convert path/to/input_model gguf -o path/to/output_model-q4.gguf --quant q4
 ```
 
 Batch conversion using a config file:
@@ -41,7 +60,7 @@ python -m model_converter_tool.cli batch ../configs/batch_template.yaml
 Advanced quantization config example:
 
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
 ```
 
 Or using a YAML file:
@@ -55,7 +74,7 @@ desc: my custom quant
 ```
 
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model --to gptq -o path/to/output_model-gptq --quant-config quant.yaml
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config quant.yaml
 ```
 
 ## Advanced Usage

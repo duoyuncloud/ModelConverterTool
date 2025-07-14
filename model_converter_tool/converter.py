@@ -159,8 +159,7 @@ class ModelConverter:
     ) -> ConversionResult:
         result = ConversionResult(success=False)
         try:
-            input_format, norm_path = self._detect_model_format(model_name)
-            # Special dispatch for safetensors
+            input_format, norm_path = self._detect_model_format(model_name)            # Special dispatch for safetensors
             if output_format == "safetensors":
                 try:
                     import torch

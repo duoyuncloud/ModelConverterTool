@@ -107,18 +107,20 @@ def convert(
         typer.echo("Conversion aborted due to insufficient disk space.")
         raise typer.Exit(1)
 
-    # 在转换前做模型有效性和可转化性检查（集成validate逻辑）
+    # Validate model before conversion (integrates validation logic)
     from model_converter_tool.core.validation import validate_model
     val_result = validate_model(input, output)
     if not (isinstance(val_result, dict) and val_result.get('valid', False)):
         errors = val_result.get('errors', [])
+        if not errors:
+            errors = val_result.get('validation', {}).get('errors', [])
         supported = val_result.get('format_info', {}).get('supported_outputs', [])
         if errors:
-            typer.echo(f"[red]Model validation failed: {'; '.join(errors)}[/red]")
+            rprint(f"[red]Model validation failed: {'; '.join(errors)}[/red]")
             if supported:
-                typer.echo(f"[yellow]Supported output formats for this model: {', '.join(supported)}[/yellow]")
+                rprint(f"[yellow]Supported output formats for this model: {', '.join(supported)}[/yellow]")
         else:
-            typer.echo(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
+            rprint(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
         raise typer.Exit(1)
 
     output_path = auto_complete_output_path(input, output_path, output)

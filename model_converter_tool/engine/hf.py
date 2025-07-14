@@ -1,10 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
-from model_converter_tool.utils import load_tokenizer_with_cache
-from transformers import AutoTokenizer
+from model_converter_tool.utils import auto_load_model_and_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +16,8 @@ def convert_to_hf(
     """
     Save model in HuggingFace native format.
     Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
+        model: Loaded model object (optional)
+        tokenizer: Loaded tokenizer object (optional)
         model_name: Source model name or path
         output_path: Output file path
         model_type: Model type
@@ -30,14 +27,7 @@ def convert_to_hf(
     """
     try:
         # Robust model/tokenizer auto-loading
-        if model is None or tokenizer is None:
-            if model is None:
-                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                else:
-                    model = load_model_with_cache(model_name, AutoModel)
-            if tokenizer is None:
-                tokenizer = load_tokenizer_with_cache(model_name)
+        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
@@ -58,8 +48,8 @@ def validate_hf_file(hf_dir: Path, _: any) -> bool:
         if not hf_dir.exists():
             return False
         import torch
-        from model_converter_tool.utils import load_tokenizer_with_cache
-        model = load_model_with_cache(str(hf_dir), AutoModel)
+        from model_converter_tool.utils import load_tokenizer_with_cache, load_model_with_cache
+        model = load_model_with_cache(str(hf_dir), None)
         tokenizer = load_tokenizer_with_cache(str(hf_dir))
         inputs = tokenizer("hello world", return_tensors="pt")
         with torch.no_grad():

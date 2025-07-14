@@ -3,10 +3,6 @@ from model_converter_tool.core.history import get_history
 
 def history():
     """
-    [dim]Examples:
-      modelconvert history
-      modelconvert history  # (no arguments)[/dim]
-
     Show conversion history.
     """
     history = get_history()

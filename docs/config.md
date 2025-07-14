@@ -10,25 +10,25 @@ A configuration file typically contains a list of conversion jobs, each specifyi
 
 ## Example Config (YAML)
 ```yaml
-conversions:
-  - input: path/to/model1.bin
-    output: path/to/model1.gguf
-    to: gguf
-    quant: q4
+models:
+  - model_path: path/to/model1.bin
+    output_path: path/to/model1.gguf
+    output_format: gguf
+    quantization: q4
     model_type: auto
     device: auto
-  - input: path/to/model2.bin
-    output: path/to/model2.onnx
-    to: onnx
+  - model_path: path/to/model2.bin
+    output_path: path/to/model2.onnx
+    output_format: onnx
     model_type: bert
     device: cpu
 ```
 
 ## Supported Fields
-- `input`: Path to the input model file
-- `output`: Path to the output model file
-- `to`: Target output format (e.g., gguf, onnx, fp16, etc.)
-- `quant`: Quantization type (optional)
+- `model_path`: Path to the input model file
+- `output_path`: Path to the output model file
+- `output_format`: Target output format (e.g., gguf, onnx, fp16, etc.)
+- `quantization`: Quantization type (optional)
 - `quantization_config`: Advanced quantization config (optional, dict). Supports keys like `bits`, `group_size`, `sym`, `desc`.
 - `model_type`: Model type (optional)
 - `device`: Device to use (optional)
@@ -37,15 +37,14 @@ conversions:
 ## Tips
 - Use descriptive output paths to avoid overwriting files
 - Validate your config file before running batch conversions
-- Refer to the [examples/batched/README.md](../examples/batched/README.md) for more usage examples 
 
 ## Advanced Quantization Config Example
 
 ```yaml
-conversions:
-  - input: path/to/model1.bin
-    output: path/to/model1.gptq
-    to: gptq
+models:
+  - model_path: path/to/model1.bin
+    output_path: path/to/model1.gptq
+    output_format: gptq
     quantization_config:
       bits: 4
       group_size: 128

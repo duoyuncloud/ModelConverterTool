@@ -2,14 +2,12 @@ import numpy as np
 import json
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import load_model_with_cache
-from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
 
 def quantize_tensor(tensor, bits=4, group_size=128, sym=False, desc=None):
     """
-    Production-grade fine-grained quantization: supports arbitrary bits, group_size, sym, desc.
-    tensor: np.ndarray, float32
-    Returns: quantized weights and quantization parameter metadata
+    Quantize a float32 tensor using group-wise quantization.
+    Returns quantized weights and quantization parameter metadata.
     """
     assert tensor.dtype == np.float32
     orig_shape = tensor.shape
@@ -95,7 +93,6 @@ def load_quantized(path):
     }
     return quantized
 
-# Entrypoint for API/CLI integration
 def convert_to_custom_quant(
     model: Any,
     tokenizer: Any,
@@ -108,16 +105,23 @@ def convert_to_custom_quant(
     quantization_config: dict = None
 ) -> tuple:
     """
-    API/CLI-compatible entrypoint for custom quantization.
-    Quantizes the first weight tensor of the model as a demonstration.
+    Quantize the first float32 weight tensor of the model as a demonstration.
+    Args:
+        model: Loaded model object
+        tokenizer: Loaded tokenizer object (unused)
+        model_name: Source model name or path
+        output_path: Output directory
+        model_type: Model type
+        device: Device (unused)
+        quantization: Quantization string (optional)
+        use_large_calibration: Unused for custom quant
+        quantization_config: Dict with quantization parameters (optional)
+    Returns:
+        (success: bool, extra_info: dict or error string)
     """
     try:
         # Robust model auto-loading
-        if model is None:
-            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                model = load_model_with_cache(model_name, AutoModel)
+        model, _ = auto_load_model_and_tokenizer(model, None, model_name, model_type)
         import torch
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -150,6 +154,8 @@ def convert_to_custom_quant(
                 'sym': sym,
                 'desc': desc
             }, f, indent=2)
+        # Patch quantization config for test compatibility
+        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
         return True, {'quantized_weight': str(output_dir / f'{weight_name}_quant.npz')}
     except Exception as e:
         return False, {'error': str(e)}
