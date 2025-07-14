@@ -12,6 +12,8 @@ from typing import Any, Optional, Dict, List, Union, Tuple
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+import re
+import textwrap
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -589,3 +591,39 @@ def check_and_handle_disk_space(
     
     console.print(panel)
     return False
+
+
+def ansi_safe_wrap(text: str, width: int) -> str:
+    """
+    Wrap text to a given width, preserving ANSI color codes and word boundaries.
+    Args:
+        text: The input string (may contain ANSI codes)
+        width: The max line width
+    Returns:
+        Wrapped string
+    """
+    # Regex to match ANSI escape sequences
+    ansi_escape = re.compile(r"(\x1b\[[0-9;]*[a-zA-Z])")
+    # Split text into ANSI and non-ANSI parts
+    parts = ansi_escape.split(text)
+    clean = ''
+    ansi_stack = []
+    lines = []
+    for part in parts:
+        if ansi_escape.match(part):
+            ansi_stack.append(part)
+            clean += part
+        else:
+            # Wrap the non-ANSI part
+            wrapped = textwrap.wrap(part, width=width, replace_whitespace=False, drop_whitespace=False)
+            for i, line in enumerate(wrapped):
+                if i > 0:
+                    # Reset ANSI codes at the start of each new line
+                    lines.append(''.join(ansi_stack) + line)
+                else:
+                    clean += line
+            if wrapped:
+                clean = ''
+    if clean:
+        lines.append(clean)
+    return '\n'.join(lines)
