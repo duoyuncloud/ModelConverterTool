@@ -55,43 +55,33 @@ def convert(
     use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
     dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."),
 ):
-    # --- Concise, visually clean help text ---
-    term_width = shutil.get_terminal_size((100, 20)).columns
-    box_width = min(max(term_width, 60), 120)
+    """
+    Convert models between formats, with optional quantization and precision.
 
-    examples = (
-        "[bold cyan]Example:[/bold cyan]\n"
-        "  modelconvert convert bert-base-uncased safetensors --dtype fp16\n"
-        "  modelconvert convert facebook/opt-125m gguf --quant q4_k_m\n"
-    )
-    matrix = (
-        "[bold magenta]Supported Conversion Matrix:[/bold magenta]\n"
-        "[white on black]"
-        "┏───────────────┳────────────────────────────────────────────┓\n"
-        "┃ Input Format  ┃ Supported Output Formats                   ┃\n"
-        "┣───────────────╋────────────────────────────────────────────┫\n"
-        "┃ huggingface   ┃ huggingface, safetensors, torchscript,...  ┃\n"
-        "┃ safetensors   ┃ huggingface, safetensors                   ┃\n"
-        "┃ torchscript   ┃ torchscript                                ┃\n"
-        "┃ onnx          ┃ onnx                                       ┃\n"
-        "┃ gguf          ┃ gguf                                       ┃\n"
-        "┃ mlx           ┃ mlx                                        ┃\n"
-        "┗───────────────┻────────────────────────────────────────────┛"
-        "[/white on black]"
-    )
-    quant_types = (
-        "[bold yellow]Quantization:[/bold yellow] "
-        "[cyan]gptq[/cyan] 4/8bit, [cyan]awq[/cyan] 4/8bit, [cyan]gguf[/cyan] q4_k_m/q5_k_m/q8_0, "
-        "[cyan]custom_quant[/cyan] any bits/group_size/sym/desc"
-    )
-    desc = (
-        "[dim]Convert models between formats, with optional quantization and precision. "
-        "Use --quant for simple types, or --quant-config for advanced options.[/dim]"
-    )
-    help_text = f"\n{examples}\n\n{matrix}\n\n{quant_types}\n\n{desc}\n"
+    Examples:
+      modelconvert convert bert-base-uncased safetensors --dtype fp16
+      modelconvert convert facebook/opt-125m gguf --quant q4_k_m
+
+    Supported Conversion Matrix:
+      ┏───────────────┳────────────────────────────────────────────┓
+      ┃ Input Format  ┃ Supported Output Formats                   ┃
+      ┣───────────────╋────────────────────────────────────────────┫
+      ┃ huggingface   ┃ huggingface, safetensors, torchscript,...  ┃
+      ┃ safetensors   ┃ huggingface, safetensors                   ┃
+      ┃ torchscript   ┃ torchscript                                ┃
+      ┃ onnx          ┃ onnx                                       ┃
+      ┃ gguf          ┃ gguf                                       ┃
+      ┃ mlx           ┃ mlx                                        ┃
+      ┗───────────────┻────────────────────────────────────────────┛
+
+    Quantization:
+      gptq 4/8bit, awq 4/8bit, gguf q4_k_m/q5_k_m/q8_0, custom_quant any bits/group_size/sym/desc
+
+    Use --quant for simple types, or --quant-config for advanced options.
+    """
     # Show concise help if --help, -h, or missing args
     if '--help' in sys.argv or '-h' in sys.argv or not input or not output:
-        rprint(help_text)
+        rprint(convert.__doc__)
         ctx = click.get_current_context()
         typer.echo(ctx.command.get_help(ctx))
         raise typer.Exit()
@@ -156,6 +146,6 @@ def convert(
                 typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}") 
 
-# Register with Typer, disabling default help
+# Register with Typer, enabling default help
 app = typer.Typer()
-app.command(context_settings={"help_option_names": []})(convert) 
+app.command()(convert) 

@@ -236,7 +236,7 @@ class ModelConverter:
                         result.error = extra
                 elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
-                        model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration
+                        model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration, quantization_config
                     )
                 else:
                     success, extra = convert_func(
