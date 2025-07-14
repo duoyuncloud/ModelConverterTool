@@ -112,8 +112,11 @@ def convert(
     val_result = validate_model(input, output)
     if not (isinstance(val_result, dict) and val_result.get('valid', False)):
         errors = val_result.get('errors', [])
+        supported = val_result.get('format_info', {}).get('supported_outputs', [])
         if errors:
-            typer.echo(f"[red]Model validation failed, cannot convert: {'; '.join(errors)}[/red]")
+            typer.echo(f"[red]Model validation failed: {'; '.join(errors)}[/red]")
+            if supported:
+                typer.echo(f"[yellow]Supported output formats for this model: {', '.join(supported)}[/yellow]")
         else:
             typer.echo(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
         raise typer.Exit(1)
