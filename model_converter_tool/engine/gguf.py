@@ -46,7 +46,7 @@ def convert_to_gguf(
             model_dir = model_name
             if not Path(model_name).exists():
                 temp_dir = tempfile.mkdtemp(prefix="hf_model_")
-                from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+                from model_converter_tool.utils import load_tokenizer_with_cache
                 model = load_model_with_cache(model_name, cache_dir=temp_dir)
                 tokenizer = load_tokenizer_with_cache(model_name, cache_dir=temp_dir)
                 model.save_pretrained(temp_dir)
