@@ -2,8 +2,13 @@ import typer
 import os
 from model_converter_tool.core.conversion import convert_model
 from model_converter_tool.utils import check_and_handle_disk_space
+from model_converter_tool.utils import ansi_safe_wrap
+import sys
+from rich import print as rprint
+import click
 import json
 import yaml
+import shutil
 
 # Beautify parameter help
 ARG_REQUIRED = "[bold red][required][/bold red]"
@@ -38,68 +43,58 @@ def auto_complete_output_path(input_path, output_path, to_format):
                     return output_path[: -len(ext)]
     return output_path
 
-
+# Register the command with custom help handling
 def convert(
-    input: str = typer.Argument(..., help="Input model path or repo id."),
-    output: str = typer.Argument(..., help="Output format (e.g. onnx, gguf, custom_quant, etc.)."),
+    input: str = typer.Argument(None, help="Input model path or repo id."),
+    output: str = typer.Argument(None, help="Output format (e.g. onnx, gguf, custom_quant, etc.)."),
     output_path: str = typer.Option(None, "-o", "--output-path", help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
     quant_config: str = typer.Option(None, help="Advanced quantization config (JSON string or YAML file). Supports bits, group_size, sym, desc, etc."),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
     use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
-    dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format.")
+    dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."),
 ):
-    """
-    [1;36m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓[0m
-    [1;36m┃                    Model Conversion CLI Command                     ┃[0m
-    [1;36m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛[0m
+    # --- Concise, visually clean help text ---
+    term_width = shutil.get_terminal_size((100, 20)).columns
+    box_width = min(max(term_width, 60), 120)
 
-    [1mExamples:[0m
-      modelconvert convert bert-base-uncased safetensors --dtype fp16
-      modelconvert convert facebook/opt-125m gptq --quant 4bit -o ./outputs/opt_125m_gptq
-      modelconvert convert facebook/opt-125m custom_quant --quant-config '{"bits":3,"group_size":64,"sym":true,"desc":"demo"}'
-
-    [1mOutput Formats:[0m
-      [32m• onnx[0m
-      [32m• gguf[0m
-      [32m• torchscript[0m
-      [32m• gptq[0m
-      [32m• awq[0m
-      [32m• safetensors[0m
-      [32m• mlx[0m
-      [32m• custom_quant[0m (production-grade, fine-grained quantization)
-
-    [4;33m(Note: 'fp16' is deprecated, use --to safetensors --dtype fp16)[0m
-
-    [1;36m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓[0m
-    [1;36m┃                        Supported Conversion Matrix                  ┃[0m
-    [1;36m┣━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫[0m
-    [1;36m┃ Input Format      ┃ Supported Output Formats                        ┃[0m
-    [1;36m┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫[0m
-    [1;36m┃ huggingface       ┃ huggingface, safetensors, torchscript, onnx,    ┃[0m
-    [1;36m┃                   ┃ gguf, mlx                                      ┃[0m
-    [1;36m┃ safetensors       ┃ huggingface, safetensors                        ┃[0m
-    [1;36m┃ torchscript       ┃ torchscript                                     ┃[0m
-    [1;36m┃ onnx              ┃ onnx                                            ┃[0m
-    [1;36m┃ gguf              ┃ gguf                                            ┃[0m
-    [1;36m┃ mlx               ┃ mlx                                             ┃[0m
-    [1;36m┗━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛[0m
-
-    [1mSupported Quantization Types:[0m
-      [35m• gptq:[0m 4bit, 8bit
-      [35m• awq:[0m 4bit, 8bit
-      [35m• gguf:[0m q4_k_m, q4_k_s, q5_k_m, q5_k_s, q6_k, q8_0
-      [35m• mlx:[0m q4_k_m, q8_0, q5_k_m
-      [35m• custom_quant:[0m any bits, group_size, sym, desc, etc.
-
-    [1mPrecision Options:[0m
-      [34m• SafeTensors:[0m fp16, fp32 (use --dtype)
-
-    [1mDescription:[0m
-      Convert a model to another format, with optional quantization and precision.
-      Use --quant for simple quantization types, or --quant-config for advanced, fine-grained quantization.
-    """
+    examples = (
+        "[bold cyan]Example:[/bold cyan]\n"
+        "  modelconvert convert bert-base-uncased safetensors --dtype fp16\n"
+        "  modelconvert convert facebook/opt-125m gguf --quant q4_k_m\n"
+    )
+    matrix = (
+        "[bold magenta]Supported Conversion Matrix:[/bold magenta]\n"
+        "[white on black]"
+        "┏───────────────┳────────────────────────────────────────────┓\n"
+        "┃ Input Format  ┃ Supported Output Formats                   ┃\n"
+        "┣───────────────╋────────────────────────────────────────────┫\n"
+        "┃ huggingface   ┃ huggingface, safetensors, torchscript,...  ┃\n"
+        "┃ safetensors   ┃ huggingface, safetensors                   ┃\n"
+        "┃ torchscript   ┃ torchscript                                ┃\n"
+        "┃ onnx          ┃ onnx                                       ┃\n"
+        "┃ gguf          ┃ gguf                                       ┃\n"
+        "┃ mlx           ┃ mlx                                        ┃\n"
+        "┗───────────────┻────────────────────────────────────────────┛"
+        "[/white on black]"
+    )
+    quant_types = (
+        "[bold yellow]Quantization:[/bold yellow] "
+        "[cyan]gptq[/cyan] 4/8bit, [cyan]awq[/cyan] 4/8bit, [cyan]gguf[/cyan] q4_k_m/q5_k_m/q8_0, "
+        "[cyan]custom_quant[/cyan] any bits/group_size/sym/desc"
+    )
+    desc = (
+        "[dim]Convert models between formats, with optional quantization and precision. "
+        "Use --quant for simple types, or --quant-config for advanced options.[/dim]"
+    )
+    help_text = f"\n{examples}\n\n{matrix}\n\n{quant_types}\n\n{desc}\n"
+    # Show concise help if --help, -h, or missing args
+    if '--help' in sys.argv or '-h' in sys.argv or not input or not output:
+        rprint(help_text)
+        ctx = click.get_current_context()
+        typer.echo(ctx.command.get_help(ctx))
+        raise typer.Exit()
     # Handle deprecated fp16 format
     if output.lower() == "fp16":
         typer.echo("[yellow]Warning: 'fp16' format is deprecated. Use '--to safetensors --dtype fp16' instead.[/yellow]")
@@ -155,3 +150,7 @@ def convert(
             except Exception as e:
                 typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}") 
+
+# Register with Typer, disabling default help
+app = typer.Typer()
+app.command(context_settings={"help_option_names": []})(convert) 
