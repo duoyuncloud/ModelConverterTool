@@ -26,7 +26,7 @@ def convert_to_safetensors(
         device: Device
         dtype: Precision for weights (e.g., 'fp16', 'fp32')
     Returns:
-        (success: bool, extra_info: dict or None)
+        (success: bool, extra_info: dict or error string)
     """
     try:
         output_dir = Path(output_path)
@@ -51,10 +51,10 @@ def convert_to_safetensors(
             return True, None
         except Exception as e:
             logger.error(f"Safetensors conversion failed: {e}")
-            return False, None
+            return False, str(e)
     except Exception as e:
         logger.error(f"Safetensors conversion error: {e}")
-        return False, None
+        return False, str(e)
 
 def validate_safetensors_file(st_dir: Path, _: any) -> bool:
     try:

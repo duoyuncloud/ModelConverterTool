@@ -160,6 +160,31 @@ class ModelConverter:
         result = ConversionResult(success=False)
         try:
             input_format, norm_path = self._detect_model_format(model_name)
+            # Special dispatch for safetensors
+            if output_format == "safetensors":
+                try:
+                    import torch
+                    from model_converter_tool.engine.safetensors import convert_to_safetensors, validate_safetensors_file
+                    if model is None:
+                        from transformers import AutoModel
+                        from model_converter_tool.utils import load_model_with_cache
+                        model = load_model_with_cache(norm_path, AutoModel)
+                    success, extra_info = convert_to_safetensors(
+                        model,
+                        tokenizer,
+                        model_name,
+                        output_path,
+                        model_type,
+                        device,
+                        dtype
+                    )
+                    result.success = success
+                    result.extra_info = extra_info
+                    result.output_path = output_path
+                    return result
+                except Exception as e:
+                    result.error = f"Safetensors conversion failed: {e}"
+                    return result
             # Special dispatch for custom_quant
             if output_format == "custom_quant":
                 try:
@@ -208,6 +233,8 @@ class ModelConverter:
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device, dtype
                     )
+                    if not success and isinstance(extra, str):
+                        result.error = extra
                 elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration
@@ -224,7 +251,10 @@ class ModelConverter:
                     result.extra_info = extra
                 else:
                     result.success = False
-                    result.error = f"Conversion failed for {output_format}"
+                    if isinstance(extra, str):
+                        result.error = extra
+                    else:
+                        result.error = f"Conversion failed for {output_format}"
             else:
                 result.error = f"Unsupported format: {output_format}"
         except Exception as e:
