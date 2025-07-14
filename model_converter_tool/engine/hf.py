@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
+from model_converter_tool.utils import load_model_with_cache
+from transformers import AutoModel, AutoModelForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,12 @@ def convert_to_hf(
         (success: bool, extra_info: dict or None)
     """
     try:
+        # Robust model auto-loading
+        if model is None:
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
@@ -44,9 +52,8 @@ def validate_hf_file(hf_dir: Path, _: any) -> bool:
     try:
         if not hf_dir.exists():
             return False
-        from transformers import AutoModel, AutoTokenizer
         import torch
-        from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
+        from model_converter_tool.utils import load_tokenizer_with_cache
         model = load_model_with_cache(str(hf_dir), AutoModel)
         tokenizer = load_tokenizer_with_cache(str(hf_dir))
         inputs = tokenizer("hello world", return_tensors="pt")

@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
+from model_converter_tool.utils import load_model_with_cache
+from transformers import AutoModel, AutoModelForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,12 @@ def convert_to_torchscript(
         (success: bool, extra_info: dict or None)
     """
     try:
+        # Robust model auto-loading
+        if model is None:
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
         import torch
         torchscript_file = Path(output_path)
         torchscript_file.parent.mkdir(parents=True, exist_ok=True)

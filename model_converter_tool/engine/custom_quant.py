@@ -2,6 +2,8 @@ import numpy as np
 import json
 from pathlib import Path
 from typing import Any, Optional
+from model_converter_tool.utils import load_model_with_cache
+from transformers import AutoModel, AutoModelForCausalLM
 
 def quantize_tensor(tensor, bits=4, group_size=128, sym=False, desc=None):
     """
@@ -110,6 +112,12 @@ def convert_to_custom_quant(
     Quantizes the first weight tensor of the model as a demonstration.
     """
     try:
+        # Robust model auto-loading
+        if model is None:
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
         import torch
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)

@@ -6,6 +6,8 @@ import sys
 import os
 import json
 from datetime import datetime
+from model_converter_tool.utils import load_model_with_cache
+from transformers import AutoModel, AutoModelForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -76,21 +78,11 @@ def convert_to_mlx(
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         # Load model
-        try:
-            if model is None:
-                from model_converter_tool.utils import load_model_with_cache
-                if model_type == "text-generation":
-                    from transformers import AutoModelForCausalLM
-                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
-                elif model_type == "text-classification":
-                    from transformers import AutoModelForSequenceClassification
-                    model = load_model_with_cache(model_name, AutoModelForSequenceClassification)
-                else:
-                    from transformers import AutoModel
-                    model = load_model_with_cache(model_name, AutoModel)
-        except Exception as e:
-            logger.error(f"Failed to load model for MLX conversion: {e}")
-            return False, None
+        if model is None:
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type or model_type == "text-generation"):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
         # Convert weights
         mlx_model = _convert_pytorch_to_mlx(model)
         mlx_file = output_dir / "model.npz"

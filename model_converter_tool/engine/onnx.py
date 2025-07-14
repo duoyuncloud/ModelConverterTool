@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 import logging
 from typing import Any, Optional, Tuple
+from model_converter_tool.utils import load_model_with_cache
+from transformers import AutoModel, AutoModelForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,13 @@ def convert_to_onnx(
         lower_name = model_name.lower()
         if lower_name.startswith("bert") or "bert" in lower_name:
             task = "feature-extraction"
+
+    # Robust model auto-loading
+    if model is None:
+        if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+            model = load_model_with_cache(model_name, AutoModelForCausalLM)
+        else:
+            model = load_model_with_cache(model_name, AutoModel)
 
     # Load model and tokenizer if not provided
     try:
