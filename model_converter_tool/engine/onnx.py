@@ -7,6 +7,8 @@ import logging
 from typing import Any, Optional, Tuple
 from model_converter_tool.utils import load_model_with_cache
 from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import load_tokenizer_with_cache
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +48,15 @@ def convert_to_onnx(
         if lower_name.startswith("bert") or "bert" in lower_name:
             task = "feature-extraction"
 
-    # Robust model auto-loading
-    if model is None:
-        if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-            model = load_model_with_cache(model_name, AutoModelForCausalLM)
-        else:
-            model = load_model_with_cache(model_name, AutoModel)
+    # Robust model/tokenizer auto-loading
+    if model is None or tokenizer is None:
+        if model is None:
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
+        if tokenizer is None:
+            tokenizer = load_tokenizer_with_cache(model_name)
 
     # Load model and tokenizer if not provided
     try:

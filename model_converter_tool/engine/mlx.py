@@ -8,6 +8,8 @@ import json
 from datetime import datetime
 from model_converter_tool.utils import load_model_with_cache
 from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import load_tokenizer_with_cache
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +79,16 @@ def convert_to_mlx(
             return False, None
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
-        # Load model
-        if model is None:
-            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type or model_type == "text-generation"):
-                model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                model = load_model_with_cache(model_name, AutoModel)
+        # Robust model/tokenizer auto-loading
+        if model is None or tokenizer is None:
+            if model is None:
+                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type or model_type == "text-generation"):
+                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
+                else:
+                    model = load_model_with_cache(model_name, AutoModel)
+            if tokenizer is None:
+                tokenizer = load_tokenizer_with_cache(model_name)
+        # If any dummy input or tokenizer.vocab_size logic is added in the future, ensure robust None checks and fallback to 30522.
         # Convert weights
         mlx_model = _convert_pytorch_to_mlx(model)
         mlx_file = output_dir / "model.npz"

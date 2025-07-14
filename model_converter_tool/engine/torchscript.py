@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import load_model_with_cache
 from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import load_tokenizer_with_cache
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,15 @@ def convert_to_torchscript(
         (success: bool, extra_info: dict or None)
     """
     try:
-        # Robust model auto-loading
-        if model is None:
-            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                model = load_model_with_cache(model_name, AutoModel)
+        # Robust model/tokenizer auto-loading
+        if model is None or tokenizer is None:
+            if model is None:
+                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
+                else:
+                    model = load_model_with_cache(model_name, AutoModel)
+            if tokenizer is None:
+                tokenizer = load_tokenizer_with_cache(model_name)
         import torch
         torchscript_file = Path(output_path)
         torchscript_file.parent.mkdir(parents=True, exist_ok=True)
@@ -66,19 +71,32 @@ def convert_to_torchscript(
             model.eval()
             dummy_input = None
             dummy_mask = None
+            if tokenizer is None:
+                logger.error("Tokenizer is None, cannot proceed with TorchScript export.")
+                return False, {"error": "Tokenizer is None, cannot proceed with TorchScript export."}
             if model_type == "image-classification":
                 dummy_input = torch.randn(1, 3, 224, 224)
             elif model_type == "text-generation":
-                dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 10))
-            elif model_type in ("text-classification", "auto"):
-                # For BERT-like models
                 vocab_size = getattr(tokenizer, "vocab_size", 30522)
+                if vocab_size is None:
+                    logger.warning("Tokenizer has no vocab_size, using default vocab_size=30522")
+                    vocab_size = 30522
+                dummy_input = torch.randint(0, min(vocab_size, 1000), (1, 10))
+            elif model_type in ("text-classification", "auto"):
+                vocab_size = getattr(tokenizer, "vocab_size", 30522)
+                if vocab_size is None:
+                    logger.warning("Tokenizer has no vocab_size, using default vocab_size=30522")
+                    vocab_size = 30522
                 dummy_input = torch.randint(0, min(vocab_size, 1000), (1, 8))
                 dummy_mask = torch.ones_like(dummy_input)
                 if hasattr(model, "forward") and "attention_mask" in str(model.forward.__code__.co_varnames):
                     dummy_input = (dummy_input, dummy_mask)
             else:
-                dummy_input = torch.randint(0, min(tokenizer.vocab_size, 1000), (1, 32))
+                vocab_size = getattr(tokenizer, "vocab_size", 30522)
+                if vocab_size is None:
+                    logger.warning("Tokenizer has no vocab_size, using default vocab_size=30522")
+                    vocab_size = 30522
+                dummy_input = torch.randint(0, min(vocab_size, 1000), (1, 32))
                 if hasattr(model, "forward") and "attention_mask" in str(model.forward.__code__.co_varnames):
                     dummy_mask = torch.ones_like(dummy_input)
                     dummy_input = (dummy_input, dummy_mask)

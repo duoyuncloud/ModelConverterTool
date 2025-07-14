@@ -6,6 +6,8 @@ import sys
 import tempfile
 from model_converter_tool.utils import load_model_with_cache
 from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import load_tokenizer_with_cache
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +26,15 @@ def convert_to_gguf(
     Minimal GGUF conversion: only call llama.cpp/convert_hf_to_gguf.py as external script.
     """
     try:
-        # Robust model auto-loading
-        if model is None:
-            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
-                model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                model = load_model_with_cache(model_name, AutoModel)
+        # Robust model/tokenizer auto-loading
+        if model is None or tokenizer is None:
+            if model is None:
+                if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                    model = load_model_with_cache(model_name, AutoModelForCausalLM)
+                else:
+                    model = load_model_with_cache(model_name, AutoModel)
+            if tokenizer is None:
+                tokenizer = load_tokenizer_with_cache(model_name)
         output_dir = Path(output_path)
         if output_dir.exists() and output_dir.is_dir():
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
@@ -46,7 +51,6 @@ def convert_to_gguf(
             model_dir = model_name
             if not Path(model_name).exists():
                 temp_dir = tempfile.mkdtemp(prefix="hf_model_")
-                from model_converter_tool.utils import load_tokenizer_with_cache
                 model = load_model_with_cache(model_name, cache_dir=temp_dir)
                 tokenizer = load_tokenizer_with_cache(model_name, cache_dir=temp_dir)
                 model.save_pretrained(temp_dir)
