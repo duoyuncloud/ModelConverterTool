@@ -56,3 +56,24 @@ def test_quantization(converter, output_dir, input_model, output_format, output_
     print(f"DEBUG: result.output_path = {result.output_path}")
     assert result.success, f"{output_format} quantization failed: {result.error}"
     assert os.path.exists(output_path) 
+
+def test_quantization_config_applied(converter, output_dir):
+    import json, os
+    quant_config = {"bits": 3, "group_size": 64, "sym": True, "desc": "test-desc"}
+    output_path = str(output_dir / "opt_125m_gptq_custom")
+    result = converter.convert(
+        model_name="facebook/opt-125m",
+        output_format="gptq",
+        output_path=output_path,
+        model_type="text-generation",
+        device="cpu",
+        quantization_config=quant_config,
+    )
+    assert result.success, f"Quantization with config failed: {result.error}"
+    config_path = os.path.join(output_path, "config.json")
+    assert os.path.exists(config_path), "config.json not found in output"
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    qcfg = config.get("quantization_config", {})
+    for k, v in quant_config.items():
+        assert qcfg.get(k) == v, f"Quantization param {k} not applied: expected {v}, got {qcfg.get(k)}" 

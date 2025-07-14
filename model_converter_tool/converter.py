@@ -48,6 +48,9 @@ class ModelConverter:
         elif output_format == "mlx":
             from .engine.mlx import convert_to_mlx, validate_mlx_file
             return convert_to_mlx, validate_mlx_file
+        elif output_format == "custom_quant":
+            from .engine.custom_quant import convert_to_custom_quant, validate_custom_quant_file
+            return convert_to_custom_quant, validate_custom_quant_file
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
     
@@ -108,44 +111,32 @@ class ModelConverter:
         quantization: str = "", 
         device: str = "auto"
     ) -> Dict[str, Any]:
-        """
-        Validate conversion inputs and return validation result.
-        
-        Args:
-            input_format: Input model format
-            output_format: Output model format
-            model_type: Model type
-            quantization: Quantization parameters
-            device: Target device
-            
-        Returns:
-            Validation result dictionary
-        """
         errors = []
         warnings = []
-        
+
         # Check if input format is supported
         if input_format not in SUPPORTED_FORMATS and input_format != "huggingface":
             errors.append(f"Unsupported input format: {input_format}")
-        
-        # Check if output format is supported
-        if output_format not in SUPPORTED_FORMATS:
+
+        # Check if output format is supported (allow custom_quant for all)
+        valid_outputs = self.get_conversion_matrix().get(input_format, [])
+        if output_format not in valid_outputs:
             errors.append(f"Unsupported output format: {output_format}")
-        
+
         # Check model type
         valid_model_types = ["auto", "text-generation", "text-classification", "image-classification"]
         if model_type not in valid_model_types:
             errors.append(f"Invalid model type: {model_type}. Valid types: {valid_model_types}")
-        
+
         # Check device
         valid_devices = ["auto", "cpu", "cuda", "mps"]
         if device not in valid_devices:
             errors.append(f"Invalid device: {device}. Valid devices: {valid_devices}")
-        
+
         # Check quantization for supported formats
-        if quantization and output_format not in ["gguf", "gptq", "awq", "mlx"]:
+        if quantization and output_format not in ["gguf", "gptq", "awq", "mlx", "custom_quant"]:
             warnings.append(f"Quantization not supported for {output_format} format")
-        
+
         return {
             "valid": len(errors) == 0,
             "errors": errors,
@@ -164,35 +155,38 @@ class ModelConverter:
         quantization: Optional[str] = None,
         use_large_calibration: bool = False,
         dtype: str = None,
+        quantization_config: dict = None,
     ) -> ConversionResult:
-        """
-        Convert a model to the specified format.
-        Args:
-            model: Loaded model object (optional, ignored for ONNX)
-            tokenizer: Loaded tokenizer object (optional, ignored for ONNX)
-            model_name: Source model name or path
-            output_format: Target format
-            output_path: Output path
-            model_type: Model type
-            device: Device
-            quantization: Quantization parameters (optional)
-            use_large_calibration: Whether to use large-scale calibration
-            dtype: Precision for weights (e.g., 'fp16', 'fp32')
-        Returns:
-            ConversionResult dataclass
-        """
         result = ConversionResult(success=False)
         try:
-            # 自动加载 transformers 对象（仅当输入为 huggingface 或 safetensors 目录，且 model/tokenizer 为 None）
             input_format, norm_path = self._detect_model_format(model_name)
-            if input_format in ("huggingface", "safetensors") and model is None:
+            # Special dispatch for custom_quant
+            if output_format == "custom_quant":
                 try:
-                    from transformers import AutoModel, AutoTokenizer
-                    from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
-                    model = load_model_with_cache(norm_path, AutoModel)
-                    tokenizer = load_tokenizer_with_cache(norm_path)
+                    import torch
+                    from model_converter_tool.engine.custom_quant import convert_to_custom_quant, validate_custom_quant_file
+                    if model is None:
+                        from transformers import AutoModel
+                        from model_converter_tool.utils import load_model_with_cache
+                        model = load_model_with_cache(norm_path, AutoModel)
+                    # tokenizer is not used in custom_quant
+                    success, extra_info = convert_to_custom_quant(
+                        model,
+                        None,
+                        model_name,
+                        output_path,
+                        model_type,
+                        device,
+                        quantization,
+                        use_large_calibration,
+                        quantization_config
+                    )
+                    result.success = success
+                    result.extra_info = extra_info
+                    result.output_path = output_path
+                    return result
                 except Exception as e:
-                    result.error = f"Failed to load model/tokenizer for {input_format}: {e}"
+                    result.error = f"Custom quantization failed: {e}"
                     return result
             # For ONNX, only pass string arguments, do not pass model/tokenizer objects
             if output_format == "onnx":
@@ -266,3 +260,22 @@ class ModelConverter:
                     if retries >= max_retries:
                         results.append(ConversionResult(success=False, error=str(e)))
         return results 
+
+    def get_conversion_matrix(self) -> Dict[str, List[str]]:
+        """Public method to get the conversion matrix, including custom_quant support."""
+        matrix = self._get_conversion_matrix()
+        # Add 'custom_quant' to all input types
+        for k in matrix:
+            if 'custom_quant' not in matrix[k]:
+                matrix[k].append('custom_quant')
+        return matrix
+
+    def _get_conversion_matrix(self) -> Dict[str, List[str]]:
+        return {
+            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"],
+            "safetensors": ["huggingface", "safetensors"],
+            "torchscript": ["torchscript"],
+            "onnx": ["onnx"],
+            "gguf": ["gguf"],
+            "mlx": ["mlx"],
+        } 

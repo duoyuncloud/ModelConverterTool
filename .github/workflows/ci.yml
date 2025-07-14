@@ -40,3 +40,7 @@ jobs:
       - name: Run all tests
         run: |
           pytest --maxfail=1 --disable-warnings -v
+
+      - name: Run integration tests (manual high coverage)
+        run: |
+          pytest --maxfail=1 --disable-warnings -v tests/integration_manual.py

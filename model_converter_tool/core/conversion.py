@@ -2,7 +2,7 @@ from model_converter_tool.api import ModelConverterAPI
 from model_converter_tool.core.history import append_history_record
 import time
 
-def convert_model(input_path: str, output_path: str, to: str = None, quant: str = None, model_type: str = "auto", device: str = "auto", use_large_calibration: bool = False, dtype: str = None):
+def convert_model(input_path: str, output_path: str, to: str = None, quant: str = None, model_type: str = "auto", device: str = "auto", use_large_calibration: bool = False, dtype: str = None, quantization_config: dict = None):
     api = ModelConverterAPI()
     result = api.converter.convert(
         model_name=input_path,
@@ -12,7 +12,8 @@ def convert_model(input_path: str, output_path: str, to: str = None, quant: str 
         device=device,
         quantization=quant,
         use_large_calibration=use_large_calibration,
-        dtype=dtype
+        dtype=dtype,
+        quantization_config=quantization_config
     )
     # Record history
     record = {

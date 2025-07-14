@@ -19,6 +19,7 @@ class ConversionConfig:
     output_format: str
     model_type: str = "auto"
     quantization: Optional[str] = None
+    quantization_config: Optional[dict] = None
     device: str = "auto"
     batch_size: int = 1
     max_length: Optional[int] = None

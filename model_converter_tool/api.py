@@ -45,6 +45,7 @@ class ConversionPlan:
     estimated_size: Optional[str] = None
     estimated_memory: Optional[str] = None
     estimated_time: Optional[str] = None
+    quantization_config: Optional[dict] = None
 
 
 @dataclass
@@ -87,6 +88,8 @@ class ModelConverterAPI:
         self.workspace_path = workspace_path or Path.cwd()
         self.converter = ModelConverter()
         self._active_tasks: Dict[str, ConversionTask] = {}
+        # Register custom quantization
+        self._custom_quant_formats = ['custom_quant']
         
     def detect_model(self, model_path: str) -> Dict[str, Any]:
         """
@@ -124,6 +127,7 @@ class ModelConverterAPI:
         self, 
         model_path: str, 
         output_format: str, 
+        quantization_config: dict = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -160,7 +164,8 @@ class ModelConverterAPI:
             use_large_calibration=kwargs.get("use_large_calibration", False),
             is_valid=validation["valid"],
             errors=validation["errors"],
-            warnings=validation["warnings"]
+            warnings=validation["warnings"],
+            quantization_config=quantization_config
         )
         
         # Estimate size and time if valid
@@ -182,6 +187,7 @@ class ModelConverterAPI:
         model_path: str, 
         output_format: str, 
         output_path: str,
+        quantization_config: dict = None,
         **kwargs
     ) -> ConversionPlan:
         """
@@ -197,7 +203,7 @@ class ModelConverterAPI:
             ConversionPlan with all details
         """
         validation = self.validate_conversion(
-            model_path, output_format, output_path=output_path, **kwargs
+            model_path, output_format, output_path=output_path, quantization_config=quantization_config, **kwargs
         )
         
         plan = validation["plan"]
@@ -244,7 +250,8 @@ class ModelConverterAPI:
                 model_type=plan.model_type,
                 device=plan.device,
                 quantization=plan.quantization,
-                use_large_calibration=plan.use_large_calibration
+                use_large_calibration=plan.use_large_calibration,
+                quantization_config=getattr(plan, 'quantization_config', None)
             )
             
             if track_progress:
@@ -313,16 +320,9 @@ class ModelConverterAPI:
         }
     
     def _get_supported_outputs(self, input_format: str) -> List[str]:
-        """Get supported output formats for input format"""
-        format_matrix = {
-            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"],
-            "safetensors": ["huggingface", "safetensors"],
-            "torchscript": ["torchscript"],
-            "onnx": ["onnx"],
-            "gguf": ["gguf"],
-            "mlx": ["mlx"]
-        }
-        return format_matrix.get(input_format, [])
+        # Use the public get_conversion_matrix method to include custom_quant
+        outputs = self.converter.get_conversion_matrix().get(input_format, [])
+        return outputs
 
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         """Get conversion compatibility matrix"""

@@ -14,7 +14,9 @@ def convert_to_gguf(
     output_path: str,
     model_type: str,
     device: str,
-    quantization: str = None
+    quantization: str = None,
+    use_large_calibration: bool = False,
+    quantization_config: dict = None
 ) -> tuple:
     """
     Minimal GGUF conversion: only call llama.cpp/convert_hf_to_gguf.py as external script.

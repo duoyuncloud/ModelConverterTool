@@ -29,6 +29,7 @@ conversions:
 - `output`: Path to the output model file
 - `to`: Target output format (e.g., gguf, onnx, fp16, etc.)
 - `quant`: Quantization type (optional)
+- `quantization_config`: Advanced quantization config (optional, dict). Supports keys like `bits`, `group_size`, `sym`, `desc`.
 - `model_type`: Model type (optional)
 - `device`: Device to use (optional)
 - `use_large_calibration`: Use large calibration dataset (optional)
@@ -37,3 +38,17 @@ conversions:
 - Use descriptive output paths to avoid overwriting files
 - Validate your config file before running batch conversions
 - Refer to the [examples/batched/README.md](../examples/batched/README.md) for more usage examples 
+
+## Advanced Quantization Config Example
+
+```yaml
+conversions:
+  - input: path/to/model1.bin
+    output: path/to/model1.gptq
+    to: gptq
+    quantization_config:
+      bits: 4
+      group_size: 128
+      sym: true
+      desc: my custom quant
+``` 

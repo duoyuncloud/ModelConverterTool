@@ -12,7 +12,8 @@ def convert_to_awq(
     model_type: str,
     device: str,
     quantization: Optional[str] = None,
-    use_large_calibration: bool = False
+    use_large_calibration: bool = False,
+    quantization_config: dict = None
 ) -> tuple:
     """
     Export model to AWQ quantization format.
@@ -36,11 +37,19 @@ def convert_to_awq(
         output_dir.mkdir(parents=True, exist_ok=True)
         bits = 4
         group_size = 128
-        if quantization:
+        sym = False
+        desc = None
+        if quantization_config:
+            bits = quantization_config.get("bits", bits)
+            group_size = quantization_config.get("group_size", group_size)
+            sym = quantization_config.get("sym", sym)
+            desc = quantization_config.get("desc", desc)
+        elif quantization:
             m = re.match(r"(\d+)bit-(\d+)g", quantization)
             if m:
                 bits = int(m.group(1))
                 group_size = int(m.group(2))
+        # 只传递bits/group_size给QuantizeConfig
         quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
         if use_large_calibration:
             try:
