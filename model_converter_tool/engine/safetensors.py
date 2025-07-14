@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
+from transformers import AutoModel, AutoModelForCausalLM
+from model_converter_tool.utils import load_model_with_cache
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,14 @@ def convert_to_safetensors(
     try:
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
+        # Auto-load model if not provided
+        if model is None:
+            logger.info("Model is None, auto-loading from model_name: %s", model_name)
+            # Use CausalLM for text-generation, else fallback to AutoModel
+            if model_type and ("causal" in model_type or "lm" in model_type or "generation" in model_type):
+                model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                model = load_model_with_cache(model_name, AutoModel)
         try:
             if dtype == "fp16":
                 model = model.half()
