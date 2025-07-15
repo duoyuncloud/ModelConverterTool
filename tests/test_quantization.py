@@ -49,6 +49,7 @@ def test_quantization(converter, output_dir, input_model, output_format, output_
         model_type=model_type,
         device="cpu",
         quantization=quantization,
+        fake_weight=True,  # Use fake weights for speed
     )
     print(f"DEBUG: result.success = {result.success}")
     print(f"DEBUG: result.error = {result.error}")
@@ -68,6 +69,7 @@ def test_quantization_config_applied(converter, output_dir):
         model_type="text-generation",
         device="cpu",
         quantization_config=quant_config,
+        fake_weight=True,  # Use fake weights for speed
     )
     assert result.success, f"Quantization with config failed: {result.error}"
     config_path = os.path.join(output_path, "config.json")

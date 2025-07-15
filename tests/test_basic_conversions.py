@@ -75,6 +75,7 @@ def test_readme_demo(converter, output_dir, task):
         output_path=output_path,
         model_type=task["model_type"],
         device="cpu",
+        fake_weight=True,  # Use fake weights for speed and reliability
     )
     if "dtype" in task:
         convert_kwargs["dtype"] = task["dtype"]

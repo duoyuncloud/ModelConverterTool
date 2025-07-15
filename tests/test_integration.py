@@ -55,10 +55,11 @@ def test_cli_convert_success(temp_output_dir):
     """
     Test CLI convert with the generated dummy model (success path).
     The test expects the CLI to handle the file, even if the format is not truly supported.
+    Uses --fake-weight for speed.
     """
     result = subprocess.run([
         "python3", "-m", "model_converter_tool.cli", "convert",
-        DUMMY_MODEL, temp_output_dir
+        DUMMY_MODEL, temp_output_dir, "--fake-weight"
     ], capture_output=True, text=True)
     # Accept both success and expected validation failure, but output dir should be checked
     assert result.returncode in (0, 1), f"CLI convert failed unexpectedly: {result.stderr or result.stdout}"
@@ -69,6 +70,7 @@ def test_api_convert_success(temp_output_dir):
     """
     Test the real API conversion flow using ModelConverterAPI.
     This test is only run if ModelConverterAPI and required methods exist.
+    Uses fake_weight=True for speed.
     """
     # Check for required methods before running the test
     api = ModelConverterAPI()
@@ -78,7 +80,8 @@ def test_api_convert_success(temp_output_dir):
     plan = api.plan_conversion(
         model_path=DUMMY_MODEL,
         output_format="gguf",
-        output_path=os.path.join(temp_output_dir, "api-dummy-model-out.gguf")
+        output_path=os.path.join(temp_output_dir, "api-dummy-model-out.gguf"),
+        fake_weight=True  # Use fake weights for speed
     )
     # Execute the conversion plan
     result = api.execute_conversion(plan)
@@ -187,15 +190,39 @@ def test_cli_convert_all_formats(temp_output_dir, output_format):
     assert result.returncode in (0, 1, 2), f"CLI convert failed for format {output_format}: {result.stderr or result.stdout}"
 
 # The CLI does not support --quantization or --device as options; only test these via API
-@pytest.mark.skip(reason="CLI does not support --quantization option; only test via API.")
 @pytest.mark.parametrize("quantization", QUANTIZATION_OPTIONS)
 def test_cli_convert_quantization(temp_output_dir, quantization):
-    pass
+    """
+    Test CLI convert with --quant option for quantization.
+    Uses --fake-weight for speed.
+    """
+    output_path = os.path.join(temp_output_dir, f"dummy-model-q-{quantization}.gguf")
+    result = subprocess.run([
+        "python3", "-m", "model_converter_tool.cli", "convert",
+        DUMMY_MODEL, "gguf",
+        "-o", output_path,
+        "--quant", quantization,
+        "--fake-weight"
+    ], capture_output=True, text=True)
+    assert result.returncode in (0, 1), f"CLI convert with --quant failed: {result.stderr or result.stdout}"
+    # Output file may or may not exist depending on validation, but should not crash
 
-@pytest.mark.skip(reason="CLI does not support --device option; only test via API.")
 @pytest.mark.parametrize("device", DEVICE_OPTIONS)
 def test_cli_convert_device(temp_output_dir, device):
-    pass
+    """
+    Test CLI convert with --device option.
+    Uses --fake-weight for speed.
+    """
+    output_path = os.path.join(temp_output_dir, f"dummy-model-device-{device}.gguf")
+    result = subprocess.run([
+        "python3", "-m", "model_converter_tool.cli", "convert",
+        DUMMY_MODEL, "gguf",
+        "-o", output_path,
+        "--device", device,
+        "--fake-weight"
+    ], capture_output=True, text=True)
+    assert result.returncode in (0, 1), f"CLI convert with --device failed: {result.stderr or result.stdout}"
+    # Output file may or may not exist depending on validation, but should not crash
 
 @pytest.mark.skipif(not HAS_API, reason="API not available")
 def test_api_convert_all_formats(temp_output_dir):

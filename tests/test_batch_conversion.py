@@ -23,6 +23,7 @@ def test_batch_conversion_from_yaml(converter, output_dir):
                 "output_format": "onnx",
                 "model_type": "feature-extraction",
                 "device": "cpu",
+                "fake_weight": True,  # Use fake weights for speed
             },
             {
                 "model_name": "sshleifer/tiny-gpt2",
@@ -31,6 +32,7 @@ def test_batch_conversion_from_yaml(converter, output_dir):
                 "model_type": "text-generation",
                 "device": "cpu",
                 "dtype": "fp16",
+                "fake_weight": True,  # Use fake weights for speed
             },
             {
                 "model_name": "bert-base-uncased",
@@ -38,6 +40,7 @@ def test_batch_conversion_from_yaml(converter, output_dir):
                 "output_format": "torchscript",
                 "model_type": "feature-extraction",
                 "device": "cpu",
+                "fake_weight": True,  # Use fake weights for speed
             },
         ]
     }
