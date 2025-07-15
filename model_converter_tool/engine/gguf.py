@@ -63,13 +63,20 @@ def convert_to_gguf(
                 pass
             quant_map = {
                 "q4_k_m": "q4_0",
+                "q4_0": "q4_0",
                 "q8_0": "q8_0",
                 "f16": "f16",
+                "bf16": "bf16",
+                "tq1_0": "tq1_0",
+                "tq2_0": "tq2_0",
                 "auto": "auto",
                 None: "auto",
                 "": "auto"
             }
             outtype = quant_map.get(quantization, quantization if quantization else "auto")
+            allowed_outtypes = {"f32", "f16", "bf16", "q8_0", "tq1_0", "tq2_0", "auto", "q4_0"}
+            if outtype not in allowed_outtypes:
+                outtype = "auto"
             if "--in" in help_args and "--out" in help_args:
                 cmd = [sys.executable, str(llama_cpp_script), "--in", model_dir, "--out", str(gguf_file)]
                 if outtype:

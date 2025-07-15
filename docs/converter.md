@@ -16,6 +16,18 @@ The conversion engine transforms machine learning models between different forma
 - TorchScript
 - HuggingFace (re-save)
 
+## to-llama-format Command
+
+The `to-llama-format` command provides a simple way to convert models to the GGUF format compatible with llama.cpp and similar inference engines.
+
+**Example:**
+
+```
+modelconvert to-llama-format Qwen/Qwen2-0.5B -o ./outputs/qwen2-0.5b.gguf --quant q8_0
+```
+
+This command will automatically handle model loading and conversion to GGUF, with optional quantization.
+
 ## Conversion Workflow
 1. Load the input model
 2. Parse and validate model structure

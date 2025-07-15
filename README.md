@@ -22,6 +22,7 @@ source venv/bin/activate
 |---------|----------|
 | `modelconvert inspect <model>` | Inspect and display model format and metadata. |
 | `modelconvert convert <input_model> <output_format> [options]` | Convert a model to another format, with optional quantization. |
+| `modelconvert to-llama-format <input_model> [options]` | Convert a model to llama.cpp GGUF format for Llama-compatible inference. |
 | `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
 | `modelconvert history` | Show conversion history. |
 | `modelconvert config [--action ...] [--key ...] [--value ...]` | Manage tool configuration. |
@@ -42,6 +43,13 @@ source venv/bin/activate
   - `--device`: Device (optional, default: auto)
   - `--use-large-calibration`: Use large calibration dataset (optional)
   - `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
+- **to-llama-format**: Convert a model to llama.cpp GGUF format for Llama-compatible inference.
+  - `<input_model>`: Input model path or repo id (required)
+  - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
+  - `--quant`: Quantization type (e.g. q8_0, f16, tq1_0, etc.)
+  - `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
+  - `--model-type`: Model type (optional, default: auto)
+  - `--device`: Device (optional, default: auto)
 - **batch**: Batch convert models using a config file.
   - `<config.yaml>`: Path to YAML/JSON config file describing conversion tasks
   - `--max-workers`: Number of concurrent workers (default: 1)
@@ -62,6 +70,9 @@ source venv/bin/activate
 ## Examples
 
 ```sh
+# Convert to llama.cpp GGUF format (recommended for Llama.cpp and compatible engines)
+modelconvert to-llama-format Qwen/Qwen2-0.5B -o ./outputs/qwen2-0.5b.gguf --quant q8_0
+
 # Inspect a model
 modelconvert inspect meta-llama/Llama-2-7b-hf
 

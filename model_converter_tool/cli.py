@@ -48,13 +48,15 @@ def main(
     pass
 
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, history, config, batch
+from model_converter_tool.commands import inspect, convert, history, config, batch, check, to_llama_format
 
 app.command()(inspect.inspect)
 app.command()(convert.convert)
 app.command()(batch.batch)
 app.command()(history.history)
 app.command()(config.config)
+app.command()(check.check)
+app.command(name="to-llama-format")(to_llama_format.to_llama_format)
 
 if __name__ == "__main__":
     app() 
