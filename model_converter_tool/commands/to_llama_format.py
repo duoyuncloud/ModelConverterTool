@@ -26,7 +26,7 @@ def to_llama_format(
         rprint(to_llama_format.__doc__)
         raise typer.Exit()
 
-    # 自动补全输出路径
+    # Auto-complete output path
     def auto_complete_output_path(input_path, output_path):
         base = os.path.splitext(os.path.basename(input_path))[0]
         if not output_path:
@@ -49,7 +49,7 @@ def to_llama_format(
             rprint(f"[red]Failed to parse quantization config: {e}[/red]")
             raise typer.Exit(1)
 
-    # 加载模型和分词器
+    # Load model and tokenizer
     model, tokenizer = auto_load_model_and_tokenizer(None, None, input, model_type)
     success, extra = convert_to_gguf(
         model, tokenizer, input, output_path, model_type, device, quant, False, quantization_config
