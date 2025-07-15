@@ -11,6 +11,7 @@ The CLI allows users to convert, quantize, inspect, and manage machine learning 
 - `inspect <model>`: Inspect and display detailed model information.
 - `history`: Show conversion history.
 - `config [--action ...] [--key ...] [--value ...]`: Manage tool configuration.
+- `check <model_path> [--format <format>] [--verbose]`: Check if a model file is usable (can be loaded and run a simple inference).
 
 ## convert options
 - `<input_model>`: Path to the input model file or repo id (required, positional argument)
@@ -41,40 +42,19 @@ The CLI allows users to convert, quantize, inspect, and manage machine learning 
 - `--key`: Config key (for get/set)
 - `--value`: Config value (for set)
 
-## Examples
-Convert a model to SafeTensors (fp16):
+## check options
+- `<model_path>`: Path to the model file or directory (required)
+- `--format`, `-f`: Model format (optional, auto-detected if omitted)
+- `--verbose`, `-v`: Show detailed error information (optional)
+- `--help`: Show help message and exit
+
+Checks if a model file is usable (i.e., can be loaded and run a simple inference). This is more than just format validation: it attempts to load the model and run a minimal inference to ensure usability. Supports all major formats (GGUF, ONNX, MLX, GPTQ, AWQ, SafeTensors, TorchScript, HuggingFace, etc.).
+
+### Examples
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model safetensors --dtype fp16 -o path/to/output_model.safetensors
-```
-
-Quantize a model:
-```bash
-python -m model_converter_tool.cli convert path/to/input_model gguf -o path/to/output_model-q4.gguf --quant q4
-```
-
-Batch conversion using a config file:
-```bash
-python -m model_converter_tool.cli batch ../configs/batch_template.yaml
-```
-
-Advanced quantization config example:
-
-```bash
-python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
-```
-
-Or using a YAML file:
-
-```yaml
-# quant.yaml
-bits: 4
-group_size: 128
-sym: true
-desc: my custom quant
-```
-
-```bash
-python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config quant.yaml
+python -m model_converter_tool.cli check ./outputs/llama-2-7b.gguf
+python -m model_converter_tool.cli check ./outputs/model.onnx
+python -m model_converter_tool.cli check ./outputs/model-gptq --format gptq
 ```
 
 ## Fine-grained Quantization Config (GPTQ/AWQ)

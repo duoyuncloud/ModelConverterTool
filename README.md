@@ -25,6 +25,7 @@ source venv/bin/activate
 | `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
 | `modelconvert history` | Show conversion history. |
 | `modelconvert config [--action ...] [--key ...] [--value ...]` | Manage tool configuration. |
+| `modelconvert check <model_path> [--format <format>]` | Check if a model file is usable (can be loaded and run a simple inference). |
 
 ---
 
@@ -51,6 +52,10 @@ source venv/bin/activate
   - `--action`: show/get/set/list_presets (default: show)
   - `--key`: Config key (for get/set)
   - `--value`: Config value (for set)
+- **check**: Check if a model file is usable (can be loaded and run a simple inference).
+  - `<model_path>`: Path to the model file or directory (required)
+  - `--format`, `-f`: Model format (optional, auto-detected if omitted)
+  - `--verbose`, `-v`: Show detailed error information (optional)
 
 ---
 
@@ -75,6 +80,11 @@ modelconvert history
 # Config management
 modelconvert config --action show
 modelconvert config --action set --key cache_dir --value ./mycache
+
+# Check if a model is usable (can be loaded and run inference)
+modelconvert check ./outputs/llama-2-7b.gguf
+modelconvert check ./outputs/model.onnx
+modelconvert check ./outputs/model-gptq --format gptq
 ```
 
 ---
