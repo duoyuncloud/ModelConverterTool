@@ -79,6 +79,34 @@ modelconvert config --action set --key cache_dir --value ./mycache
 
 ---
 
+## Fine-grained Quantization Config (GPTQ/AWQ)
+
+You can now use advanced quantization configuration for GPTQ and AWQ engines, supporting options like `bits`, `group_size`, `sym`, `desc`, and more. This allows precise control over quantization behavior.
+
+**Example:**
+
+```bash
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
+```
+
+Or using a YAML file:
+
+```yaml
+# quant.yaml
+bits: 4
+group_size: 128
+sym: true
+desc: my custom quant
+```
+
+```bash
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config quant.yaml
+```
+
+All parameters in the quantization config will be passed to the quantizer for fine-grained control.
+
+---
+
 ## Supported Formats & Quantization
 
 |               | HuggingFace | SafeTensors | TorchScript | ONNX | GGUF | MLX |

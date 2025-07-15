@@ -47,12 +47,18 @@ def convert_to_gptq(
             group_size = quantization_config.get("group_size", group_size)
             sym = quantization_config.get("sym", sym)
             desc = quantization_config.get("desc", desc)
+            # Only pass supported keys to QuantizeConfig
+            allowed_keys = {"bits", "dynamic", "group_size", "damp_percent", "damp_auto_increment", "desc_act", "static_groups", "sym", "true_sequential", "lm_head", "quant_method", "format", "mse", "parallel_packing", "meta", "device", "pack_dtype", "adapter", "rotation", "is_marlin_format"}
+            filtered_config = {k: v for k, v in quantization_config.items() if k in allowed_keys}
+            quantize_config = QuantizeConfig(**filtered_config)
         elif quantization:
             m = re.match(r"(\d+)bit-(\d+)g", quantization)
             if m:
                 bits = int(m.group(1))
                 group_size = int(m.group(2))
-        quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
+            quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
+        else:
+            quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
         calibration_dataset = get_calibration_dataset(use_large_calibration, tag="GPTQ")
         model = GPTQModel.from_pretrained(model_name, quantize_config, device=(device if device in ["cuda", "mps"] else "cpu"))
         model.quantize(calibration_dataset)

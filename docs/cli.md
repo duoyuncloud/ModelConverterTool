@@ -77,6 +77,27 @@ desc: my custom quant
 python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config quant.yaml
 ```
 
+## Fine-grained Quantization Config (GPTQ/AWQ)
+
+Advanced quantization configuration is fully supported for GPTQ and AWQ engines. You can specify options like `bits`, `group_size`, `sym`, `desc`, and more for precise quantization control.
+
+**Example:**
+
+```bash
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
+```
+
+Or using a YAML file:
+
+```yaml
+bits: 4
+group_size: 128
+sym: true
+desc: my custom quant
+```
+
+All parameters in the quantization config will be passed to the quantizer for fine-grained control.
+
 ## Advanced Usage
 - Combining multiple options for custom workflows
 - Using different devices (CPU, GPU, Apple Silicon)
