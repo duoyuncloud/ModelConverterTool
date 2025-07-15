@@ -156,10 +156,14 @@ class ModelConverter:
         use_large_calibration: bool = False,
         dtype: str = None,
         quantization_config: dict = None,
+        fake_weight: bool = False,
     ) -> ConversionResult:
+        """
+        Convert a model to the specified format. Supports fake_weight for testing and debugging.
+        """
         result = ConversionResult(success=False)
         try:
-            input_format, norm_path = self._detect_model_format(model_name)            # Special dispatch for safetensors
+            input_format, norm_path = self._detect_model_format(model_name)
             if output_format == "safetensors":
                 try:
                     import torch
@@ -167,7 +171,7 @@ class ModelConverter:
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel)
+                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight)
                     success, extra_info = convert_to_safetensors(
                         model,
                         tokenizer,
@@ -192,7 +196,7 @@ class ModelConverter:
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel)
+                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight)
                     # tokenizer is not used in custom_quant
                     success, extra_info = convert_to_custom_quant(
                         model,

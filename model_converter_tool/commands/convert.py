@@ -80,9 +80,10 @@ Unsupported keys will be ignored. See README for details."""
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
     use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
     dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."),
+    fake_weight: bool = typer.Option(False, help="Use fake weights for the model (for testing and debugging). Default: False"),
 ):
     """
-    Convert models between formats, with optional quantization and precision.
+    Convert models between formats, with optional quantization, precision, and fake weights.
 
     Examples:
       modelconvert convert bert-base-uncased safetensors --dtype fp16
@@ -151,7 +152,7 @@ Unsupported keys will be ignored. See README for details."""
         except Exception as e:
             typer.echo(f"[red]Failed to parse quantization config: {e}[/red]")
             raise typer.Exit(1)
-    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration, dtype=dtype, quantization_config=quantization_config)
+    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration, dtype=dtype, quantization_config=quantization_config, fake_weight=fake_weight)
     typer.echo(f"[Output path used]: {output_path}")
     if result.success:
         typer.echo(f"Conversion succeeded! Output: {result.output_path}")

@@ -43,6 +43,7 @@ source venv/bin/activate
   - `--device`: Device (optional, default: auto)
   - `--use-large-calibration`: Use large calibration dataset (optional)
   - `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
+  - `--fake-weight`: Use fake (zero) weights for the model (for testing/debugging)
 - **to-llama-format**: Convert a model to llama.cpp GGUF format for Llama-compatible inference.
   - `<input_model>`: Input model path or repo id (required)
   - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
@@ -70,6 +71,9 @@ source venv/bin/activate
 ## Examples
 
 ```sh
+# Convert a model using fake weights (for fast testing, no real parameters)
+modelconvert convert bert-base-uncased safetensors --fake-weight
+
 # Convert to llama.cpp GGUF format (recommended for Llama.cpp and compatible engines)
 modelconvert to-llama-format Qwen/Qwen2-0.5B -o ./outputs/qwen2-0.5b.gguf --quant q8_0
 
@@ -158,8 +162,8 @@ All parameters in the quantization config will be passed to the quantizer for fi
 ```python
 from model_converter_tool.api import ModelConverterAPI
 api = ModelConverterAPI()
-info = api.detect_model("gpt2")
-result = api.converter.convert(model_name="gpt2", output_format="onnx", output_path="./gpt2.onnx")
+# Use fake_weight=True for a model with fake (zero) weights
+result = api.converter.convert(model_name="gpt2", output_format="onnx", output_path="./gpt2.onnx", fake_weight=True)
 ```
 
 ---

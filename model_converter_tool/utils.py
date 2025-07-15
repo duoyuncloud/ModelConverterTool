@@ -257,16 +257,28 @@ def get_local_cache_path(model_name: str) -> str:
     return model_name
 
 
-def load_model_with_cache(model_name: str, model_class=None, **kwargs):
+def load_model_with_cache(model_name: str, model_class=None, fake_weight: bool = False, **kwargs):
     """
-    Unified model loading function, prioritize local cache, allow network download if cache is incomplete
+    Unified model loading function, prioritize local cache, allow network download if cache is incomplete.
+    If fake_weight is True, generate a model with the correct architecture and all weights set to zero.
     Args:
         model_name: Model name or path
         model_class: Model class (e.g., AutoModel, AutoModelForCausalLM, etc.)
+        fake_weight: If True, generate a fake model with zero weights
         **kwargs: Other parameters passed to from_pretrained
     Returns:
         Loaded model object
     """
+    if fake_weight:
+        from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
+        config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+        if model_class is None:
+            model_type = getattr(config, 'model_type', None)
+            if model_type is not None and ("qwen" in model_type):
+                model_class = AutoModelForCausalLM
+            else:
+                model_class = AutoModel
+        return generate_fake_model(config, model_class)
     # Detect Qwen model type and use correct class
     if model_class is None:
         from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
@@ -697,3 +709,20 @@ def patch_quantization_config(config_path, bits, group_size, sym, desc):
     }
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
+
+
+def generate_fake_model(config, model_class):
+    """
+    Generate a model instance with the given config and fill all weights with zeros.
+    Args:
+        config: Model config object
+        model_class: Model class (e.g., AutoModel, AutoModelForCausalLM)
+    Returns:
+        Model instance with all weights set to zero
+    """
+    import torch
+    model = model_class.from_config(config)
+    for param in model.parameters():
+        if param.requires_grad:
+            torch.nn.init.zeros_(param)
+    return model

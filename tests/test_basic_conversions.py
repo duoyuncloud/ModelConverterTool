@@ -81,3 +81,22 @@ def test_readme_demo(converter, output_dir, task):
     result = converter.convert(**convert_kwargs)
     assert result.success, f"{task['output_format']} conversion failed: {result.error}"
     assert os.path.exists(output_path)
+
+def test_fake_weight_conversion(output_dir):
+    """
+    Test model conversion with fake weights enabled. This ensures the fake_weight feature works end-to-end.
+    """
+    from model_converter_tool.converter import ModelConverter
+    model_id = "sshleifer/tiny-gpt2"  # Small model for fast test
+    output_path = str(output_dir / "tiny_gpt2_fake_safetensors")
+    converter = ModelConverter()
+    result = converter.convert(
+        model_name=model_id,
+        output_format="safetensors",
+        output_path=output_path,
+        model_type="text-generation",
+        device="cpu",
+        fake_weight=True
+    )
+    assert result.success, f"Fake weight conversion failed: {result.error}"
+    assert os.path.exists(output_path), "Output file was not created with fake weights."
