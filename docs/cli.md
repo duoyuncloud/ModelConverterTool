@@ -81,22 +81,30 @@ python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/o
 
 Advanced quantization configuration is fully supported for GPTQ and AWQ engines. You can specify options like `bits`, `group_size`, `sym`, `desc_act`, and more for precise quantization control.
 
-- `desc_act` (bool): Enable or disable the descriptive quantization mechanism for improved accuracy in some models. Default is `True`.
+### Supported quantization_config parameters
 
-**Example:**
-
-```bash
-python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc_act":true}'
-```
-
-Or using a YAML file:
-
-```yaml
-bits: 4
-group_size: 128
-sym: true
-desc_act: true
-```
+| Parameter         | Type    | Description                                                                 |
+|-------------------|---------|-----------------------------------------------------------------------------|
+| bits              | int     | Number of quantization bits (e.g., 4, 8)                                    |
+| group_size        | int     | Group size for quantization (e.g., 128)                                     |
+| sym               | bool    | Whether to use symmetric quantization                                       |
+| desc_act          | bool    | Enable descriptive quantization mechanism (improves accuracy for some models)|
+| dynamic           | dict    | Per-layer/module override for quantization params (see advanced usage)      |
+| damp_percent      | float   | Damping percent for quantization                                            |
+| damp_auto_increment | float | Auto increment for damping                                                  |
+| static_groups     | bool    | Use static groups for quantization                                          |
+| true_sequential   | bool    | Use true sequential quantization                                            |
+| lm_head           | bool    | Quantize the LM head                                                        |
+| quant_method      | str     | Quantization method (e.g., 'gptq')                                          |
+| format            | str     | Output format (e.g., 'gptq')                                                |
+| mse               | float   | MSE loss threshold for quantization                                         |
+| parallel_packing  | bool    | Enable parallel packing                                                     |
+| meta              | dict    | Extra metadata                                                              |
+| device            | str     | Device for quantization ('cpu', 'cuda', etc.)                               |
+| pack_dtype        | str     | Data type for packing                                                       |
+| adapter           | dict    | Adapter config (for LoRA/EoRA, etc.)                                        |
+| rotation          | str     | Rotation type                                                               |
+| is_marlin_format  | bool    | Use Marlin kernel format                                                    |
 
 All parameters in the quantization config will be passed to the quantizer for fine-grained control (unsupported keys will be ignored).
 

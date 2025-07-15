@@ -49,7 +49,33 @@ def convert(
     output: str = typer.Argument(None, help="Output format (e.g. onnx, gguf, custom_quant, etc.)."),
     output_path: str = typer.Option(None, "-o", "--output-path", help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
-    quant_config: str = typer.Option(None, help="Advanced quantization config (JSON string or YAML file). Supports bits, group_size, sym, desc, etc."),
+    quant_config: str = typer.Option(
+        None,
+        help="""Advanced quantization config (JSON string or YAML file). Supports the following keys for GPTQ/AWQ:
+
+  bits (int): Number of quantization bits (e.g., 4, 8)
+  group_size (int): Group size for quantization (e.g., 128)
+  sym (bool): Whether to use symmetric quantization
+  desc_act (bool): Enable descriptive quantization mechanism (improves accuracy for some models)
+  dynamic (dict): Per-layer/module override for quantization params
+  damp_percent (float): Damping percent for quantization
+  damp_auto_increment (float): Auto increment for damping
+  static_groups (bool): Use static groups for quantization
+  true_sequential (bool): Use true sequential quantization
+  lm_head (bool): Quantize the LM head
+  quant_method (str): Quantization method (e.g., 'gptq')
+  format (str): Output format (e.g., 'gptq')
+  mse (float): MSE loss threshold for quantization
+  parallel_packing (bool): Enable parallel packing
+  meta (dict): Extra metadata
+  device (str): Device for quantization ('cpu', 'cuda', etc.)
+  pack_dtype (str): Data type for packing
+  adapter (dict): Adapter config (for LoRA/EoRA, etc.)
+  rotation (str): Rotation type
+  is_marlin_format (bool): Use Marlin kernel format
+
+Unsupported keys will be ignored. See README for details."""
+    ),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
     use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),

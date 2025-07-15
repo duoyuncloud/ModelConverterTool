@@ -301,10 +301,10 @@ class ModelConverter:
 
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         return {
-            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"],
+            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
             "safetensors": ["huggingface", "safetensors"],
             "torchscript": ["torchscript"],
             "onnx": ["onnx"],
             "gguf": ["gguf"],
-            "mlx": ["mlx"],
+            "mlx": ["mlx"]
         } 
