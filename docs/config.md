@@ -54,7 +54,9 @@ models:
 
 ## Fine-grained Quantization Config (GPTQ/AWQ)
 
-You can use advanced quantization configuration for GPTQ and AWQ engines, supporting options like `bits`, `group_size`, `sym`, `desc`, and more. All parameters in the quantization config will be passed to the quantizer for fine-grained control.
+You can use advanced quantization configuration for GPTQ and AWQ engines, supporting options like `bits`, `group_size`, `sym`, `desc_act`, and more. All parameters in the quantization config will be passed to the quantizer for fine-grained control (unsupported keys will be ignored).
+
+- `desc_act` (bool): Enable or disable the descriptive quantization mechanism for improved accuracy in some models. Default is `True`.
 
 **Example:**
 
@@ -63,7 +65,7 @@ quantization_config:
   bits: 4
   group_size: 128
   sym: true
-  desc: my custom quant
+  desc_act: true
 ```
 
 This enables precise control over quantization behavior for your models. 

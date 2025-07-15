@@ -79,12 +79,14 @@ python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/o
 
 ## Fine-grained Quantization Config (GPTQ/AWQ)
 
-Advanced quantization configuration is fully supported for GPTQ and AWQ engines. You can specify options like `bits`, `group_size`, `sym`, `desc`, and more for precise quantization control.
+Advanced quantization configuration is fully supported for GPTQ and AWQ engines. You can specify options like `bits`, `group_size`, `sym`, `desc_act`, and more for precise quantization control.
+
+- `desc_act` (bool): Enable or disable the descriptive quantization mechanism for improved accuracy in some models. Default is `True`.
 
 **Example:**
 
 ```bash
-python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc":"custom quant"}'
+python -m model_converter_tool.cli convert path/to/input_model gptq -o path/to/output_model-gptq --quant-config '{"bits":4, "group_size":128, "sym":true, "desc_act":true}'
 ```
 
 Or using a YAML file:
@@ -93,10 +95,10 @@ Or using a YAML file:
 bits: 4
 group_size: 128
 sym: true
-desc: my custom quant
+desc_act: true
 ```
 
-All parameters in the quantization config will be passed to the quantizer for fine-grained control.
+All parameters in the quantization config will be passed to the quantizer for fine-grained control (unsupported keys will be ignored).
 
 ## Advanced Usage
 - Combining multiple options for custom workflows
