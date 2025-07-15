@@ -71,48 +71,15 @@ def convert_to_awq(
         logger.error(f"AWQ conversion error: {e}")
         return False, None
 
-def validate_awq_file(awq_dir: Path, _: Any) -> bool:
-    """
-    Validate AWQ quantized model validity.
-    Args:
-        awq_dir: Output directory
-    Returns:
-        bool: Whether valid
-    """
+def validate_awq_file(awq_dir, _):
     try:
-        from gptqmodel import GPTQModel, QuantizeConfig
-        import torch
-        if not awq_dir.exists():
-            logger.warning(f"AWQ output dir does not exist: {awq_dir}")
-            return False
-        if (awq_dir / "config.json").exists():
-            # Skip inference validation under MPS due to PyTorch compatibility issues
-            if torch.backends.mps.is_available():
-                logger.warning(
-                    "On Apple Silicon (MPS), quantized model inference validation is skipped due to PyTorch compatibility issues. "
-                    "You can use the model-converter tool in a CPU/CUDA environment to complete inference validation."
-                )
-                return True
-            try:
-                import json
-                with open(awq_dir / "config.json", "r") as f:
-                    config = json.load(f)
-                quant_config = config.get("quantization_config", {})
-                bits = quant_config.get("bits", 4)
-                group_size = quant_config.get("group_size", 128)
-                quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
-                model = GPTQModel.from_pretrained(str(awq_dir), quantize_config=quantize_config)
-                device = torch.device("cpu")
-                dummy_input = torch.ones((1, 8), dtype=torch.long, device=device)
-                with torch.no_grad():
-                    _ = model(dummy_input)
-                return True
-            except Exception as e:
-                logger.warning(f"AWQ model inference failed: {e}")
-                # Inference failed but model files exist, consider conversion successful
-                return True
-        logger.warning(f"AWQ output missing config.json: {awq_dir}")
-        return False
+        from gptqmodel import GPTQModel
+        model = GPTQModel.load(str(awq_dir))
+        tokens = model.generate("Test prompt")[0]
+        _ = model.tokenizer.decode(tokens)
+        return True
     except Exception as e:
-        logger.warning(f"AWQ validation error: {e}")
+        import logging, traceback
+        logging.getLogger(__name__).error(f"AWQ validation failed: {e}")
+        traceback.print_exc()
         return False 

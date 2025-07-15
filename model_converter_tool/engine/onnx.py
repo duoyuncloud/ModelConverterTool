@@ -122,5 +122,8 @@ def validate_onnx_file(onnx_file: str) -> bool:
         _ = session.run(None, input_feed)
         return True
     except Exception as e:
+        import traceback
+        import sys
         logging.getLogger(__name__).error(f"ONNX validation failed: {e}")
+        traceback.print_exc()
         return False 

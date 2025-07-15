@@ -43,17 +43,16 @@ def convert_to_hf(
         logger.error(f"HF conversion error: {e}")
         return False, None
 
-def validate_hf_file(hf_dir: Path, _: any) -> bool:
+def validate_hf_file(hf_dir, _=None):
     try:
-        if not hf_dir.exists():
-            return False
-        import torch
-        from model_converter_tool.utils import load_tokenizer_with_cache, load_model_with_cache
-        model = load_model_with_cache(str(hf_dir), None)
-        tokenizer = load_tokenizer_with_cache(str(hf_dir))
-        inputs = tokenizer("hello world", return_tensors="pt")
-        with torch.no_grad():
-            _ = model(**inputs)
+        from transformers import AutoModel, AutoTokenizer
+        model = AutoModel.from_pretrained(hf_dir)
+        tokenizer = AutoTokenizer.from_pretrained(hf_dir)
+        inputs = tokenizer("Test prompt", return_tensors="pt")
+        _ = model(**inputs)
         return True
-    except Exception:
+    except Exception as e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"HuggingFace validation failed: {e}")
+        traceback.print_exc()
         return False 

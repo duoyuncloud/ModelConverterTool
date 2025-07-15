@@ -103,19 +103,20 @@ def convert_to_torchscript(
         logger.error(f"TorchScript conversion error: {e}")
         return False, None
 
-def validate_torchscript_file(torchscript_file: Path, _: any) -> bool:
+def validate_torchscript_file(ts_path, _=None):
     try:
         import torch
-        if not torchscript_file.exists() or torchscript_file.stat().st_size < 100:
-            return False
-        model = torch.jit.load(str(torchscript_file))
-        model.eval()
-        dummy_input = torch.zeros((1, 8), dtype=torch.long)
-        with torch.no_grad():
-            try:
-                _ = model(dummy_input, torch.ones((1, 8), dtype=torch.long))
-            except Exception:
-                _ = model(dummy_input)
+        model = torch.jit.load(ts_path, map_location="cpu")
+        dummy = torch.ones((1, 8), dtype=torch.long)
+        try:
+            # Try with both input_ids and attention_mask
+            _ = model(dummy, dummy)
+        except TypeError:
+            # Fallback: try with only input_ids
+            _ = model(dummy)
         return True
-    except Exception:
+    except Exception as e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"TorchScript validation failed: {e}")
+        traceback.print_exc()
         return False 

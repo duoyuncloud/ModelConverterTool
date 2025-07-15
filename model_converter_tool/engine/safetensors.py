@@ -49,18 +49,16 @@ def convert_to_safetensors(
         logger.error(f"Safetensors conversion error: {e}")
         return False, str(e)
 
-def validate_safetensors_file(st_dir: Path, _: any) -> bool:
+def validate_safetensors_file(safetensors_path):
     try:
-        if not st_dir.exists():
-            return False
-        from transformers import AutoModel, AutoTokenizer
-        import torch
-        from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
-        model = load_model_with_cache(str(st_dir), AutoModel)
-        tokenizer = load_tokenizer_with_cache(str(st_dir))
-        inputs = tokenizer("hello world", return_tensors="pt")
-        with torch.no_grad():
-            _ = model(**inputs)
+        from safetensors.torch import load_file
+        tensors = load_file(safetensors_path)
+        for k, v in tensors.items():
+            _ = v.shape
+            break
         return True
-    except Exception:
+    except Exception as e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"SafeTensors validation failed: {e}")
+        traceback.print_exc()
         return False 

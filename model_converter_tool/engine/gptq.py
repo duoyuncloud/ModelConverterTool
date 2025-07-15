@@ -71,41 +71,15 @@ def convert_to_gptq(
         logger.error(f"GPTQ conversion error: {e}")
         return False, None
 
-def validate_gptq_file(gptq_dir: Path, _: Any) -> bool:
-    """
-    Validate GPTQ quantized model validity.
-    Args:
-        gptq_dir: Output directory
-    Returns:
-        bool: Whether valid
-    """
+def validate_gptq_file(gptq_dir, _):
     try:
-        from gptqmodel import GPTQModel, QuantizeConfig
-        import torch
-        if not gptq_dir.exists():
-            logger.warning(f"GPTQ output dir does not exist: {gptq_dir}")
-            return False
-        if (gptq_dir / "config.json").exists():
-            try:
-                import json
-                with open(gptq_dir / "config.json", "r") as f:
-                    config = json.load(f)
-                quant_config = config.get("quantization_config", {})
-                bits = quant_config.get("bits", 4)
-                group_size = quant_config.get("group_size", 128)
-                quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
-                model = GPTQModel.from_pretrained(str(gptq_dir), quantize_config=quantize_config)
-                device = torch.device("cpu")
-                dummy_input = torch.ones((1, 8), dtype=torch.long, device=device)
-                with torch.no_grad():
-                    _ = model(dummy_input)
-                return True
-            except Exception as e:
-                logger.warning(f"GPTQ model inference failed: {e}")
-                # Inference failed but model files exist, consider conversion successful
-                return True
-        logger.warning(f"GPTQ output missing config.json: {gptq_dir}")
-        return False
+        from gptqmodel import GPTQModel
+        model = GPTQModel.load(str(gptq_dir))
+        tokens = model.generate("Test prompt")[0]
+        _ = model.tokenizer.decode(tokens)
+        return True
     except Exception as e:
-        logger.warning(f"GPTQ validation error: {e}")
+        import logging, traceback
+        logging.getLogger(__name__).error(f"GPTQ validation failed: {e}")
+        traceback.print_exc()
         return False 

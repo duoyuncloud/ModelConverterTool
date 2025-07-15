@@ -164,7 +164,7 @@ def test_cli_convert_unsupported_format(temp_output_dir):
     assert result.returncode != 0, "CLI convert should fail for unsupported format."
     error_output = result.stdout.lower() + result.stderr.lower()
     assert "unsupported input format" in error_output or "validation failed" in error_output, \
-        f"Expected error message, got: {result.stdout} {result.stderr}" 
+        f"Expected error message, got: {result.stdout} {result.stderr}"
 
 # Additional tests for higher coverage and robustness
 
@@ -324,4 +324,44 @@ def test_cli_help_and_version():
     assert "usage" in help_result.stdout.lower() or "help" in help_result.stdout.lower(), "Help output missing."
     version_result = subprocess.run(["python3", "-m", "model_converter_tool.cli", "--version"], capture_output=True, text=True)
     assert version_result.returncode == 0, "CLI --version should succeed."
-    assert "version" in version_result.stdout.lower(), "Version output missing." 
+    assert "version" in version_result.stdout.lower(), "Version output missing."
+
+@pytest.mark.parametrize("format_ext,cli_format", [
+    ("gguf", "gguf"),
+    ("onnx", "onnx"),
+    ("mlx", "mlx"),
+])
+def test_cli_check_supported_formats(temp_output_dir, format_ext, cli_format):
+    """
+    Test CLI check command for supported formats (GGUF, ONNX, MLX).
+    Skips MLX on non-Apple Silicon.
+    """
+    import platform
+    if cli_format == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
+        pytest.skip("MLX only supported on Apple Silicon macOS")
+    # Prepare a dummy or converted file for each format
+    dummy_file = os.path.join(temp_output_dir, f"dummy_model.{format_ext if format_ext != 'mlx' else 'npz'}")
+    # For ONNX, create a minimal valid ONNX file if possible
+    if format_ext == "onnx":
+        import onnx
+        import numpy as np
+        from onnx import helper, TensorProto
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, [1, 2])
+        Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT, [1, 2])
+        node = helper.make_node('Relu', ['X'], ['Y'])
+        graph = helper.make_graph([node], 'g', [X], [Y])
+        model = helper.make_model(graph)
+        onnx.save(model, dummy_file)
+    else:
+        # For GGUF/MLX, just touch the file (will fail check, but should not crash)
+        with open(dummy_file, "wb") as f:
+            f.write(os.urandom(128))
+    result = subprocess.run([
+        "python3", "-m", "model_converter_tool.cli", "check",
+        dummy_file, "--format", cli_format
+    ], capture_output=True, text=True)
+    # Acceptable: success, failure, or error, but should not crash
+    assert result.returncode in (0, 1, 2, 3), f"CLI check crashed: {result.stderr or result.stdout}"
+    # Output should mention SUCCESS, FAILED, or ERROR
+    output = result.stdout + result.stderr
+    assert any(word in output for word in ["SUCCESS", "FAILED", "ERROR"]), f"Unexpected CLI check output: {output}" 
