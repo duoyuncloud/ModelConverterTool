@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import auto_load_model_and_tokenizer
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -49,23 +50,39 @@ def convert_to_safetensors(
         logger.error(f"Safetensors conversion error: {e}")
         return False, str(e)
 
-def validate_safetensors_file(safetensors_path, _=None):
+def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
+    """
+    Static validation for SafeTensors files. Checks if the file exists and can be loaded by safetensors.torch.load_file.
+    Returns True if the file passes static validation, False otherwise.
+    """
+    if not os.path.exists(path):
+        return False
     try:
-        from pathlib import Path
-        path = Path(safetensors_path)
-        if path.is_dir():
-            safetensors_files = list(path.glob("*.safetensors"))
-            if not safetensors_files:
-                return False
-            safetensors_path = safetensors_files[0]
         from safetensors.torch import load_file
-        tensors = load_file(str(safetensors_path))
-        for k, v in tensors.items():
-            _ = v.shape
-            break
+        tensors = load_file(path)
+        return bool(tensors)
+    except ImportError:
+        # safetensors not installed
+        return False
+    except Exception:
+        return False
+
+def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for SafeTensors files. Loads tensors and simulates a dummy inference by accessing a tensor.
+    Returns True if at least one tensor can be accessed, False otherwise.
+    """
+    try:
+        from safetensors.torch import load_file
+        tensors = load_file(path)
+        if not tensors:
+            return False
+        # Simulate a dummy inference: access the first tensor and check its shape
+        first_tensor = next(iter(tensors.values()))
+        _ = first_tensor.shape
         return True
-    except Exception as e:
-        import logging, traceback
-        logging.getLogger(__name__).error(f"SafeTensors validation failed: {e}")
-        traceback.print_exc()
+    except ImportError:
+        # safetensors not installed
+        return False
+    except Exception:
         return False 

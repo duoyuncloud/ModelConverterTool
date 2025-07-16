@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -93,25 +94,43 @@ def convert_to_gguf(
         logger.error(f"GGUF conversion error: {e}")
         return False, None
 
-def validate_gguf_file(gguf_file: Path, _: Any) -> bool:
+def validate_gguf_file(path: Path, *args, **kwargs) -> bool:
     """
-    Validate GGUF file: check header and try to load with llama.cpp if available.
+    Static validation for GGUF files. Checks if the file exists, has a valid GGUF header, and can be loaded by llama_cpp if available.
+    Returns True if the file passes static validation, False otherwise.
     """
+    if not os.path.exists(path):
+        return False
     try:
-        if not gguf_file.exists() or gguf_file.stat().st_size < 100:
-            return False
-        with open(gguf_file, "rb") as f:
+        with open(path, 'rb') as f:
             header = f.read(4)
-            if header != b"GGUF":
+            if header != b'GGUF':
                 return False
         try:
             import llama_cpp
-            llm = llama_cpp.Llama(model_path=str(gguf_file), n_ctx=8, n_batch=8)
-            _ = llm("test", max_tokens=1)
-            return True
-        except Exception as e:
-            logger.warning(f"llama.cpp loading test failed: {e}")
-            return True
-    except Exception as e:
-        logger.warning(f"GGUF validation error: {e}")
+            _ = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
+        except ImportError:
+            # llama_cpp not installed, skip deep validation
+            pass
+        except Exception:
+            return False
+        return True
+    except Exception:
+        return False
+
+def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:
+    """
+    Dynamic check for GGUF files. Loads the file with llama_cpp and runs a real dummy inference.
+    Returns True if inference is possible, False otherwise.
+    """
+    try:
+        import llama_cpp
+        llm = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
+        # Run a real dummy inference
+        _ = llm("Hello", max_tokens=1)
+        return True
+    except ImportError:
+        # llama_cpp not installed
+        return False
+    except Exception:
         return False 

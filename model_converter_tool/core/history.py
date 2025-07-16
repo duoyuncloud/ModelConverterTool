@@ -7,8 +7,10 @@ import threading
 HISTORY_FILE = os.path.expanduser("~/.model_converter_tool_history.json")
 HISTORY_LOCK = threading.Lock()
 
-# Helper to read the history file
 def _read_history() -> List[Dict[str, Any]]:
+    """
+    Read the history file and return a list of history records.
+    """
     if not os.path.exists(HISTORY_FILE):
         return []
     try:
@@ -17,18 +19,21 @@ def _read_history() -> List[Dict[str, Any]]:
     except Exception:
         return []
 
-# Helper to write a new record to the history file
-# record: dict with keys: model_path, output_format, output_path, status, timestamp, error (optional)
 def append_history_record(record: Dict[str, Any]):
+    """
+    Append a new record to the history file.
+    """
     with HISTORY_LOCK:
         history = _read_history()
         history.append(record)
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
 
-# Main function for CLI
-# Returns: {"completed": [...], "failed": [...], "active": [...]} (lists of str or dict)
 def get_history() -> Dict[str, List[Any]]:
+    """
+    Get the conversion history, separated into completed, failed, and active tasks.
+    Returns a dictionary with keys: completed, failed, active.
+    """
     history = _read_history()
     completed = []
     failed = []

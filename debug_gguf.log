@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/duoyun/Desktop/ModelConverterTool/llama.cpp/convert_hf_to_gguf.py", line 30, in <module>
-    from gguf.lazy import LazyTorchTensor
-ImportError: cannot import name 'LazyTorchTensor' from 'gguf.lazy' (/Users/duoyun/Desktop/ModelConverterTool/llama.cpp/gguf-py/gguf/lazy.py)

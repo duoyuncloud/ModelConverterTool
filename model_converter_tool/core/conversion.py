@@ -4,11 +4,11 @@ import time
 
 def convert_model(input_path: str, output_path: str, to: str = None, quant: str = None, model_type: str = "auto", device: str = "auto", use_large_calibration: bool = False, dtype: str = None, quantization_config: dict = None, fake_weight: bool = False):
     """
-    Main entry point for model conversion. Supports fake_weight for testing.
+    Main entry point for model conversion. Calls the API layer to perform the conversion and records the result in the history.
     """
     api = ModelConverterAPI()
-    result = api.converter.convert(
-        model_name=input_path,
+    result = api.convert_model(
+        model_path=input_path,
         output_format=to,
         output_path=output_path,
         model_type=model_type,

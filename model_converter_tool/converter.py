@@ -2,11 +2,12 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, List, Optional, Union, Tuple
+import importlib
 
 logger = logging.getLogger(__name__)
 
 # Supported format list
-SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "awq", "gptq", "hf", "safetensors", "mlx"]
+SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "awq", "gptq", "hf", "huggingface", "safetensors", "mlx"]
 
 @dataclass
 class ConversionResult:
@@ -24,6 +25,9 @@ class ModelConverter:
     
     def _get_converter_functions(self, output_format: str):
         """Lazy import converter functions"""
+        if output_format in ("hf", "huggingface"):
+            from .engine.hf import convert_to_hf, validate_hf_file
+            return convert_to_hf, validate_hf_file
         if output_format == "onnx":
             from .engine.onnx import convert_to_onnx, validate_onnx_file
             return convert_to_onnx, validate_onnx_file
@@ -39,9 +43,6 @@ class ModelConverter:
         elif output_format == "gptq":
             from .engine.gptq import convert_to_gptq, validate_gptq_file
             return convert_to_gptq, validate_gptq_file
-        elif output_format == "hf":
-            from .engine.hf import convert_to_hf, validate_hf_file
-            return convert_to_hf, validate_hf_file
         elif output_format == "safetensors":
             from .engine.safetensors import convert_to_safetensors, validate_safetensors_file
             return convert_to_safetensors, validate_safetensors_file
@@ -159,11 +160,14 @@ class ModelConverter:
         fake_weight: bool = False,
     ) -> ConversionResult:
         """
-        Convert a model to the specified format. Supports fake_weight for testing and debugging.
+        Convert a model to the specified format. Always performs static validation after conversion.
+        Only returns success if both conversion and static validation succeed.
         """
         result = ConversionResult(success=False)
         try:
             input_format, norm_path = self._detect_model_format(model_name)
+            convert_func, validate_func = self._get_converter_functions(output_format)
+            # Special handling for some formats
             if output_format == "safetensors":
                 try:
                     import torch
@@ -181,14 +185,22 @@ class ModelConverter:
                         device,
                         dtype
                     )
-                    result.success = success
-                    result.extra_info = extra_info
+                    if not success:
+                        result.error = f"Safetensors conversion failed: {extra_info}"
+                        return result
+                    # Always validate after conversion
+                    valid = validate_safetensors_file(output_path)
+                    if not valid:
+                        result.error = "Static validation failed for safetensors output."
+                        return result
+                    result.success = True
+                    result.validation = True
                     result.output_path = output_path
+                    result.extra_info = extra_info
                     return result
                 except Exception as e:
                     result.error = f"Safetensors conversion failed: {e}"
                     return result
-            # Special dispatch for custom_quant
             if output_format == "custom_quant":
                 try:
                     import torch
@@ -197,7 +209,6 @@ class ModelConverter:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
                         model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight)
-                    # tokenizer is not used in custom_quant
                     success, extra_info = convert_to_custom_quant(
                         model,
                         None,
@@ -209,35 +220,43 @@ class ModelConverter:
                         use_large_calibration,
                         quantization_config
                     )
-                    result.success = success
-                    result.extra_info = extra_info
+                    if not success:
+                        result.error = f"Custom quantization failed: {extra_info}"
+                        return result
+                    valid = validate_custom_quant_file(output_path)
+                    if not valid:
+                        result.error = "Static validation failed for custom_quant output."
+                        return result
+                    result.success = True
+                    result.validation = True
                     result.output_path = output_path
+                    result.extra_info = extra_info
                     return result
                 except Exception as e:
                     result.error = f"Custom quantization failed: {e}"
                     return result
-            # For ONNX, only pass string arguments, do not pass model/tokenizer objects
             if output_format == "onnx":
-                convert_func, validate_func = self._get_converter_functions(output_format)
                 success = convert_func(
                     model_name=model_name,
                     output_path=output_path,
                     device=device
                 )
-                result.success = success
-                result.validation = success
+                if not success:
+                    result.error = f"ONNX conversion failed for {model_name}"
+                    return result
+                valid = validate_func(output_path)
+                if not valid:
+                    result.error = "Static validation failed for ONNX output."
+                    return result
+                result.success = True
+                result.validation = True
                 result.output_path = output_path
                 result.extra_info = None
-                if not success:
-                    result.error = f"ONNX conversion or validation failed for {model_name}"
-            elif output_format in SUPPORTED_FORMATS:
-                convert_func, validate_func = self._get_converter_functions(output_format)
+                return result
+            if output_format in SUPPORTED_FORMATS:
                 if output_format == "safetensors":
-                    success, extra = convert_func(
-                        model, tokenizer, model_name, output_path, model_type, device, dtype
-                    )
-                    if not success and isinstance(extra, str):
-                        result.error = extra
+                    # Already handled above
+                    pass
                 elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration, quantization_config
@@ -246,18 +265,18 @@ class ModelConverter:
                     success, extra = convert_func(
                         model, tokenizer, model_name, output_path, model_type, device
                     )
-                if success:
-                    valid = validate_func(Path(output_path), extra)
-                    result.success = valid
-                    result.validation = valid
-                    result.output_path = output_path
-                    result.extra_info = extra
-                else:
-                    result.success = False
-                    if isinstance(extra, str):
-                        result.error = extra
-                    else:
-                        result.error = f"Conversion failed for {output_format}"
+                if not success:
+                    result.error = extra if isinstance(extra, str) else f"Conversion failed for {output_format}"
+                    return result
+                valid = validate_func(output_path)
+                if not valid:
+                    result.error = f"Static validation failed for {output_format} output."
+                    return result
+                result.success = True
+                result.validation = True
+                result.output_path = output_path
+                result.extra_info = extra
+                return result
             else:
                 result.error = f"Unsupported format: {output_format}"
         except Exception as e:
@@ -312,3 +331,34 @@ class ModelConverter:
             "gguf": ["gguf"],
             "mlx": ["mlx"]
         } 
+
+    def _can_infer_model(self, model_path, model_format=None, **kwargs):
+        """
+        Dynamic inference check: load the model and run a dummy inference using the appropriate engine.
+        Returns a dict: {can_infer: bool, error: str (optional), details: str (optional)}
+        """
+        try:
+            if not model_format:
+                model_format, model_path = self._detect_model_format(model_path)
+            engine_map = {
+                "onnx": ("model_converter_tool.engine.onnx", "can_infer_onnx_file"),
+                "gguf": ("model_converter_tool.engine.gguf", "can_infer_gguf_file"),
+                "safetensors": ("model_converter_tool.engine.safetensors", "can_infer_safetensors_file"),
+                "torchscript": ("model_converter_tool.engine.torchscript", "can_infer_torchscript_file"),
+                "hf": ("model_converter_tool.engine.hf", "can_infer_hf_file"),
+                "huggingface": ("model_converter_tool.engine.hf", "can_infer_hf_file"),
+                "mlx": ("model_converter_tool.engine.mlx", "can_infer_mlx_file"),
+                "gptq": ("model_converter_tool.engine.gptq", "can_infer_gptq_file"),
+                "awq": ("model_converter_tool.engine.awq", "can_infer_awq_file"),
+            }
+            fmt = model_format.lower()
+            if fmt not in engine_map:
+                return {"can_infer": False, "error": f"Format '{fmt}' is not supported for dynamic check."}
+            module_name, func_name = engine_map[fmt]
+            engine = importlib.import_module(module_name)
+            check_func = getattr(engine, func_name)
+            # Always use the real file, do not use fake_weight for inference check
+            result = check_func(model_path)
+            return {"can_infer": bool(result)}
+        except Exception as e:
+            return {"can_infer": False, "error": str(e)} 

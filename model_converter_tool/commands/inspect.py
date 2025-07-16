@@ -5,7 +5,7 @@ ARG_REQUIRED = "[bold red][required][/bold red]"
 
 def inspect(model: str = typer.Argument(..., help=f"Model path or repo id. {ARG_REQUIRED}")):
     """
-    Inspect and display detailed model information.\n
+    Inspect and display detailed model information.
     Arguments:
       model   Model path or repo id. (required)
     """

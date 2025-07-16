@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset, patch_quantization_config
@@ -71,15 +72,36 @@ def convert_to_gptq(
         logger.error(f"GPTQ conversion error: {e}")
         return False, None
 
-def validate_gptq_file(gptq_dir, _):
+def validate_gptq_file(path: str, *args, **kwargs) -> bool:
+    """
+    Static validation for GPTQ files. Checks if the file exists and can be loaded by GPTQModel.load.
+    Returns True if the file passes static validation, False otherwise.
+    """
+    if not os.path.exists(path):
+        return False
     try:
         from gptqmodel import GPTQModel
-        model = GPTQModel.load(str(gptq_dir))
-        tokens = model.generate("Test prompt")[0]
+        _ = GPTQModel.load(path)
+        return True
+    except ImportError:
+        # gptqmodel not installed
+        return False
+    except Exception:
+        return False
+
+def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for GPTQ files. Loads the model with GPTQModel and runs a real dummy inference.
+    Returns True if inference is possible, False otherwise.
+    """
+    try:
+        from gptqmodel import GPTQModel
+        model = GPTQModel.load(path)
+        tokens = model.generate("Hello world!")[0]
         _ = model.tokenizer.decode(tokens)
         return True
-    except Exception as e:
-        import logging, traceback
-        logging.getLogger(__name__).error(f"GPTQ validation failed: {e}")
-        traceback.print_exc()
+    except ImportError:
+        # gptqmodel not installed
+        return False
+    except Exception:
         return False 

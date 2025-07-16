@@ -201,42 +201,26 @@ for your framework.
     except Exception as e:
         logger.warning(f"Failed to create model card: {e}")
 
-def validate_mlx_file(mlx_path: Path, _=None) -> bool:
+def validate_mlx_file(path: str, *args, **kwargs) -> bool:
     """
-    Enhanced MLX model validation: Check npz file existence, try to load if mlx-transformers is available.
+    Static validation for MLX files. Checks if the file exists and has a .npz extension.
+    Returns True if the file passes static validation, False otherwise.
+    """
+    if not os.path.exists(path):
+        return False
+    if not path.endswith('.npz'):
+        return False
+    return True
+
+def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for MLX files. Attempts to load the file and run a dummy inference if possible.
+    Returns True if inference is possible, False otherwise.
     """
     try:
         import numpy as np
-        from pathlib import Path
-        model_dir = mlx_path if mlx_path.is_dir() else mlx_path.parent
-        mlx_files = list(model_dir.glob("*.npz"))
-        if not mlx_files:
-            logger.warning(f"No MLX files found: {model_dir}")
-            return False
-        mlx_file = mlx_files[0]
-        # Auto fallback: If mlx_transformers is not installed, only do file existence check
-        try:
-            import mlx_transformers
-        except ImportError:
-            logger.info("mlx-transformers not detected, only doing file existence check, no inference validation.")
-            return True
-        # Dependency installed, try new/old API
-        try:
-            from mlx_transformers import AutoTokenizer, MLXModel
-            # Only do loading-level validation here, no inference
-            logger.info("MLXModel class exists, only doing loading-level validation.")
-            return True
-        except ImportError:
-            try:
-                from mlx_transformers import GenerationConfig, load
-                logger.info("load/GenerationConfig exists, only doing loading-level validation.")
-                return True
-            except ImportError:
-                logger.info("mlx-transformers dependency exception, only doing file existence check.")
-                return True
-        except Exception as e:
-            logger.info(f"mlx-transformers loading exception, only doing file existence check. {e}")
-            return True
-    except Exception as e:
-        logger.warning(f"MLX validation error: {e}")
+        data = np.load(path)
+        # Simulate a dummy inference: check if at least one array exists
+        return bool(data.files)
+    except Exception:
         return False 

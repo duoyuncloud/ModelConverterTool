@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import auto_load_model_and_tokenizer
@@ -103,20 +104,38 @@ def convert_to_torchscript(
         logger.error(f"TorchScript conversion error: {e}")
         return False, None
 
-def validate_torchscript_file(ts_path, _=None):
+def validate_torchscript_file(path: str, *args, **kwargs) -> bool:
+    """
+    Static validation for TorchScript files. Checks if the file exists and can be loaded by torch.jit.load.
+    Returns True if the file passes static validation, False otherwise.
+    """
+    if not os.path.exists(path):
+        return False
     try:
         import torch
-        model = torch.jit.load(ts_path, map_location="cpu")
-        dummy = torch.ones((1, 8), dtype=torch.long)
-        try:
-            # Try with both input_ids and attention_mask
-            _ = model(dummy, dummy)
-        except TypeError:
-            # Fallback: try with only input_ids
+        _ = torch.jit.load(path, map_location='cpu')
+        return True
+    except ImportError:
+        # torch not installed
+        return False
+    except Exception:
+        return False
+
+def can_infer_torchscript_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for TorchScript files. Loads the model and runs a real dummy inference using torch.jit.
+    Returns True if inference is possible, False otherwise.
+    """
+    try:
+        import torch
+        model = torch.jit.load(path, map_location='cpu')
+        # Try a dummy inference if possible
+        if hasattr(model, 'forward'):
+            dummy = torch.zeros(1, 8)
             _ = model(dummy)
         return True
-    except Exception as e:
-        import logging, traceback
-        logging.getLogger(__name__).error(f"TorchScript validation failed: {e}")
-        traceback.print_exc()
+    except ImportError:
+        # torch not installed
+        return False
+    except Exception:
         return False 

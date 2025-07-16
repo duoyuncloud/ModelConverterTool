@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import auto_load_model_and_tokenizer
@@ -43,16 +44,40 @@ def convert_to_hf(
         logger.error(f"HF conversion error: {e}")
         return False, None
 
-def validate_hf_file(hf_dir, _=None):
+def validate_hf_file(path: str, *args, **kwargs) -> bool:
+    """
+    Static validation for HuggingFace model directories. Checks if config.json exists and the model can be loaded by transformers.AutoModel.
+    Returns True if the directory passes static validation, False otherwise.
+    """
+    if not os.path.exists(path) or not os.path.isdir(path):
+        return False
+    config_path = os.path.join(path, 'config.json')
+    if not os.path.exists(config_path):
+        return False
+    try:
+        from transformers import AutoModel
+        _ = AutoModel.from_pretrained(path)
+        return True
+    except ImportError:
+        # transformers not installed
+        return False
+    except Exception:
+        return False
+
+def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for HuggingFace model directories. Loads the model and tokenizer and runs a real dummy inference.
+    Returns True if inference is possible, False otherwise.
+    """
     try:
         from transformers import AutoModel, AutoTokenizer
-        model = AutoModel.from_pretrained(hf_dir)
-        tokenizer = AutoTokenizer.from_pretrained(hf_dir)
-        inputs = tokenizer("Test prompt", return_tensors="pt")
-        _ = model(**inputs)
+        model = AutoModel.from_pretrained(path)
+        tokenizer = AutoTokenizer.from_pretrained(path)
+        dummy = tokenizer("Hello world!", return_tensors="pt")
+        _ = model(**dummy)
         return True
-    except Exception as e:
-        import logging, traceback
-        logging.getLogger(__name__).error(f"HuggingFace validation failed: {e}")
-        traceback.print_exc()
+    except ImportError:
+        # transformers not installed
+        return False
+    except Exception:
         return False 

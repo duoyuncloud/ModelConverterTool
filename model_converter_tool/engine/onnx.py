@@ -6,6 +6,7 @@ from pathlib import Path
 import logging
 from typing import Any, Optional, Tuple
 from model_converter_tool.utils import auto_load_model_and_tokenizer
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -104,26 +105,60 @@ def convert_to_onnx(
         logger.info("ONNX export failed due to an unexpected error. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
         return False, None
 
-def validate_onnx_file(onnx_file: str, _=None) -> bool:
+def validate_onnx_file(path: str, *args, **kwargs) -> bool:
+    """
+    Static validation for ONNX files. Checks if the file exists and can be loaded by onnx.
+    Returns True if the file passes static validation, False otherwise.
+    """
+    if not os.path.exists(path):
+        return False
     try:
         import onnx
-        import onnxruntime
-        import numpy as np
-        from pathlib import Path
-        if not Path(onnx_file).exists() or Path(onnx_file).stat().st_size < 100:
-            return False
-        model = onnx.load(onnx_file)
-        session = onnxruntime.InferenceSession(onnx_file)
-        input_feed = {}
-        for inp in session.get_inputs():
-            shape = [d if isinstance(d, int) and d > 0 else 8 for d in inp.shape]
-            dtype = np.int64 if inp.type == 'tensor(int64)' else np.float32
-            input_feed[inp.name] = np.ones(shape, dtype=dtype)
-        _ = session.run(None, input_feed)
+        model = onnx.load(path)
+        onnx.checker.check_model(model)
         return True
+    except ImportError:
+        # onnx not installed
+        return False
+    except Exception:
+        return False
+
+def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for ONNX files. Loads the file with onnxruntime and runs a real dummy inference.
+    Returns True if inference is possible, False otherwise. Prints/logs the actual exception if it fails.
+    """
+    try:
+        import onnxruntime as ort
+        import numpy as np
+        sess = ort.InferenceSession(path)
+        inputs = sess.get_inputs()
+        if not inputs:
+            print("[ONNX check] No inputs found in the model.")
+            return False
+        dummy = {}
+        for inp in inputs:
+            shape = [d if isinstance(d, int) and d > 0 else 1 for d in inp.shape]
+            # Determine dtype from input type string
+            dtype_str = inp.type
+            if dtype_str == 'tensor(int64)':
+                dtype = np.int64
+            elif dtype_str == 'tensor(float)' or dtype_str == 'tensor(float32)':
+                dtype = np.float32
+            elif dtype_str == 'tensor(int32)':
+                dtype = np.int32
+            elif dtype_str == 'tensor(float16)':
+                dtype = np.float16
+            else:
+                print(f"[ONNX check] Unknown input dtype {dtype_str}, defaulting to float32.")
+                dtype = np.float32
+            print(f"[ONNX check] Creating dummy input for '{inp.name}' with dtype {dtype} and shape {shape}")
+            dummy[inp.name] = np.zeros(shape, dtype=dtype)
+        _ = sess.run(None, dummy)
+        return True
+    except ImportError:
+        print("[ONNX check] onnxruntime not installed.")
+        return False
     except Exception as e:
-        import traceback
-        import sys
-        logging.getLogger(__name__).error(f"ONNX validation failed: {e}")
-        traceback.print_exc()
+        print(f"[ONNX check] Exception during inference: {e}")
         return False 

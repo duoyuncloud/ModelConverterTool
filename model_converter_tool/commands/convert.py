@@ -10,7 +10,6 @@ import json
 import yaml
 import shutil
 
-# Beautify parameter help
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
 
@@ -37,44 +36,19 @@ def auto_complete_output_path(input_path, output_path, to_format):
             if not output_path.endswith(ext):
                 return output_path + ext
         elif to_format in dir_formats:
-            # Remove extension if present
             for ext in file_exts.values():
                 if output_path.endswith(ext):
                     return output_path[: -len(ext)]
     return output_path
 
-# Register the command with custom help handling
 def convert(
     input: str = typer.Argument(None, help="Input model path or repo id."),
-    output: str = typer.Argument(None, help="Output format (e.g. onnx, gguf, custom_quant, etc.)."),
+    output: str = typer.Argument(None, help="Output format (e.g. onnx, gguf, etc.)."),
     output_path: str = typer.Option(None, "-o", "--output-path", help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
     quant_config: str = typer.Option(
         None,
-        help="""Advanced quantization config (JSON string or YAML file). Supports the following keys for GPTQ/AWQ:
-
-  bits (int): Number of quantization bits (e.g., 4, 8)
-  group_size (int): Group size for quantization (e.g., 128)
-  sym (bool): Whether to use symmetric quantization
-  desc_act (bool): Enable descriptive quantization mechanism (improves accuracy for some models)
-  dynamic (dict): Per-layer/module override for quantization params
-  damp_percent (float): Damping percent for quantization
-  damp_auto_increment (float): Auto increment for damping
-  static_groups (bool): Use static groups for quantization
-  true_sequential (bool): Use true sequential quantization
-  lm_head (bool): Quantize the LM head
-  quant_method (str): Quantization method (e.g., 'gptq')
-  format (str): Output format (e.g., 'gptq')
-  mse (float): MSE loss threshold for quantization
-  parallel_packing (bool): Enable parallel packing
-  meta (dict): Extra metadata
-  device (str): Device for quantization ('cpu', 'cuda', etc.)
-  pack_dtype (str): Data type for packing
-  adapter (dict): Adapter config (for LoRA/EoRA, etc.)
-  rotation (str): Rotation type
-  is_marlin_format (bool): Use Marlin kernel format
-
-Unsupported keys will be ignored. See README for details."""
+        help="""Advanced quantization config (JSON string or YAML file). See README for details."""
     ),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
@@ -106,25 +80,21 @@ Unsupported keys will be ignored. See README for details."""
 
     Use --quant for simple types, or --quant-config for advanced options.
     """
-    # Show concise help if --help, -h, or missing args
     if '--help' in sys.argv or '-h' in sys.argv or not input or not output:
         rprint(convert.__doc__)
         ctx = click.get_current_context()
         typer.echo(ctx.command.get_help(ctx))
         raise typer.Exit()
-    # Handle deprecated fp16 format
     if output.lower() == "fp16":
         typer.echo("[yellow]Warning: 'fp16' format is deprecated. Use '--to safetensors --dtype fp16' instead.[/yellow]")
         output = "safetensors"
         if not dtype:
             dtype = "fp16"
 
-    # Check disk space before starting conversion
     if not check_and_handle_disk_space(input, output, quant):
         typer.echo("Conversion aborted due to insufficient disk space.")
         raise typer.Exit(1)
 
-    # Validate model before conversion (integrates validation logic)
     from model_converter_tool.core.validation import validate_model
     val_result = validate_model(input, output)
     if not (isinstance(val_result, dict) and val_result.get('valid', False)):
@@ -161,7 +131,6 @@ Unsupported keys will be ignored. See README for details."""
         if result.extra_info:
             typer.echo(f"Extra info: {result.extra_info}")
     else:
-        # Remove invalid output file if it exists (to prevent user confusion)
         import os
         from pathlib import Path
         output_file = Path(output_path)
@@ -171,7 +140,7 @@ Unsupported keys will be ignored. See README for details."""
                 typer.echo(f"[Cleanup] Deleted invalid output file: {output_file}")
             except Exception as e:
                 typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
-        typer.echo(f"Conversion failed: {result.error}") 
+        typer.echo(f"Conversion failed: {result.error}")
 
 # Register with Typer, enabling default help
 app = typer.Typer()
