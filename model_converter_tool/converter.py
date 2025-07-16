@@ -332,6 +332,19 @@ class ModelConverter:
             "mlx": ["mlx"]
         } 
 
+    def get_input_formats(self) -> dict:
+        """
+        Return a dict of supported input formats. Key: format name, Value: description or empty dict.
+        """
+        # You can expand descriptions as needed
+        return {fmt: {} for fmt in ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx"]}
+
+    def get_output_formats(self) -> dict:
+        """
+        Return a dict of supported output formats. Key: format name, Value: description or empty dict.
+        """
+        return {fmt: {} for fmt in ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]}
+
     def _can_infer_model(self, model_path, model_format=None, **kwargs):
         """
         Dynamic inference check: load the model and run a dummy inference using the appropriate engine.

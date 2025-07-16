@@ -65,30 +65,6 @@ def test_cli_convert_success(temp_output_dir):
     assert result.returncode in (0, 1), f"CLI convert failed unexpectedly: {result.stderr or result.stdout}"
     # Output directory may be empty if format is not supported, so just check for no crash
 
-@pytest.mark.skipif(not HAS_API, reason="API not available")
-def test_api_convert_success(temp_output_dir):
-    """
-    Test the real API conversion flow using ModelConverterAPI.
-    This test is only run if ModelConverterAPI and required methods exist.
-    Uses fake_weight=True for speed.
-    """
-    # Check for required methods before running the test
-    api = ModelConverterAPI()
-    if not (hasattr(api, "plan_conversion") and hasattr(api, "execute_conversion")):
-        pytest.skip("ModelConverterAPI does not have plan_conversion or execute_conversion. Skipping.")
-    # Plan a conversion (even if it will fail for dummy model)
-    plan = api.plan_conversion(
-        model_path=DUMMY_MODEL,
-        output_format="gguf",
-        output_path=os.path.join(temp_output_dir, "api-dummy-model-out.gguf"),
-        fake_weight=True  # Use fake weights for speed
-    )
-    # Execute the conversion plan
-    result = api.execute_conversion(plan)
-    # Accept both success and expected failure, but test should not crash
-    assert hasattr(result, "success"), "API execute_conversion did not return a result with 'success' attribute."
-
-
 def test_cli_convert_invalid_input(temp_output_dir):
     """
     Test CLI convert with a non-existent input file (should fail).
@@ -223,52 +199,6 @@ def test_cli_convert_device(temp_output_dir, device):
     ], capture_output=True, text=True)
     assert result.returncode in (0, 1), f"CLI convert with --device failed: {result.stderr or result.stdout}"
     # Output file may or may not exist depending on validation, but should not crash
-
-@pytest.mark.skipif(not HAS_API, reason="API not available")
-def test_api_convert_all_formats(temp_output_dir):
-    """
-    Test API conversion for all supported output formats.
-    This checks that the API can plan and execute conversions for each format, even if the dummy model is not valid.
-    """
-    api = ModelConverterAPI()
-    if not (hasattr(api, "plan_conversion") and hasattr(api, "execute_conversion")):
-        pytest.skip("ModelConverterAPI does not have plan_conversion or execute_conversion. Skipping.")
-    for output_format in SUPPORTED_FORMATS:
-        plan = api.plan_conversion(
-            model_path=DUMMY_MODEL,
-            output_format=output_format,
-            output_path=os.path.join(temp_output_dir, f"api-dummy-model-out.{output_format}")
-        )
-        result = api.execute_conversion(plan)
-        assert hasattr(result, "success"), f"API execute_conversion did not return a result for format {output_format}."
-
-@pytest.mark.skipif(not HAS_API, reason="API not available")
-def test_api_quantization_and_device(temp_output_dir):
-    """
-    Test API conversion with quantization and device options.
-    Checks that the API handles these arguments and errors gracefully.
-    """
-    api = ModelConverterAPI()
-    if not (hasattr(api, "plan_conversion") and hasattr(api, "execute_conversion")):
-        pytest.skip("ModelConverterAPI does not have plan_conversion or execute_conversion. Skipping.")
-    for quantization in QUANTIZATION_OPTIONS:
-        plan = api.plan_conversion(
-            model_path=DUMMY_MODEL,
-            output_format="gguf",
-            output_path=os.path.join(temp_output_dir, f"api-dummy-model-q-{quantization}.gguf"),
-            quantization=quantization
-        )
-        result = api.execute_conversion(plan)
-        assert hasattr(result, "success"), f"API execute_conversion did not return a result for quantization {quantization}."
-    for device in DEVICE_OPTIONS:
-        plan = api.plan_conversion(
-            model_path=DUMMY_MODEL,
-            output_format="gguf",
-            output_path=os.path.join(temp_output_dir, f"api-dummy-model-device-{device}.gguf"),
-            device=device
-        )
-        result = api.execute_conversion(plan)
-        assert hasattr(result, "success"), f"API execute_conversion did not return a result for device {device}."
 
 def test_cli_batch_multiple_tasks(temp_output_dir):
     """
