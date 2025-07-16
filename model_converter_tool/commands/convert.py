@@ -14,6 +14,9 @@ ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
 
 def auto_complete_output_path(input_path, output_path, to_format):
+    # Alias mapping for output format
+    output_aliases = {"hf": "huggingface"}
+    to_format = output_aliases.get(to_format.lower(), to_format.lower())
     file_exts = {
         'onnx': '.onnx',
         'gguf': '.gguf',
@@ -21,9 +24,8 @@ def auto_complete_output_path(input_path, output_path, to_format):
         'torchscript': '.pt',
         'safetensors': '.safetensors',
         'fp16': '.safetensors',
-        'mlx': '.npz',
     }
-    dir_formats = {'hf', 'gptq', 'awq'}
+    dir_formats = {'hf', 'huggingface', 'gptq', 'awq', 'mlx'}
     base = os.path.splitext(os.path.basename(input_path))[0]
     if not output_path:
         if to_format in file_exts:
@@ -40,6 +42,7 @@ def auto_complete_output_path(input_path, output_path, to_format):
                 if output_path.endswith(ext):
                     return output_path[: -len(ext)]
     return output_path
+
 
 def convert(
     input: str = typer.Argument(None, help="Input model path or repo id."),
@@ -80,6 +83,9 @@ def convert(
 
     Use --quant for simple types, or --quant-config for advanced options.
     """
+    # Alias mapping for output format
+    output_aliases = {"hf": "huggingface"}
+    output = output_aliases.get(output.lower(), output.lower())
     if '--help' in sys.argv or '-h' in sys.argv or not input or not output:
         rprint(convert.__doc__)
         ctx = click.get_current_context()

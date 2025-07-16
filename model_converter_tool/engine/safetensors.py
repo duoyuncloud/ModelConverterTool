@@ -52,11 +52,18 @@ def convert_to_safetensors(
 
 def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for SafeTensors files. Checks if the file exists and can be loaded by safetensors.torch.load_file.
+    Static validation for SafeTensors files. Accepts either a file or directory path.
+    If a directory is given, looks for 'model.safetensors' inside it.
     Returns True if the file passes static validation, False otherwise.
     """
     if not os.path.exists(path):
         return False
+    # If path is a directory, look for 'model.safetensors' inside
+    if os.path.isdir(path):
+        safetensors_file = os.path.join(path, "model.safetensors")
+        if not os.path.exists(safetensors_file):
+            return False
+        path = safetensors_file
     try:
         from safetensors.torch import load_file
         tensors = load_file(path)
@@ -69,20 +76,21 @@ def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
 
 def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic check for SafeTensors files. Loads tensors and simulates a dummy inference by accessing a tensor.
-    Returns True if at least one tensor can be accessed, False otherwise.
+    Dynamic check for SafeTensors files. Loads the model and tokenizer and runs a real dummy inference.
+    Returns True if inference is possible, False otherwise.
     """
     try:
-        from safetensors.torch import load_file
-        tensors = load_file(path)
-        if not tensors:
-            return False
-        # Simulate a dummy inference: access the first tensor and check its shape
-        first_tensor = next(iter(tensors.values()))
-        _ = first_tensor.shape
+        import os
+        from transformers import AutoModel, AutoTokenizer
+        # If path is a directory, use it directly; if file, use its parent
+        if os.path.isdir(path):
+            model_dir = path
+        else:
+            model_dir = os.path.dirname(path)
+        model = AutoModel.from_pretrained(model_dir)
+        tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        dummy = tokenizer("Hello world!", return_tensors="pt")
+        _ = model(**dummy)
         return True
-    except ImportError:
-        # safetensors not installed
-        return False
     except Exception:
         return False 

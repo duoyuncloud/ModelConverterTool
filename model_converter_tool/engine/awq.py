@@ -92,16 +92,90 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     """
     Dynamic check for AWQ files. Loads the model with GPTQModel and runs a real dummy inference.
+    Adapts logic for OPT, Llama, Mistral, and other architectures. Ensures device compatibility for inference.
     Returns True if inference is possible, False otherwise.
     """
+    import traceback
     try:
         from gptqmodel import GPTQModel
-        model = GPTQModel.load(path)
-        tokens = model.generate("Hello world!")[0]
-        _ = model.tokenizer.decode(tokens)
-        return True
+        import torch
+        try:
+            model = GPTQModel.load(path)
+        except Exception as e:
+            logger.error(f"[AWQ] Failed to load model: {e}\n{traceback.format_exc()}")
+            return False
+        # Try to detect architecture
+        arch = getattr(model, 'arch', None)
+        if arch is None and hasattr(model, 'config'):
+            arch = getattr(model.config, 'architectures', [None])[0]
+        logger.info(f"[AWQ] Detected architecture: {arch}")
+        # Try to get tokenizer
+        tokenizer = getattr(model, 'tokenizer', None)
+        if tokenizer is None and hasattr(model, 'get_tokenizer'):
+            try:
+                tokenizer = model.get_tokenizer()
+            except Exception:
+                tokenizer = None
+        # Detect model device (cpu, cuda, mps, etc)
+        model_device = None
+        try:
+            for param in model.parameters():
+                model_device = param.device
+                break
+        except Exception:
+            pass
+        if model_device is None:
+            try:
+                for param in getattr(model, 'model', model).parameters():
+                    model_device = param.device
+                    break
+            except Exception:
+                pass
+        if model_device is None:
+            model_device = torch.device('cpu')
+        logger.info(f"[AWQ] Using device: {model_device}")
+        prompt = "Hello world!"
+        try:
+            if arch is not None:
+                arch_l = arch.lower()
+                if "opt" in arch_l:
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+                    else:
+                        output = model.generate(prompt)[0]
+                elif "llama" in arch_l or "mistral" in arch_l or "mixtral" in arch_l:
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+                    else:
+                        output = model.generate(prompt)[0]
+                else:
+                    output = model.generate(prompt)[0]
+                    if tokenizer is not None:
+                        _ = tokenizer.decode(output)
+            else:
+                try:
+                    output = model.generate(prompt)[0]
+                    if tokenizer is not None:
+                        _ = tokenizer.decode(output)
+                except Exception:
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+            return True
+        except Exception as e:
+            logger.error(f"[AWQ] Inference failed: {e}\n{traceback.format_exc()}")
+            return False
     except ImportError:
-        # gptqmodel not installed
+        logger.error("[AWQ] gptqmodel not installed.")
         return False
-    except Exception:
+    except Exception as e:
+        logger.error(f"[AWQ] Unexpected error: {e}\n{traceback.format_exc()}")
         return False 

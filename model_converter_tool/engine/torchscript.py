@@ -98,6 +98,15 @@ def convert_to_torchscript(
             return True, None
         except Exception as e:
             logger.warning(f"TorchScript trace export failed: {e}")
+        # User-friendly error for unsupported models
+        unsupported = ["gpt2", "llama", "mistral", "qwen", "mixtral", "vit", "t5", "bart", "clip"]
+        lower_name = model_name.lower()
+        if any(u in lower_name for u in unsupported):
+            logger.error(f"TorchScript export is not fully supported for model '{model_name}'.\n"
+                         f"This model type is known to have limited or unstable TorchScript support due to dynamic control flow, *args/**kwargs, or tied weights.\n"
+                         f"For best results, use BERT, DistilBERT, or ResNet models.\n"
+                         f"Original error: {e}")
+            return False, {"error": f"TorchScript export is not fully supported for model '{model_name}'. For best results, use BERT, DistilBERT, or ResNet. See logs for details."}
         logger.error("All TorchScript export methods failed")
         return False, None
     except Exception as e:
@@ -124,18 +133,129 @@ def validate_torchscript_file(path: str, *args, **kwargs) -> bool:
 def can_infer_torchscript_file(path: str, *args, **kwargs) -> bool:
     """
     Dynamic check for TorchScript files. Loads the model and runs a real dummy inference using torch.jit.
+    Tries to infer the model type and construct realistic dummy inputs for BERT, GPT-2, vision, seq2seq, CLIP, and other HuggingFace models.
     Returns True if inference is possible, False otherwise.
     """
+    import os
+    import logging
+    import inspect
     try:
         import torch
         model = torch.jit.load(path, map_location='cpu')
-        # Try a dummy inference if possible
-        if hasattr(model, 'forward'):
+        model.eval()
+        model_type = kwargs.get('model_type', None)
+        fname = os.path.basename(path).lower()
+        # 1. Detect model type
+        if not model_type:
+            if 'bert' in fname:
+                model_type = 'bert'
+            elif 'gpt2' in fname:
+                model_type = 'gpt2'
+            elif 'vit' in fname or 'resnet' in fname:
+                model_type = 'vision'
+            elif 't5' in fname or 'bart' in fname:
+                model_type = 'seq2seq'
+            elif 'clip' in fname:
+                model_type = 'clip'
+            else:
+                model_type = 'auto'
+        # 2. Try input patterns by model type
+        if model_type in ('bert', 'roberta', 'distilbert'):
+            dummy_input_ids = torch.randint(0, 1000, (1, 8), dtype=torch.long)
+            dummy_attention_mask = torch.ones((1, 8), dtype=torch.long)
+            try:
+                _ = model(dummy_input_ids, dummy_attention_mask)
+                return True
+            except Exception:
+                try:
+                    _ = model(input_ids=dummy_input_ids, attention_mask=dummy_attention_mask)
+                    return True
+                except Exception as e:
+                    logging.warning(f"TorchScript BERT-like inference failed: {e}")
+        elif model_type == 'gpt2':
+            dummy_input_ids = torch.randint(0, 1000, (1, 8), dtype=torch.long)
+            try:
+                _ = model(dummy_input_ids)
+                return True
+            except Exception:
+                try:
+                    _ = model(input_ids=dummy_input_ids)
+                    return True
+                except Exception as e:
+                    logging.warning(f"TorchScript GPT-2 inference failed: {e}")
+                    logging.warning("TorchScript dynamic check: GPT-2 and similar models are known to have limited support. For best results, use BERT, DistilBERT, or ResNet.")
+        elif model_type == 'vision':
+            dummy = torch.randn(1, 3, 224, 224)
+            try:
+                _ = model(dummy)
+                return True
+            except Exception as e:
+                logging.warning(f"Vision model inference failed: {e}")
+                logging.warning("TorchScript dynamic check: Vision models may require special handling. For best results, use BERT, DistilBERT, or ResNet.")
+        elif model_type == 'seq2seq':
+            dummy_input_ids = torch.randint(0, 1000, (1, 8), dtype=torch.long)
+            dummy_decoder_input_ids = torch.randint(0, 1000, (1, 8), dtype=torch.long)
+            dummy_attention_mask = torch.ones((1, 8), dtype=torch.long)
+            try:
+                _ = model(dummy_input_ids, dummy_decoder_input_ids, dummy_attention_mask)
+                return True
+            except Exception:
+                try:
+                    _ = model(input_ids=dummy_input_ids, decoder_input_ids=dummy_decoder_input_ids, attention_mask=dummy_attention_mask)
+                    return True
+                except Exception as e:
+                    logging.warning(f"Seq2Seq model inference failed: {e}")
+                    logging.warning("TorchScript dynamic check: T5/BART and similar models are known to have limited support. For best results, use BERT, DistilBERT, or ResNet.")
+        elif model_type == 'clip':
+            dummy_input_ids = torch.randint(0, 1000, (1, 8), dtype=torch.long)
+            dummy_pixel_values = torch.randn(1, 3, 224, 224)
+            try:
+                _ = model(dummy_input_ids, dummy_pixel_values)
+                return True
+            except Exception:
+                try:
+                    _ = model(input_ids=dummy_input_ids, pixel_values=dummy_pixel_values)
+                    return True
+                except Exception as e:
+                    logging.warning(f"CLIP model inference failed: {e}")
+                    logging.warning("TorchScript dynamic check: CLIP and similar models are known to have limited support. For best results, use BERT, DistilBERT, or ResNet.")
+        # 3. Fallback: try generic patterns
+        try:
             dummy = torch.zeros(1, 8)
             _ = model(dummy)
-        return True
-    except ImportError:
-        # torch not installed
+            return True
+        except Exception:
+            pass
+        try:
+            dummy = torch.zeros(1, 3, 224, 224)
+            _ = model(dummy)
+            return True
+        except Exception:
+            pass
+        # 4. Introspect signature and try to match
+        try:
+            sig = inspect.signature(model.forward)
+            args = []
+            for name, param in sig.parameters.items():
+                if 'input' in name:
+                    args.append(torch.randint(0, 1000, (1, 8), dtype=torch.long))
+                elif 'mask' in name:
+                    args.append(torch.ones((1, 8), dtype=torch.long))
+                elif 'pixel' in name:
+                    args.append(torch.randn(1, 3, 224, 224))
+                elif 'decoder' in name:
+                    args.append(torch.randint(0, 1000, (1, 8), dtype=torch.long))
+                else:
+                    args.append(torch.zeros(1, 8))
+            _ = model(*args)
+            return True
+        except Exception as e:
+            logging.warning(f"Signature introspection inference failed: {e}")
+        # User-friendly message for unsupported models
+        unsupported = ["gpt2", "llama", "mistral", "qwen", "mixtral", "vit", "t5", "bart", "clip"]
+        if any(u in fname for u in unsupported):
+            logging.warning(f"TorchScript dynamic check: Model '{fname}' is known to have limited or unstable TorchScript support. For best results, use BERT, DistilBERT, or ResNet.")
         return False
-    except Exception:
+    except Exception as e:
+        logging.warning(f"TorchScript dynamic check error: {e}")
         return False 

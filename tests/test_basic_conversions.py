@@ -10,7 +10,6 @@ from pathlib import Path
 import sys
 import platform
 import requests
-
 import numpy as np
 import onnx
 import onnxruntime

@@ -44,5 +44,5 @@ evalplus
 
 random_word>=1.0.8
 numpy
-# For GGUF inference in Python, you may need llama-cpp-python:
-# llama-cpp-python  # Uncomment if you want to run GGUF inference in Python. Not required for conversion. 
+llama-cpp-python  # Required for GGUF inference and dynamic usability checks 
+mlx-lm  # Required for robust MLX conversion and inference 

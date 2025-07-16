@@ -60,146 +60,61 @@ def convert_to_mlx(
     quantization_config: dict = None
 ) -> tuple:
     """
-    Convert a model to MLX format. Converts PyTorch weights to MLX, saves tokenizer/config/mlx_config/model_card.
-    Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
-        model_name: Source model name or path
-        output_path: Output directory
-        model_type: Model type
-        device: Device
-        quantization: Unused for MLX
-        use_large_calibration: Unused for MLX
-        quantization_config: Dict with quantization parameters (optional)
-    Returns:
-        (success: bool, extra_info: dict or None)
+    Convert a HuggingFace model to MLX format using the official mlx-lm conversion script.
+    Uses a unique temporary output path to avoid path conflicts, then moves the result to the user-specified output directory.
+    The output is always a directory (never a .npz file).
     """
+    import subprocess
+    import sys
+    import os
+    import tempfile
+    import shutil
     try:
-        # Dependency check
-        try:
-            import mlx.core as mx
-            import numpy as np
-        except ImportError:
-            import platform
-            is_apple_silicon = platform.system() == "Darwin" and platform.machine() in ("arm64", "arm")
-            if is_apple_silicon:
-                logger.error("MLX conversion requires mlx. You are on Apple Silicon (macOS arm64). For best performance, install MLX: pip install mlx")
-            else:
-                logger.error("MLX conversion requires mlx, which is only available on Apple Silicon (macOS arm64). Your platform is not supported.")
-            return False, None
-        output_dir = Path(output_path)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        # Robust model/tokenizer auto-loading
-        model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
-        mlx_model = _convert_pytorch_to_mlx(model)
-        mlx_file = output_dir / "model.npz"
-        np.savez(str(mlx_file), **{k: np.array(v) for k, v in mlx_model.items()})
-        _save_hf_format_files(model_name, output_dir, tokenizer, getattr(model, 'config', None), "mlx")
-        mlx_config = {
-            "model_type": model_type,
-            "format": "mlx",
-            "quantization": "none",
-            "original_model": model_name,
-            "conversion_date": datetime.now().isoformat(),
-        }
-        with open(output_dir / "mlx_config.json", "w") as f:
-            json.dump(mlx_config, f, indent=2)
-        # Patch quantization config for test compatibility
-        bits = quantization_config.get("bits") if quantization_config else 4
-        group_size = quantization_config.get("group_size") if quantization_config else 128
-        sym = quantization_config.get("sym") if quantization_config else False
-        desc = quantization_config.get("desc") if quantization_config else None
-        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
-        _create_model_card(output_dir, model_name, "mlx", model_type)
-        logger.info(f"MLX conversion completed: {output_dir}")
-        return True, None
+        # Use a unique temporary directory for mlx-lm output
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_output = os.path.join(tmpdir, "mlx-out")
+            cmd = [
+                sys.executable, '-m', 'mlx_lm.convert',
+                '--hf-path', model_name,
+                '--mlx-path', tmp_output
+            ]
+            if quantization:
+                cmd += ['-q', quantization]
+            subprocess.check_call(cmd)
+            # Print the contents of the temp directory for debugging
+            print("[DEBUG] Contents of tempdir after mlx-lm.convert:", os.listdir(tmpdir))
+            # Move/rename the output directory to user-specified output_path
+            if os.path.isdir(tmp_output):
+                # Remove existing output_path if it exists
+                if os.path.exists(output_path):
+                    shutil.rmtree(output_path)
+                shutil.move(tmp_output, output_path)
+                return True, None
+            # If not, fail
+            raise FileNotFoundError(f"No output directory found at {tmp_output}")
     except Exception as e:
         logger.error(f"MLX conversion failed: {e}")
-        return False, None
+        return False, {"error": str(e)}
 
-def _convert_pytorch_to_mlx(pytorch_model):
-    try:
-        import mlx.core as mx
-        import numpy as np
-    except ImportError:
-        logger.error("MLX not available for conversion")
-        return {}
-    import os
-    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        logger.warning("Skipping MLX conversion on CI environment to avoid bus errors")
-        return {}
-    mlx_model = {}
-    state_dict = pytorch_model.state_dict()
-    for name, param in state_dict.items():
-        try:
-            numpy_array = param.detach().cpu().numpy()
-            if numpy_array.size > 1000000:
-                logger.warning(f"Skipping large tensor {name} ({numpy_array.size} elements) on CI")
-                continue
-            if numpy_array.dtype == np.float32:
-                mlx_model[name] = mx.array(numpy_array, dtype=mx.float32)
-            elif numpy_array.dtype == np.float16:
-                mlx_model[name] = mx.array(numpy_array, dtype=mx.float16)
-            elif numpy_array.dtype == np.int64:
-                mlx_model[name] = mx.array(numpy_array, dtype=mx.int64)
-            elif numpy_array.dtype == np.int32:
-                mlx_model[name] = mx.array(numpy_array, dtype=mx.int32)
-            else:
-                mlx_model[name] = mx.array(numpy_array.astype(np.float32), dtype=mx.float32)
-        except Exception as e:
-            logger.warning(f"Failed to convert tensor {name}: {e}")
-            continue
-    return mlx_model
 
-def _save_hf_format_files(model_name: str, output_dir: Path, tokenizer, config, format_type: str):
+def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
+    """
+    Dynamic check for MLX files. Loads the model and tokenizer with mlx_lm and runs a real dummy inference.
+    Expects path to be a directory containing MLX weights/config.
+    Returns True if inference is possible, False otherwise.
+    """
     try:
-        if tokenizer:
-            tokenizer.save_pretrained(str(output_dir))
-        if config:
-            config.save_pretrained(str(output_dir))
-        format_config = {
-            "format": format_type,
-            "model_name": model_name,
-            "conversion_info": {"tool": "Model-Converter-Tool", "version": "1.0.0"},
-        }
-        with open(output_dir / "format_config.json", "w") as f:
-            json.dump(format_config, f, indent=2)
+        import os
+        from mlx_lm import load, generate
+        # path should be a directory containing MLX weights/config
+        if not os.path.isdir(path):
+            raise ValueError(f"MLX check expects a directory, got: {path}")
+        model, tokenizer = load(path)
+        _ = generate(model, tokenizer, prompt="Hello world", verbose=False, max_tokens=1)
+        return True
     except Exception as e:
-        logger.warning(f"Failed to save HF format files: {e}")
-
-def _create_model_card(output_dir: Path, model_name: str, format_type: str, model_type: str):
-    try:
-        model_card = f"""---
-language: en
-tags:
-- {format_type}
-- converted
-- {model_type}
----
-
-# {model_name} - {format_type.upper()} Format
-
-This model has been converted to {format_type.upper()} format using
-Model-Converter-Tool.
-
-## Original Model
-- **Model**: {model_name}
-- **Type**: {model_type}
-
-## Conversion Details
-- **Format**: {format_type.upper()}
-- **Tool**: Model-Converter-Tool v1.0.0
-- **Conversion Date**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-## Usage
-This model can be loaded using the appropriate {format_type.upper()} loader
-for your framework.
-
-"""
-        with open(output_dir / "README.md", "w") as f:
-            f.write(model_card)
-    except Exception as e:
-        logger.warning(f"Failed to create model card: {e}")
+        logger.error(f"MLX dynamic check failed: {e}")
+        return False
 
 def validate_mlx_file(path: str, *args, **kwargs) -> bool:
     """
@@ -210,17 +125,4 @@ def validate_mlx_file(path: str, *args, **kwargs) -> bool:
         return False
     if not path.endswith('.npz'):
         return False
-    return True
-
-def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
-    """
-    Dynamic check for MLX files. Attempts to load the file and run a dummy inference if possible.
-    Returns True if inference is possible, False otherwise.
-    """
-    try:
-        import numpy as np
-        data = np.load(path)
-        # Simulate a dummy inference: check if at least one array exists
-        return bool(data.files)
-    except Exception:
-        return False 
+    return True 

@@ -92,16 +92,98 @@ def validate_gptq_file(path: str, *args, **kwargs) -> bool:
 def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
     """
     Dynamic check for GPTQ files. Loads the model with GPTQModel and runs a real dummy inference.
+    Adapts logic for OPT, Llama, Mistral, and other architectures. Ensures device compatibility for inference.
     Returns True if inference is possible, False otherwise.
     """
+    import traceback
     try:
         from gptqmodel import GPTQModel
-        model = GPTQModel.load(path)
-        tokens = model.generate("Hello world!")[0]
-        _ = model.tokenizer.decode(tokens)
-        return True
+        import torch
+        try:
+            model = GPTQModel.load(path)
+        except Exception as e:
+            logger.error(f"[GPTQ] Failed to load model: {e}\n{traceback.format_exc()}")
+            return False
+        # Try to detect architecture
+        arch = getattr(model, 'arch', None)
+        if arch is None and hasattr(model, 'config'):
+            arch = getattr(model.config, 'architectures', [None])[0]
+        logger.info(f"[GPTQ] Detected architecture: {arch}")
+        # Try to get tokenizer
+        tokenizer = getattr(model, 'tokenizer', None)
+        if tokenizer is None and hasattr(model, 'get_tokenizer'):
+            try:
+                tokenizer = model.get_tokenizer()
+            except Exception:
+                tokenizer = None
+        # Detect model device (cpu, cuda, mps, etc)
+        model_device = None
+        try:
+            # Try to get device from model parameters
+            for param in model.parameters():
+                model_device = param.device
+                break
+        except Exception:
+            pass
+        if model_device is None:
+            # Fallback: try to get from model.model (for HuggingFace)
+            try:
+                for param in getattr(model, 'model', model).parameters():
+                    model_device = param.device
+                    break
+            except Exception:
+                pass
+        if model_device is None:
+            # Default to cpu
+            model_device = torch.device('cpu')
+        logger.info(f"[GPTQ] Using device: {model_device}")
+        prompt = "Hello world!"
+        try:
+            if arch is not None:
+                arch_l = arch.lower()
+                if "opt" in arch_l:
+                    # OPT models: use default prompt and tokenizer
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        # Move input_ids to model device
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+                    else:
+                        output = model.generate(prompt)[0]
+                elif "llama" in arch_l or "mistral" in arch_l or "mixtral" in arch_l:
+                    # Llama/Mistral: try both string and token input
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+                    else:
+                        output = model.generate(prompt)[0]
+                else:
+                    # Fallback: try string prompt
+                    output = model.generate(prompt)[0]
+                    if tokenizer is not None:
+                        _ = tokenizer.decode(output)
+            else:
+                # Unknown arch: try both string and token input
+                try:
+                    output = model.generate(prompt)[0]
+                    if tokenizer is not None:
+                        _ = tokenizer.decode(output)
+                except Exception:
+                    if tokenizer is not None:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                        input_ids = input_ids.to(model_device)
+                        output = model.generate(input_ids)[0]
+                        _ = tokenizer.decode(output)
+            return True
+        except Exception as e:
+            logger.error(f"[GPTQ] Inference failed: {e}\n{traceback.format_exc()}")
+            return False
     except ImportError:
-        # gptqmodel not installed
+        logger.error("[GPTQ] gptqmodel not installed.")
         return False
-    except Exception:
+    except Exception as e:
+        logger.error(f"[GPTQ] Unexpected error: {e}\n{traceback.format_exc()}")
         return False 
