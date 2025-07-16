@@ -211,6 +211,31 @@ class ModelConverterAPI:
         from model_converter_tool.core.cache import manage_cache
         return manage_cache(action)
 
+    def get_workspace_status(self):
+        """
+        Return the current workspace status, including path and (optionally) task lists.
+        """
+        return WorkspaceStatus(
+            workspace_path=self.workspace_path,
+            active_tasks=list(self._active_tasks.values()),
+            completed_tasks=[],
+            failed_tasks=[],
+            cache_size=None,
+            available_formats={
+                "input_formats": self.converter.get_input_formats(),
+                "output_formats": self.converter.get_output_formats(),
+            },
+        )
+
+    def get_supported_formats(self):
+        """
+        Return supported input and output formats as a dict.
+        """
+        return {
+            "input_formats": self.converter.get_input_formats(),
+            "output_formats": self.converter.get_output_formats(),
+        }
+
     # --- Private helper methods ---
     def _get_model_metadata(self, model_path: str, format_name: str) -> Dict[str, Any]:
         return {"format": format_name, "path": model_path, "size": "unknown"}
