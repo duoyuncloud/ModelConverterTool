@@ -201,7 +201,7 @@ for your framework.
     except Exception as e:
         logger.warning(f"Failed to create model card: {e}")
 
-def validate_mlx_file(mlx_path: Path, _: Any) -> bool:
+def validate_mlx_file(mlx_path: Path, _=None) -> bool:
     """
     Enhanced MLX model validation: Check npz file existence, try to load if mlx-transformers is available.
     """

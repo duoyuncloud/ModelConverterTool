@@ -71,7 +71,7 @@ def convert_to_awq(
         logger.error(f"AWQ conversion error: {e}")
         return False, None
 
-def validate_awq_file(awq_dir, _):
+def validate_awq_file(awq_dir, _=None):
     try:
         from gptqmodel import GPTQModel
         model = GPTQModel.load(str(awq_dir))

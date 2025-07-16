@@ -55,36 +55,8 @@ def convert_to_gguf(
                 model.save_pretrained(temp_dir)
                 tokenizer.save_pretrained(temp_dir)
                 model_dir = temp_dir
-            help_args = ""
-            try:
-                help_proc = subprocess.run([sys.executable, str(llama_cpp_script), "--help"], capture_output=True, text=True, timeout=10)
-                help_args = help_proc.stdout + help_proc.stderr
-            except Exception:
-                pass
-            quant_map = {
-                "q4_k_m": "q4_0",
-                "q4_0": "q4_0",
-                "q8_0": "q8_0",
-                "f16": "f16",
-                "bf16": "bf16",
-                "tq1_0": "tq1_0",
-                "tq2_0": "tq2_0",
-                "auto": "auto",
-                None: "auto",
-                "": "auto"
-            }
-            outtype = quant_map.get(quantization, quantization if quantization else "auto")
-            allowed_outtypes = {"f32", "f16", "bf16", "q8_0", "tq1_0", "tq2_0", "auto", "q4_0"}
-            if outtype not in allowed_outtypes:
-                outtype = "auto"
-            if "--in" in help_args and "--out" in help_args:
-                cmd = [sys.executable, str(llama_cpp_script), "--in", model_dir, "--out", str(gguf_file)]
-                if outtype:
-                    cmd += ["--outtype", outtype]
-            else:
-                cmd = [sys.executable, str(llama_cpp_script), model_dir, "--outfile", str(gguf_file)]
-                if outtype:
-                    cmd += ["--outtype", outtype]
+            # 直接用 --outfile 参数适配新版脚本
+            cmd = [sys.executable, str(llama_cpp_script), model_dir, "--outfile", str(gguf_file)]
             logger.info(f"[GGUF] Running: {' '.join(map(str, cmd))}")
             result = subprocess.run(cmd, capture_output=True, text=True)
             if not Path(gguf_file).exists() or result.returncode != 0:

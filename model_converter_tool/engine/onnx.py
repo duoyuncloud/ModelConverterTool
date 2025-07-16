@@ -104,7 +104,7 @@ def convert_to_onnx(
         logger.info("ONNX export failed due to an unexpected error. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
         return False, None
 
-def validate_onnx_file(onnx_file: str) -> bool:
+def validate_onnx_file(onnx_file: str, _=None) -> bool:
     try:
         import onnx
         import onnxruntime

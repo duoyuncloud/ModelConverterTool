@@ -49,10 +49,17 @@ def convert_to_safetensors(
         logger.error(f"Safetensors conversion error: {e}")
         return False, str(e)
 
-def validate_safetensors_file(safetensors_path):
+def validate_safetensors_file(safetensors_path, _=None):
     try:
+        from pathlib import Path
+        path = Path(safetensors_path)
+        if path.is_dir():
+            safetensors_files = list(path.glob("*.safetensors"))
+            if not safetensors_files:
+                return False
+            safetensors_path = safetensors_files[0]
         from safetensors.torch import load_file
-        tensors = load_file(safetensors_path)
+        tensors = load_file(str(safetensors_path))
         for k, v in tensors.items():
             _ = v.shape
             break

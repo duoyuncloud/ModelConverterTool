@@ -42,6 +42,11 @@ def check(
     else:
         model_format = model_format.lower()
 
+    if model_format == "huggingface":
+        model_format = "hf"
+    elif model_format == "hf":
+        model_format = "hf"
+
     if model_format not in SUPPORTED_FORMATS:
         rprint(f"[red]Format '{model_format}' is not supported for usability check. Supported: {SUPPORTED_FORMATS}[/red]")
         raise typer.Exit(1)
