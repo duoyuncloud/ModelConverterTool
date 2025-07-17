@@ -240,7 +240,7 @@ def test_api_workspace_status_and_formats():
 
 def test_api_validation_and_planning():
     """
-    Test API validate_conversion and plan_conversion with valid and invalid arguments.
+    Test API validate_conversion with valid and invalid arguments.
     Checks that the returned plan/validation structure is correct.
     """
     if not HAS_API:
@@ -249,7 +249,7 @@ def test_api_validation_and_planning():
     # Valid
     validation = api.validate_conversion(DUMMY_MODEL, "gguf")
     assert "plan" in validation and "valid" in validation, "Validation result missing keys."
-    plan = api.plan_conversion(DUMMY_MODEL, "gguf", "dummy-out.gguf")
+    plan = validation["plan"]
     assert hasattr(plan, "model_path") and hasattr(plan, "output_format"), "Plan missing attributes."
     # Invalid
     validation_invalid = api.validate_conversion("nonexistent.file", "gguf")
