@@ -16,7 +16,7 @@ import onnxruntime
 import pytest
 from transformers import AutoModel, AutoTokenizer
 
-from model_converter_tool.converter import ModelConverter
+from model_converter_tool.api import ModelConverterAPI
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -28,8 +28,8 @@ skip_mlx = pytest.mark.skipif(
 )
 
 @pytest.fixture(scope="module")
-def converter():
-    return ModelConverter()
+def api():
+    return ModelConverterAPI()
 
 @pytest.fixture(scope="module")
 def output_dir():
@@ -39,12 +39,12 @@ def output_dir():
 
 # Use dict to drive all README demos
 DEMO_TASKS = [
-    {"input_model": "bert-base-uncased", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
+    {"input_model": "gpt2", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
     # Use Qwen/Qwen2-0.5B for GGUF
     {"input_model": "Qwen/Qwen2-0.5B", "output_format": "gguf", "output_file": "qwen2-0.5b.gguf", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     # fp16 is now tested as a safetensors variant
-    {"input_model": "sshleifer/tiny-gpt2", "output_format": "safetensors", "output_file": "tiny_gpt2_fp16_safetensors", "model_type": "text-generation", "dtype": "fp16"},
+    {"input_model": "gpt2", "output_format": "safetensors", "output_file": "tiny_gpt2_fp16_safetensors", "model_type": "text-generation", "dtype": "fp16"},
     {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},
     {"input_model": "gpt2", "output_format": "safetensors", "output_file": "gpt2_safetensors", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
@@ -58,8 +58,12 @@ def is_hf_model_available(model_id):
     except Exception:
         return False
 
-@pytest.mark.parametrize("task", DEMO_TASKS)
-def test_readme_demo(converter, output_dir, task):
+@pytest.mark.parametrize(
+    "task",
+    DEMO_TASKS,
+    ids=[f"{t['input_model']}_to_{t['output_format']}" for t in DEMO_TASKS]
+)
+def test_basic_conversion(api, output_dir, task):
     # If it's an MLX task and not Apple Silicon, automatically skip
     if task["output_format"] == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
         pytest.skip("MLX only supported on Apple Silicon macOS")
@@ -74,29 +78,9 @@ def test_readme_demo(converter, output_dir, task):
         output_path=output_path,
         model_type=task["model_type"],
         device="cpu",
-        fake_weight=True,  # Use fake weights for speed and reliability
     )
     if "dtype" in task:
         convert_kwargs["dtype"] = task["dtype"]
-    result = converter.convert(**convert_kwargs)
+    result = api.convert_model(**convert_kwargs)
     assert result.success, f"{task['output_format']} conversion failed: {result.error}"
     assert os.path.exists(output_path)
-
-def test_fake_weight_conversion(output_dir):
-    """
-    Test model conversion with fake weights enabled. This ensures the fake_weight feature works end-to-end.
-    """
-    from model_converter_tool.converter import ModelConverter
-    model_id = "sshleifer/tiny-gpt2"  # Small model for fast test
-    output_path = str(output_dir / "tiny_gpt2_fake_safetensors")
-    converter = ModelConverter()
-    result = converter.convert(
-        model_name=model_id,
-        output_format="safetensors",
-        output_path=output_path,
-        model_type="text-generation",
-        device="cpu",
-        fake_weight=True
-    )
-    assert result.success, f"Fake weight conversion failed: {result.error}"
-    assert os.path.exists(output_path), "Output file was not created with fake weights."

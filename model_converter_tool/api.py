@@ -17,13 +17,6 @@ from .converter import ModelConverter, ConversionResult
 
 logger = logging.getLogger(__name__)
 
-class ConversionStatus(Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
 @dataclass
 class ConversionPlan:
     model_path: str
@@ -41,31 +34,10 @@ class ConversionPlan:
     estimated_time: Optional[str] = None
     quantization_config: Optional[dict] = None
 
-@dataclass
-class ConversionTask:
-    id: str
-    plan: ConversionPlan
-    status: ConversionStatus = ConversionStatus.PENDING
-    result: Optional[ConversionResult] = None
-    start_time: Optional[float] = None
-    end_time: Optional[float] = None
-    progress: float = 0.0
-    error_message: Optional[str] = None
-
-@dataclass
-class WorkspaceStatus:
-    workspace_path: Path
-    active_tasks: List[ConversionTask] = field(default_factory=list)
-    completed_tasks: List[ConversionTask] = field(default_factory=list)
-    failed_tasks: List[ConversionTask] = field(default_factory=list)
-    cache_size: Optional[str] = None
-    available_formats: Dict[str, List[str]] = field(default_factory=dict)
-
 class ModelConverterAPI:
     def __init__(self, workspace_path: Optional[Path] = None):
         self.workspace_path = workspace_path or Path.cwd()
         self.converter = ModelConverter()
-        self._active_tasks: Dict[str, ConversionTask] = {}
 
     def detect_model(self, model_path: str) -> Dict[str, Any]:
         """
@@ -178,15 +150,21 @@ class ModelConverterAPI:
         """
         return self.detect_model(model_path)
 
-    def list_supported(self) -> Dict[str, Any]:
+    def list_supported(self, full: bool = True) -> Dict[str, Any]:
         """
-        Get supported formats and conversion matrix.
+        Get supported formats and conversion matrix (if full=True), or just input/output formats (if full=False).
         """
-        return {
-            "input_formats": self._get_input_formats(),
-            "output_formats": self._get_output_formats(),
-            "conversion_matrix": self._get_conversion_matrix()
-        }
+        if full:
+            return {
+                "input_formats": self._get_input_formats(),
+                "output_formats": self._get_output_formats(),
+                "conversion_matrix": self._get_conversion_matrix()
+            }
+        else:
+            return {
+                "input_formats": self._get_input_formats(),
+                "output_formats": self._get_output_formats(),
+            }
 
     def manage_config(self, action: str = "show", key: str = None, value: str = None):
         from model_converter_tool.config import ConfigManager
@@ -210,31 +188,6 @@ class ModelConverterAPI:
     def manage_cache(self, action: str = "show"):
         from model_converter_tool.core.cache import manage_cache
         return manage_cache(action)
-
-    def get_workspace_status(self):
-        """
-        Return the current workspace status, including path and (optionally) task lists.
-        """
-        return WorkspaceStatus(
-            workspace_path=self.workspace_path,
-            active_tasks=list(self._active_tasks.values()),
-            completed_tasks=[],
-            failed_tasks=[],
-            cache_size=None,
-            available_formats={
-                "input_formats": self.converter.get_input_formats(),
-                "output_formats": self.converter.get_output_formats(),
-            },
-        )
-
-    def get_supported_formats(self):
-        """
-        Return supported input and output formats as a dict.
-        """
-        return {
-            "input_formats": self.converter.get_input_formats(),
-            "output_formats": self.converter.get_output_formats(),
-        }
 
     # --- Private helper methods ---
     def _get_model_metadata(self, model_path: str, format_name: str) -> Dict[str, Any]:

@@ -9,6 +9,33 @@ import click
 import json
 import yaml
 import shutil
+from model_converter_tool.api import ModelConverterAPI
+
+# Dynamically generate a beautified conversion matrix table (pure text, English comments)
+def get_conversion_matrix_table():
+    api = ModelConverterAPI()
+    matrix = api.list_supported(full=True)["conversion_matrix"]
+    # Calculate the max width for input format column
+    max_input_len = max(len(fmt) for fmt in matrix)
+    header = f"{'Input Format'.ljust(max_input_len)} | Supported Output Formats"
+    separator = f"{'-' * max_input_len}-+-{'-' * 28}"
+    lines = [header, separator]
+    for input_fmt, outputs in matrix.items():
+        out_str = ", ".join(outputs)
+        lines.append(f"{input_fmt.ljust(max_input_len)} | {out_str}")
+    return '\n'.join(lines)
+
+CONVERSION_MATRIX = get_conversion_matrix_table()
+
+EXAMPLES = f"""
+[bold cyan]Examples:[/bold cyan]
+  modelconvert convert bert-base-uncased --to onnx
+  modelconvert convert facebook/opt-125m --to gptq --quant 4bit
+  modelconvert convert sshleifer/tiny-gpt2 --to safetensors --dtype fp16 -o ./outputs/tiny_gpt2_fp16
+
+Supported Conversion Matrix:
+{CONVERSION_MATRIX}
+"""
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
@@ -101,21 +128,9 @@ def convert(
         typer.echo("Conversion aborted due to insufficient disk space.")
         raise typer.Exit(1)
 
-    from model_converter_tool.core.validation import validate_model
-    val_result = validate_model(input, output)
-    if not (isinstance(val_result, dict) and val_result.get('valid', False)):
-        errors = val_result.get('errors', [])
-        if not errors:
-            errors = val_result.get('validation', {}).get('errors', [])
-        supported = val_result.get('format_info', {}).get('supported_outputs', [])
-        if errors:
-            rprint(f"[red]Model validation failed: {'; '.join(errors)}[/red]")
-            if supported:
-                rprint(f"[yellow]Supported output formats for this model: {', '.join(supported)}[/yellow]")
-        else:
-            rprint(f"[red]Model validation failed, cannot convert: {val_result}[/red]")
-        raise typer.Exit(1)
-
+    # Remove the call to validate_model (pre-validation) and related error handling.
+    # Only call convert_model (which already includes validation) and handle its result.
+    # Keep error messages and output user-friendly.
     output_path = auto_complete_output_path(input, output_path, output)
     quantization_config = None
     if quant_config:

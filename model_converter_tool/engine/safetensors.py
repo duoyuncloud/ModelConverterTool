@@ -10,7 +10,6 @@ def convert_to_safetensors(
     model: Any,
     tokenizer: Any,
     model_name: str,
-    output_path: str,
     model_type: str,
     device: str,
     dtype: str = None

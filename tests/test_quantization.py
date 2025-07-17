@@ -11,7 +11,7 @@ import platform
 
 import pytest
 
-from model_converter_tool.converter import ModelConverter
+from model_converter_tool.api import ModelConverterAPI
 
 # Skip macOS quantization tests in CI environment
 is_ci = os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'
@@ -21,8 +21,8 @@ if sys.platform == 'darwin' and is_ci:
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 @pytest.fixture(scope="module")
-def converter():
-    return ModelConverter()
+def api():
+    return ModelConverterAPI()
 
 @pytest.fixture(scope="module")
 def output_dir():
@@ -30,26 +30,36 @@ def output_dir():
     d.mkdir(parents=True, exist_ok=True)
     return d
 
-@pytest.mark.parametrize("input_model,output_format,output_file,quantization,model_type", [
-    ("facebook/opt-125m", "gptq", "opt_125m_gptq", "4bit", "text-generation"),
-    ("facebook/opt-125m", "awq", "opt_125m_awq", "4bit", "text-generation"),
-    ("Qwen/Qwen2-0.5B", "gguf", "qwen2-0.5b.gguf", "q4_k_m", "text-generation"),
-    ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
-])
-def test_quantization(converter, output_dir, input_model, output_format, output_file, quantization, model_type):
+@pytest.mark.parametrize(
+    "input_model,output_format,output_file,quantization,model_type",
+    [
+        ("facebook/opt-125m", "gptq", "opt_125m_gptq", "4bit", "text-generation"),
+        ("facebook/opt-125m", "awq", "opt_125m_awq", "4bit", "text-generation"),
+        ("Qwen/Qwen2-0.5B", "gguf", "qwen2-0.5b.gguf", "q4_k_m", "text-generation"),
+        ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
+    ],
+    ids=[
+        f"{m}_to_{f}_{q}" for m, f, _, q, _ in [
+            ("facebook/opt-125m", "gptq", "opt_125m_gptq", "4bit", "text-generation"),
+            ("facebook/opt-125m", "awq", "opt_125m_awq", "4bit", "text-generation"),
+            ("Qwen/Qwen2-0.5B", "gguf", "qwen2-0.5b.gguf", "q4_k_m", "text-generation"),
+            ("gpt2", "mlx", "gpt2.mlx", "q4_k_m", "text-generation"),
+        ]
+    ]
+)
+def test_quantization(api, output_dir, input_model, output_format, output_file, quantization, model_type):
     # Automatically skip MLX tests (non-Apple Silicon)
     if output_format == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
         pytest.skip("MLX only supported on Apple Silicon macOS")
     
     output_path = str(output_dir / output_file)
-    result = converter.convert(
-        model_name=input_model,
+    result = api.convert_model(
+        model_path=input_model,
         output_format=output_format,
         output_path=output_path,
         model_type=model_type,
         device="cpu",
         quantization=quantization,
-        fake_weight=True,  # Use fake weights for speed
     )
     print(f"DEBUG: result.success = {result.success}")
     print(f"DEBUG: result.error = {result.error}")
@@ -58,18 +68,17 @@ def test_quantization(converter, output_dir, input_model, output_format, output_
     assert result.success, f"{output_format} quantization failed: {result.error}"
     assert os.path.exists(output_path) 
 
-def test_quantization_config_applied(converter, output_dir):
+def test_quantization_config_applied(api, output_dir):
     import json, os
     quant_config = {"bits": 3, "group_size": 64, "sym": True, "desc": "test-desc"}
     output_path = str(output_dir / "opt_125m_gptq_custom")
-    result = converter.convert(
-        model_name="facebook/opt-125m",
+    result = api.convert_model(
+        model_path="facebook/opt-125m",
         output_format="gptq",
         output_path=output_path,
         model_type="text-generation",
         device="cpu",
         quantization_config=quant_config,
-        fake_weight=True,  # Use fake weights for speed
     )
     assert result.success, f"Quantization with config failed: {result.error}"
     config_path = os.path.join(output_path, "config.json")
