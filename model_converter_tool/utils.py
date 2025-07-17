@@ -493,17 +493,33 @@ def auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type):
     """
     Robustly load model and tokenizer if not provided. Returns (model, tokenizer).
     Uses AutoModelForCausalLM for text-generation/causal/lm/generation types, else AutoModel.
+    If the specified model_type is not supported, fallback to 'auto'.
     """
     from transformers import AutoModel, AutoModelForCausalLM
     from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
-    if model is None:
-        if model_type and any(x in model_type for x in ("causal", "lm", "generation", "text-generation")):
-            model = load_model_with_cache(model_name, AutoModelForCausalLM)
+    def _load(model_type_to_use):
+        if model is None:
+            if model_type_to_use and any(x in model_type_to_use for x in ("causal", "lm", "generation", "text-generation")):
+                loaded_model = load_model_with_cache(model_name, AutoModelForCausalLM)
+            else:
+                loaded_model = load_model_with_cache(model_name, AutoModel)
         else:
-            model = load_model_with_cache(model_name, AutoModel)
-    if tokenizer is None:
-        tokenizer = load_tokenizer_with_cache(model_name)
-    return model, tokenizer
+            loaded_model = model
+        loaded_tokenizer = tokenizer or load_tokenizer_with_cache(model_name)
+        return loaded_model, loaded_tokenizer
+    try:
+        # Try with user-specified model_type first
+        return _load(model_type)
+    except Exception as e:
+        # If model_type is not 'auto', fallback to 'auto' on failure
+        if model_type != "auto":
+            try:
+                return _load("auto")
+            except Exception:
+                # Raise the original error if fallback also fails
+                raise e
+        else:
+            raise
 
 
 def get_calibration_dataset(use_large_calibration, tag="AWQ"):
