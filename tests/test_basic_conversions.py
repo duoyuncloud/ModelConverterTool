@@ -39,13 +39,13 @@ def output_dir():
 
 # Use dict to drive all README demos
 DEMO_TASKS = [
-    {"input_model": "gpt2", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "feature-extraction"},
+    {"input_model": "gpt2", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "text-classification"},
     # Use Qwen/Qwen2-0.5B for GGUF
     {"input_model": "Qwen/Qwen2-0.5B", "output_format": "gguf", "output_file": "qwen2-0.5b.gguf", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     # fp16 is now tested as a safetensors variant
     {"input_model": "gpt2", "output_format": "safetensors", "output_file": "tiny_gpt2_fp16_safetensors", "model_type": "text-generation", "dtype": "fp16"},
-    {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "feature-extraction"},
+    {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "text-classification"},
     {"input_model": "gpt2", "output_format": "safetensors", "output_file": "gpt2_safetensors", "model_type": "text-generation"},
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
 ]
@@ -73,7 +73,7 @@ def test_basic_conversion(api, output_dir, task):
             pytest.skip(f"Model {task['input_model']} not available on HuggingFace")
     output_path = str(output_dir / task["output_file"])
     convert_kwargs = dict(
-        model_name=task["input_model"],
+        model_path=task["input_model"],  # Use model_path as required by API
         output_format=task["output_format"],
         output_path=output_path,
         model_type=task["model_type"],

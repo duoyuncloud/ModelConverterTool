@@ -117,12 +117,10 @@ def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
         return False
 
 def validate_mlx_file(path: str, *args, **kwargs) -> bool:
-    """
-    Static validation for MLX files. Checks if the file exists and has a .npz extension.
-    Returns True if the file passes static validation, False otherwise.
-    """
-    if not os.path.exists(path):
+    import os
+    if not os.path.isdir(path):
         return False
-    if not path.endswith('.npz'):
-        return False
-    return True 
+    files = os.listdir(path)
+    has_config = 'config.json' in files
+    has_weights = any(f.endswith('.npz') or f.endswith('.safetensors') for f in files)
+    return has_config and has_weights 

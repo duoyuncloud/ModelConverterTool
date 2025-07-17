@@ -115,13 +115,17 @@ class ModelConverter:
         errors = []
         warnings = []
 
+        # Treat 'hf' and 'huggingface' as equivalent
+        input_format_norm = input_format.replace('hf', 'huggingface') if input_format == 'hf' else input_format
+        output_format_norm = output_format.replace('hf', 'huggingface') if output_format == 'hf' else output_format
+
         # Check if input format is supported
-        if input_format not in SUPPORTED_FORMATS and input_format != "huggingface":
+        if input_format_norm not in self.get_conversion_matrix() and input_format_norm != "huggingface":
             errors.append(f"Unsupported input format: {input_format}")
 
         # Check if output format is supported (allow custom_quant for all)
-        valid_outputs = self.get_conversion_matrix().get(input_format, [])
-        if output_format not in valid_outputs:
+        valid_outputs = self.get_conversion_matrix().get(input_format_norm, [])
+        if output_format_norm not in valid_outputs:
             errors.append(f"Unsupported output format: {output_format}")
 
         # Check model type
@@ -135,7 +139,7 @@ class ModelConverter:
             errors.append(f"Invalid device: {device}. Valid devices: {valid_devices}")
 
         # Check quantization for supported formats
-        if quantization and output_format not in ["gguf", "gptq", "awq", "mlx", "custom_quant"]:
+        if quantization and output_format_norm not in ["gguf", "gptq", "awq", "mlx", "custom_quant"]:
             warnings.append(f"Quantization not supported for {output_format} format")
 
         return {
@@ -143,6 +147,15 @@ class ModelConverter:
             "errors": errors,
             "warnings": warnings
         }
+
+    def _map_model_type_internal(self, model_type: str) -> str:
+        """
+        Internal helper: Map 'feature-extraction' to 'auto' for model loading/conversion.
+        This preserves user intent but ensures compatibility with underlying libraries.
+        """
+        if model_type == "feature-extraction":
+            return "auto"
+        return model_type
 
     def convert(
         self,
@@ -167,6 +180,8 @@ class ModelConverter:
         try:
             input_format, norm_path = self._detect_model_format(model_name)
             convert_func, validate_func = self._get_converter_functions(output_format)
+            # Internally map 'feature-extraction' to 'auto' for compatibility
+            internal_model_type = self._map_model_type_internal(model_type)
             # Special handling for some formats
             if output_format == "safetensors":
                 try:
@@ -181,7 +196,7 @@ class ModelConverter:
                         tokenizer,
                         model_name,
                         output_path,
-                        model_type,
+                        internal_model_type,
                         device,
                         dtype
                     )
@@ -214,7 +229,7 @@ class ModelConverter:
                         None,
                         model_name,
                         output_path,
-                        model_type,
+                        internal_model_type,
                         device,
                         quantization,
                         use_large_calibration,
@@ -259,11 +274,11 @@ class ModelConverter:
                     pass
                 elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
-                        model, tokenizer, model_name, output_path, model_type, device, quantization, use_large_calibration, quantization_config
+                        model, tokenizer, model_name, output_path, internal_model_type, device, quantization, use_large_calibration, quantization_config
                     )
                 else:
                     success, extra = convert_func(
-                        model, tokenizer, model_name, output_path, model_type, device
+                        model, tokenizer, model_name, output_path, internal_model_type, device
                     )
                 if not success:
                     result.error = extra if isinstance(extra, str) else f"Conversion failed for {output_format}"
@@ -320,17 +335,24 @@ class ModelConverter:
         for k in matrix:
             if 'custom_quant' not in matrix[k]:
                 matrix[k].append('custom_quant')
+        # Make 'hf' and 'huggingface' equivalent for all input types
+        for k in list(matrix.keys()):
+            if 'huggingface' in matrix[k] and 'hf' not in matrix[k]:
+                matrix[k].append('hf')
+            if 'hf' in matrix[k] and 'huggingface' not in matrix[k]:
+                matrix[k].append('huggingface')
         return matrix
 
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         return {
-            "huggingface": ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
-            "safetensors": ["huggingface", "safetensors"],
+            "huggingface": ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
+            "hf": ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
+            "safetensors": ["huggingface", "hf", "safetensors"],
             "torchscript": ["torchscript"],
             "onnx": ["onnx"],
             "gguf": ["gguf"],
             "mlx": ["mlx"]
-        } 
+        }
 
     def get_input_formats(self) -> dict:
         """
@@ -343,7 +365,7 @@ class ModelConverter:
         """
         Return a dict of supported output formats. Key: format name, Value: description or empty dict.
         """
-        return {fmt: {} for fmt in ["huggingface", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]}
+        return {fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]}
 
     def _can_infer_model(self, model_path, model_format=None, **kwargs):
         """
