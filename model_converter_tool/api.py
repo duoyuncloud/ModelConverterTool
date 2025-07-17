@@ -185,10 +185,6 @@ class ModelConverterAPI:
         from model_converter_tool.core.history import get_history
         return get_history()
 
-    def manage_cache(self, action: str = "show"):
-        from model_converter_tool.core.cache import manage_cache
-        return manage_cache(action)
-
     # --- Private helper methods ---
     def _get_model_metadata(self, model_path: str, format_name: str) -> Dict[str, Any]:
         return {"format": format_name, "path": model_path, "size": "unknown"}

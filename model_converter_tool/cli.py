@@ -11,9 +11,6 @@ EXAMPLES = """
   modelconvert convert facebook/opt-125m --to gptq --quant 4bit
   modelconvert convert sshleifer/tiny-gpt2 --to safetensors --dtype fp16 -o ./outputs/tiny_gpt2_fp16
   modelconvert batch configs/batch_template.yaml
-  modelconvert list formats
-  modelconvert validate ./outputs/llama-2-7b.gguf
-  modelconvert cache
   modelconvert config set cache_dir ./mycache
 """
 
@@ -54,7 +51,7 @@ app.command()(inspect.inspect)
 app.command()(convert.convert)
 app.command()(batch.batch)
 app.command()(history.history)
-app.command()(config.config)
+app.add_typer(config.app, name="config")
 app.command()(check.check)
 app.command(name="to-llama-format")(to_llama_format.to_llama_format)
 

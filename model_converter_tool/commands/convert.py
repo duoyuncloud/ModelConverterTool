@@ -1,6 +1,6 @@
 import typer
 import os
-from model_converter_tool.core.conversion import convert_model
+from model_converter_tool.core.convert import convert_model
 from model_converter_tool.utils import check_and_handle_disk_space
 from model_converter_tool.utils import ansi_safe_wrap
 import sys
@@ -163,8 +163,4 @@ def convert(
                 typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}")
         # Ensure CLI returns non-zero exit code on failure for CI/scripting compatibility
-        raise typer.Exit(1)
-
-# Register with Typer, enabling default help
-app = typer.Typer()
-app.command()(convert) 
+        raise typer.Exit(1) 

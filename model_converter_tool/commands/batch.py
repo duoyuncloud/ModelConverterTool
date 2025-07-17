@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import List, Dict, Any
-from model_converter_tool.core.conversion import convert_model
+from model_converter_tool.core.convert import convert_model
 from model_converter_tool.utils import check_and_handle_disk_space, estimate_model_size, format_bytes
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, SpinnerColumn, TaskProgressColumn
 
@@ -90,8 +90,8 @@ def batch(
         typer.echo(f"\n[bold]Task {i+1}/{len(tasks)}: {task.get('model_path')} → {task.get('output_format')}[/bold]")
         try:
             result = convert_model(
-                input_path=task.get('model_path'),
-                output_path=task.get('output_path'),
+                input_path=str(task.get('model_path')) if task.get('model_path') is not None else None,
+                output_path=str(task.get('output_path')) if task.get('output_path') is not None else None,
                 to=task.get('output_format'),
                 quant=task.get('quantization'),
                 model_type=task.get('model_type', 'auto'),

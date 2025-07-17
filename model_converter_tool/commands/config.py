@@ -31,7 +31,4 @@ def set(key: str = typer.Argument(..., help="Config key to set."), value: str = 
 def list_presets():
     """List all available configuration presets."""
     result = manage_config("list_presets", None, None)
-    typer.echo(str(result))
-
-# For Typer CLI registration
-config = app 
+    typer.echo(str(result)) 

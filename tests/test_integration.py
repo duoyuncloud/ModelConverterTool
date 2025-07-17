@@ -50,13 +50,13 @@ def test_batch_conversion(tmp_output):
             {
                 "model_path": "gpt2",
                 "output_format": "onnx",
-                "output": str(tmp_output / "batch_gpt2.onnx"),
+                "output_path": str(tmp_output / "batch_gpt2.onnx"),
                 "model_type": "text-generation"
             },
             {
                 "model_path": "facebook/opt-125m",
                 "output_format": "gptq",
-                "output": str(tmp_output / "batch_opt125m_gptq"),
+                "output_path": str(tmp_output / "batch_opt125m_gptq"),
                 "model_type": "text-generation",
                 "quantization": "4bit"
             }
@@ -86,16 +86,13 @@ def test_config_show_and_set():
     assert result2.returncode == 0
     assert "test_key" in result2.stdout
 
-def test_history_and_cache():
+def test_history():
     """
-    Test history and cache commands via CLI.
+    Test history commands via CLI.
     """
     result = subprocess.run(CLI_CMD + ["history"], capture_output=True, text=True)
     assert result.returncode == 0
     assert "Completed tasks" in result.stdout
-    # Cache show (if implemented)
-    result2 = subprocess.run(CLI_CMD + ["cache"], capture_output=True, text=True)
-    assert result2.returncode == 0 or "not implemented" in result2.stdout.lower()
 
 # --- Error and edge case integration ---
 def test_invalid_format_error(tmp_output):
