@@ -120,7 +120,7 @@ class ModelConverterAPI:
         except Exception as e:
             return {"can_infer": False, "error": str(e)}
 
-    def convert_model(self, model_path: str, output_format: str, output_path: str, **kwargs) -> ConversionResult:
+    def convert_model(self, model_path: str, output_format: str, output_path: str, fake_weight_shape_dict: dict = None, **kwargs) -> ConversionResult:
         """
         Execute model conversion.
         """
@@ -130,6 +130,10 @@ class ModelConverterAPI:
         if not plan.is_valid:
             return ConversionResult(success=False, error="Invalid conversion plan", extra_info={"plan": plan})
         try:
+            # Remove main arguments from kwargs to avoid multiple values error
+            filtered_kwargs = dict(kwargs)
+            for k in ["model_type", "output_format", "output_path", "device", "quantization", "use_large_calibration", "quantization_config", "model_name"]:
+                filtered_kwargs.pop(k, None)
             result = self.converter.convert(
                 model_name=plan.model_path,
                 output_format=plan.output_format,
@@ -138,7 +142,9 @@ class ModelConverterAPI:
                 device=plan.device,
                 quantization=plan.quantization,
                 use_large_calibration=plan.use_large_calibration,
-                quantization_config=getattr(plan, 'quantization_config', None)
+                quantization_config=getattr(plan, 'quantization_config', None),
+                fake_weight_shape_dict=fake_weight_shape_dict,  # Pass the custom shape dict
+                **filtered_kwargs
             )
             return result
         except Exception as e:

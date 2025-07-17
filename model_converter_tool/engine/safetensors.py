@@ -13,7 +13,7 @@ def convert_to_safetensors(
     output_path: str,
     model_type: str,
     device: str,
-    dtype: str = None
+    dtype: str = None,
 ) -> tuple:
     """
     Save model in safetensors format, with optional precision control.
@@ -38,8 +38,12 @@ def convert_to_safetensors(
                 model = model.half()
             elif dtype == "fp32":
                 model = model.float()
+            # Assert model and output_dir are valid before saving
+            assert model is not None, "Model is None before saving!"
+            assert output_dir is not None, "Output directory is None!"
             model.save_pretrained(str(output_dir), safe_serialization=True)
-            if tokenizer:
+            # Only save tokenizer if it exists
+            if tokenizer is not None:
                 tokenizer.save_pretrained(str(output_dir))
             logger.info(f"Safetensors conversion completed: {output_dir} (dtype={dtype or 'default'})")
             return True, None

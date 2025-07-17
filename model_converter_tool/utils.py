@@ -105,28 +105,33 @@ def get_local_cache_path(model_name: str) -> str:
     return model_name
 
 
-def load_model_with_cache(model_name: str, model_class=None, fake_weight: bool = False, **kwargs):
+def load_model_with_cache(model_name: str, model_class=None, fake_weight: bool = False, fake_weight_shape_dict: dict = None, **kwargs):
     """
-    Unified model loading function, prioritize local cache, allow network download if cache is incomplete.
-    If fake_weight is True, generate a model with the correct architecture and all weights set to zero.
-    Args:
-        model_name: Model name or path
-        model_class: Model class (e.g., AutoModel, AutoModelForCausalLM, etc.)
-        fake_weight: If True, generate a fake model with zero weights
-        **kwargs: Other parameters passed to from_pretrained
-    Returns:
-        Loaded model object
+    Load a model from cache or disk. If fake_weight is True, generate a model with the correct architecture and all weights set to zero or custom shapes.
+    fake_weight_shape_dict: Optional dict specifying custom shapes for each weight tensor.
     """
     if fake_weight:
         from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
+        import torch
         config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+        # Remove quantization_config if present to avoid loading errors with fake weights
+        if hasattr(config, 'quantization_config'):
+            delattr(config, 'quantization_config')
+        if hasattr(config, 'to_dict') and 'quantization_config' in config.to_dict():
+            # Some configs may keep it in the dict representation
+            config_dict = config.to_dict()
+            config_dict.pop('quantization_config', None)
+            # Rebuild config from dict to ensure it's clean
+            config = type(config).from_dict(config_dict)
         if model_class is None:
             model_type = getattr(config, 'model_type', None)
             if model_type is not None and ("qwen" in model_type):
                 model_class = AutoModelForCausalLM
             else:
                 model_class = AutoModel
-        return generate_fake_model(config, model_class)
+        # Generate the model with all weights set to zero (default shapes)
+        model = generate_fake_model(config, model_class, fake_weight_shape_dict)
+        return model
     # Detect Qwen model type and use correct class
     if model_class is None:
         from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
@@ -575,20 +580,29 @@ def patch_quantization_config(config_path, bits, group_size, sym, desc):
         json.dump(config, f, indent=2)
 
 
-def generate_fake_model(config, model_class):
+def generate_fake_model(config, model_class, fake_weight_shape_dict: dict = None):
     """
     Generate a model instance with the given config and fill all weights with zeros.
+    If fake_weight_shape_dict is provided, use it to set custom shapes for weights.
     Args:
         config: Model config object
         model_class: Model class (e.g., AutoModel, AutoModelForCausalLM)
+        fake_weight_shape_dict: Optional dict of {param_name: shape}
     Returns:
-        Model instance with all weights set to zero
+        Model instance with all weights set to zero (default or custom shapes)
     """
     import torch
     model = model_class.from_config(config)
-    for param in model.parameters():
+    for name, param in model.named_parameters():
         if param.requires_grad:
-            torch.nn.init.zeros_(param)
+            if fake_weight_shape_dict and name in fake_weight_shape_dict:
+                try:
+                    shape = tuple(fake_weight_shape_dict[name])
+                    param.data = torch.zeros(shape, dtype=param.dtype, device=param.device)
+                except Exception as e:
+                    print(f"[WARNING] Could not set fake weight for {name} with shape {fake_weight_shape_dict[name]}: {e}")
+            else:
+                torch.nn.init.zeros_(param)
     return model
 
 
@@ -634,3 +648,23 @@ def create_dummy_model(output_dir: str, **kwargs):
         json.dump(vocab, f, indent=2)
     logger.info(f"✅ Simple dummy model config generated at {output_dir}")
     logger.warning("⚠️  This is a test-only dummy model. Use real models in production.")
+
+
+def patch_config_remove_quantization_config(output_dir):
+    """
+    Remove quantization_config field from all .json files in the given directory.
+    This is used to ensure fake-weight outputs are always loadable by transformers.
+    """
+    import json
+    from pathlib import Path
+    output_dir = Path(output_dir)
+    for json_file in output_dir.glob('*.json'):
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+            if "quantization_config" in config_data:
+                del config_data["quantization_config"]
+                with open(json_file, "w", encoding="utf-8") as f:
+                    json.dump(config_data, f, indent=2)
+        except Exception as e:
+            print(f"[WARNING] Failed to patch {json_file}: {e}")

@@ -87,6 +87,10 @@ def convert_to_gguf(
             if sym is None:
                 sym = False
             patch_quantization_config(gguf_file.parent / "config.json", bits, group_size, sym, desc)
+            # After saving model, patch config if fake_weight
+            if 'fake_weight' in locals() and fake_weight:
+                from model_converter_tool.utils import patch_config_remove_quantization_config
+                patch_config_remove_quantization_config(output_dir)
             return True, None
         logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
         return False, None

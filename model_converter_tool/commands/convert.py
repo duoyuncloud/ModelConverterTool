@@ -85,6 +85,10 @@ def convert(
     use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
     dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."),
     fake_weight: bool = typer.Option(False, help="Use fake weights for the model (for testing and debugging). Default: False"),
+    fake_weight_config: str = typer.Option(
+        None,
+        help="Path to a JSON or YAML file specifying custom shapes for fake weights. Overrides default shapes if provided."
+    ),
 ):
     """
     Convert models between formats, with optional quantization, precision, and fake weights.
@@ -143,7 +147,37 @@ def convert(
         except Exception as e:
             typer.echo(f"[red]Failed to parse quantization config: {e}[/red]")
             raise typer.Exit(1)
-    result = convert_model(input, output_path, output, quant, model_type, device, use_large_calibration, dtype=dtype, quantization_config=quantization_config, fake_weight=fake_weight)
+
+    # Parse fake_weight_config if provided
+    fake_weight_shape_dict = None  # This will hold the parsed config
+    if fake_weight_config:
+        try:
+            # Support both YAML and JSON
+            if fake_weight_config.strip().endswith((".yaml", ".yml")) and os.path.exists(fake_weight_config):
+                with open(fake_weight_config, 'r') as f:
+                    fake_weight_shape_dict = yaml.safe_load(f)
+            elif fake_weight_config.strip().endswith(".json") and os.path.exists(fake_weight_config):
+                with open(fake_weight_config, 'r') as f:
+                    fake_weight_shape_dict = json.load(f)
+            else:
+                raise ValueError("Unsupported fake_weight_config file type. Please use .json or .yaml/.yml.")
+        except Exception as e:
+            typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]")
+            raise typer.Exit(1)
+
+    result = convert_model(
+        input,
+        output_path,
+        output,
+        quant,
+        model_type,
+        device,
+        use_large_calibration,
+        dtype=dtype,
+        quantization_config=quantization_config,
+        fake_weight=fake_weight,
+        fake_weight_shape_dict=fake_weight_shape_dict  # Pass the parsed config to the core logic
+    )
     typer.echo(f"[Output path used]: {output_path}")
     if result.success:
         typer.echo(f"Conversion succeeded! Output: {result.output_path}")

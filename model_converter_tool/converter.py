@@ -171,6 +171,7 @@ class ModelConverter:
         dtype: str = None,
         quantization_config: dict = None,
         fake_weight: bool = False,
+        fake_weight_shape_dict: dict = None,  # New argument for custom fake weight shapes
     ) -> ConversionResult:
         """
         Convert a model to the specified format. Always performs static validation after conversion.
@@ -190,7 +191,7 @@ class ModelConverter:
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight)
+                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict)
                     success, extra_info = convert_to_safetensors(
                         model,
                         tokenizer,
@@ -198,7 +199,8 @@ class ModelConverter:
                         output_path,
                         internal_model_type,
                         device,
-                        dtype
+                        dtype,
+                        fake_weight=fake_weight  # Pass fake_weight flag for config patching
                     )
                     if not success:
                         result.error = f"Safetensors conversion failed: {extra_info}"
@@ -223,7 +225,7 @@ class ModelConverter:
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight)
+                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict)
                     success, extra_info = convert_to_custom_quant(
                         model,
                         None,

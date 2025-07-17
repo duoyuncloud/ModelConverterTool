@@ -2,7 +2,7 @@ from model_converter_tool.api import ModelConverterAPI
 from model_converter_tool.core.history import append_history_record
 import time
 
-def convert_model(input_path: str, output_path: str, to: str = None, quant: str = None, model_type: str = "auto", device: str = "auto", use_large_calibration: bool = False, dtype: str = None, quantization_config: dict = None, fake_weight: bool = False):
+def convert_model(input_path: str, output_path: str, to: str = None, quant: str = None, model_type: str = "auto", device: str = "auto", use_large_calibration: bool = False, dtype: str = None, quantization_config: dict = None, fake_weight: bool = False, fake_weight_shape_dict: dict = None):
     """
     Main entry point for model conversion. Calls the API layer to perform the conversion and records the result in the history.
     """
@@ -17,7 +17,8 @@ def convert_model(input_path: str, output_path: str, to: str = None, quant: str 
         use_large_calibration=use_large_calibration,
         dtype=dtype,
         quantization_config=quantization_config,
-        fake_weight=fake_weight
+        fake_weight=fake_weight,
+        fake_weight_shape_dict=fake_weight_shape_dict  # Pass the custom shape dict
     )
     # Record history
     record = {
