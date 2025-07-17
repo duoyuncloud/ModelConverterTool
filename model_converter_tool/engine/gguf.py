@@ -48,7 +48,7 @@ def convert_to_gguf(
         else:
             output_dir.mkdir(parents=True, exist_ok=True)
             gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-        llama_cpp_script = Path("llama.cpp/convert_hf_to_gguf.py")
+        llama_cpp_script = Path("tools/llama.cpp/convert_hf_to_gguf.py")
         if llama_cpp_script.exists():
             model_dir = model_name
             if not Path(model_name).exists():

@@ -7,46 +7,50 @@ import os
 import json
 from datetime import datetime
 from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
+import shutil
 
 logger = logging.getLogger(__name__)
 
 MLX_EXAMPLES_REPO = "https://github.com/ml-explore/mlx-examples.git"
-MLX_EXAMPLES_DIR = "examples/mlx"
-CONVERT_SCRIPT = "convert_checkpoint.py"
+MLX_EXAMPLES_DIR = "tools/mlx-examples"
+REQUIRED_SCRIPTS = ["llms/llama/convert.py"]  # Only keep what is actually needed
 
-def _auto_setup_mlx_examples():
+
+def ensure_mlx_examples_available():
+    """
+    Ensure that the required MLX conversion scripts are available locally.
+    If missing, auto-clone the official mlx-examples repo into examples/mlx.
+    Only error if clone fails or scripts are still missing.
+    """
     repo_dir = Path(MLX_EXAMPLES_DIR)
-    def clone_repo():
+    missing = [s for s in REQUIRED_SCRIPTS if not (repo_dir / s).exists()]
+    if not repo_dir.exists() or missing:
+        logger.warning(
+            f"[MLX] Required MLX conversion scripts not found in {MLX_EXAMPLES_DIR}.\n"
+            f"Missing: {', '.join(missing) if missing else 'all scripts'}\n"
+            f"Attempting to auto-clone the official mlx-examples repo..."
+        )
+        # Remove old dir if exists (to avoid partial/corrupt state)
         if repo_dir.exists():
-            import shutil
             shutil.rmtree(repo_dir)
-        logger.info("[MLX] Cloning latest mlx-examples...")
-        subprocess.check_call(["git", "clone", MLX_EXAMPLES_REPO, str(repo_dir)])
-    try:
-        if not repo_dir.exists():
-            clone_repo()
-        convert_scripts = list(repo_dir.rglob("*convert*.py"))
-        if not convert_scripts:
-            py_files = list(repo_dir.rglob("*.py"))
-            logger.error("[MLX] No scripts containing 'convert' found. Available Python scripts in current repository:")
-            for f in py_files:
-                logger.error(f"    - {f.relative_to(repo_dir)}")
-            raise RuntimeError(
-                f"[MLX] No conversion scripts found, possibly due to official repository structure changes or network/proxy issues. Please check the script list above, or manually adapt the latest conversion script. Repository address: {MLX_EXAMPLES_REPO}"
+        try:
+            subprocess.check_call(["git", "clone", "--depth=1", MLX_EXAMPLES_REPO, str(repo_dir)])
+        except Exception as e:
+            logger.error(f"[MLX] Auto-clone failed: {e}")
+            raise RuntimeError("MLX conversion cannot proceed without required scripts.")
+        # Re-check after clone
+        missing = [s for s in REQUIRED_SCRIPTS if not (repo_dir / s).exists()]
+        if missing:
+            logger.error(
+                f"[MLX] Even after auto-clone, missing scripts: {', '.join(missing)}.\n"
+                f"Please check the official repo or copy the required scripts manually."
             )
-        root_scripts = [s for s in convert_scripts if s.parent == repo_dir]
-        script_path = root_scripts[0] if root_scripts else convert_scripts[0]
-        logger.info(f"[MLX] Automatically selected conversion script: {script_path.relative_to(repo_dir)}")
-        if script_path.name == "convert.py":
-            script_type = "convert_py"
-        elif script_path.name == "convert_checkpoint.py":
-            script_type = "convert_checkpoint"
+            raise RuntimeError("MLX conversion cannot proceed without required scripts.")
         else:
-            script_type = "unknown"
-        return str(script_path), script_type
-    except Exception as e:
-        logger.error(f"[MLX] setup failed: {e}")
-        raise
+            logger.info(f"[MLX] Successfully cloned mlx-examples. Using scripts in {MLX_EXAMPLES_DIR}.")
+    else:
+        logger.info(f"[MLX] Using local MLX conversion scripts in {MLX_EXAMPLES_DIR}.")
+
 
 def convert_to_mlx(
     model: Any,
