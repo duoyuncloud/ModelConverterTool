@@ -42,7 +42,7 @@ jobs:
       # Install llama.cpp Python dependencies
       - name: Install llama.cpp Python dependencies
         run: |
-          pip install --no-cache-dir -r llama.cpp/requirements.txt
+          pip install --no-cache-dir -r tools/llama.cpp/requirements.txt
 
       # Run all unit and CLI tests, excluding the integration test
       - name: Run unit and CLI tests (exclude integration)
@@ -85,7 +85,7 @@ jobs:
       # Install llama.cpp Python dependencies
       - name: Install llama.cpp Python dependencies
         run: |
-          pip install --no-cache-dir -r llama.cpp/requirements.txt
+          pip install --no-cache-dir -r tools/llama.cpp/requirements.txt
 
       # Run only the high-coverage integration test
       - name: Run integration test
