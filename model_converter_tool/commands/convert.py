@@ -162,6 +162,8 @@ def convert(
             except Exception as e:
                 typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}")
+        # Ensure CLI returns non-zero exit code on failure for CI/scripting compatibility
+        raise typer.Exit(1)
 
 # Register with Typer, enabling default help
 app = typer.Typer()
