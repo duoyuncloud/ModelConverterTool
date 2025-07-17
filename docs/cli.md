@@ -10,7 +10,10 @@ The CLI allows users to convert, quantize, inspect, and manage machine learning 
 - `batch <config_path> [options]`: Batch convert models using a YAML/JSON config file.
 - `inspect <model>`: Inspect and display detailed model information.
 - `history`: Show conversion history.
-- `config [--action ...] [--key ...] [--value ...]`: Manage tool configuration.
+- `config show`: Show all configuration values.
+- `config get <key>`: Get a configuration value by key.
+- `config set <key> <value>`: Set a configuration value.
+- `config list-presets`: List all available configuration presets.
 - `check <model_path> [--format <format>] [--verbose]`: Check if a model file is usable (can be loaded and run a simple inference).
 
 ## convert options
@@ -38,9 +41,11 @@ The CLI allows users to convert, quantize, inspect, and manage machine learning 
 - (No arguments)
 
 ## config options
-- `--action`: Action to perform: show/get/set/list_presets (default: show)
-- `--key`: Config key (for get/set)
-- `--value`: Config value (for set)
+Subcommands:
+- `show`: Show all configuration values.
+- `get <key>`: Get a configuration value by key.
+- `set <key> <value>`: Set a configuration value.
+- `list-presets`: List all available configuration presets.
 
 ## check options
 - `<model_path>`: Path to the model file or directory (required)
@@ -52,6 +57,10 @@ Checks if a model file is usable (i.e., can be loaded and run a simple inference
 
 ### Examples
 ```bash
+python -m model_converter_tool.cli config show
+python -m model_converter_tool.cli config get cache_dir
+python -m model_converter_tool.cli config set cache_dir ./mycache
+python -m model_converter_tool.cli config list-presets
 python -m model_converter_tool.cli check ./outputs/llama-2-7b.gguf
 python -m model_converter_tool.cli check ./outputs/model.onnx
 python -m model_converter_tool.cli check ./outputs/model-gptq --format gptq

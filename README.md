@@ -25,7 +25,10 @@ source venv/bin/activate
 | `modelconvert to-llama-format <input_model> [options]` | Convert a model to llama.cpp GGUF format for Llama-compatible inference. |
 | `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
 | `modelconvert history` | Show conversion history. |
-| `modelconvert config [--action ...] [--key ...] [--value ...]` | Manage tool configuration. |
+| `modelconvert config show` | Show all configuration values. |
+| `modelconvert config get <key>` | Get a configuration value by key. |
+| `modelconvert config set <key> <value>` | Set a configuration value. |
+| `modelconvert config list-presets` | List all available configuration presets. |
 | `modelconvert check <model_path> [--format <format>]` | Check if a model file is usable (can be loaded and run a simple inference). |
 
 ---
@@ -58,9 +61,10 @@ source venv/bin/activate
   - `--skip-disk-check`: Skip disk space check (not recommended)
 - **history**: Show all completed, failed, and active conversion tasks.
 - **config**: Manage tool configuration.
-  - `--action`: show/get/set/list_presets (default: show)
-  - `--key`: Config key (for get/set)
-  - `--value`: Config value (for set)
+  - `show`: Show all configuration values.
+  - `get <key>`: Get a configuration value by key.
+  - `set <key> <value>`: Set a configuration value.
+  - `list-presets`: List all available configuration presets.
 - **check**: Check if a model file is usable (can be loaded and run a simple inference).
   - `<model_path>`: Path to the model file or directory (required)
   - `--format`, `-f`: Model format (optional, auto-detected if omitted)
@@ -93,8 +97,10 @@ modelconvert batch configs/batch_template.yaml --max-workers 2
 modelconvert history
 
 # Config management
-modelconvert config --action show
-modelconvert config --action set --key cache_dir --value ./mycache
+modelconvert config show
+modelconvert config set cache_dir ./mycache
+modelconvert config get cache_dir
+modelconvert config list-presets
 
 # Check if a model is usable (can be loaded and run inference)
 modelconvert check ./outputs/llama-2-7b.gguf

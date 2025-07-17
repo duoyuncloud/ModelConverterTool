@@ -3,25 +3,35 @@ from model_converter_tool.core.config import manage_config
 
 ARG_OPTIONAL = "[dim][optional][/dim]"
 
-def config(
-    action: str = typer.Option("show", help=f"Action: show/get/set/list_presets. {ARG_OPTIONAL} Default: show"),
-    key: str = typer.Option(None, help=f"Config key (for get/set). {ARG_OPTIONAL}"),
-    value: str = typer.Option(None, help=f"Config value (for set). {ARG_OPTIONAL}")
-):
-    """
-    Examples:
-      modelconvert config show
-      modelconvert config set cache_dir ./mycache
+app = typer.Typer(help="Manage global/local configuration.")
 
-    Manage global/local configuration.\n
-    Options:
-      --action   Action: show/get/set/list_presets. [optional, default: show]
-      --key      Config key (for get/set). [optional]
-      --value    Config value (for set). [optional]
-    """
-    result = manage_config(action, key, value)
+@app.command()
+def show():
+    """Show all configuration values."""
+    result = manage_config("show", None, None)
     if isinstance(result, dict):
         for k, v in result.items():
             typer.echo(f"{k}: {v}")
     else:
-        typer.echo(str(result)) 
+        typer.echo(str(result))
+
+@app.command()
+def get(key: str = typer.Argument(..., help="Config key to get.")):
+    """Get a configuration value by key."""
+    result = manage_config("get", key, None)
+    typer.echo(str(result))
+
+@app.command()
+def set(key: str = typer.Argument(..., help="Config key to set."), value: str = typer.Argument(..., help="Value to set.")):
+    """Set a configuration value."""
+    result = manage_config("set", key, value)
+    typer.echo(str(result))
+
+@app.command("list-presets")
+def list_presets():
+    """List all available configuration presets."""
+    result = manage_config("list_presets", None, None)
+    typer.echo(str(result))
+
+# For Typer CLI registration
+config = app 
