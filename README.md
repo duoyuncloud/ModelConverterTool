@@ -177,6 +177,18 @@ result = api.converter.convert(model_name="gpt2", output_format="onnx", output_p
 
 ## Testing
 
+The `tests/` directory contains all automated tests:
+- Unit and CLI tests run on every commit (see CI).
+- A high-coverage integration test (`test_integration.py`) covers the full workflow and should be run before releases.
+
+To run all tests:
 ```sh
-./run_all_tests.sh
+pytest
 ```
+
+For release validation, ensure `test_integration.py` passes:
+```sh
+pytest tests/test_integration.py
+```
+
+See `tests/README.md` for details on each test file.

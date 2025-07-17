@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:  # Allow manual trigger for full integration test
 
 jobs:
   test:
@@ -12,31 +13,81 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
+      # Upgrade pip and install build tools
       - name: Upgrade pip and install build tools
         run: |
           python -m pip install --upgrade pip setuptools wheel
 
+      # Install core dependencies (including torch, transformers, etc.)
       - name: Install core dependencies (including torch)
         run: |
           pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
 
+      # Install remaining dependencies from requirements.txt
       - name: Install remaining dependencies
         run: |
           pip install --no-cache-dir -U -r requirements.txt
 
+      # Install the model_converter_tool package in editable mode
       - name: Install model_converter_tool package
         run: |
           pip install -e .
 
+      # Install llama.cpp Python dependencies
       - name: Install llama.cpp Python dependencies
         run: |
           pip install --no-cache-dir -r llama.cpp/requirements.txt
 
-      - name: Run all tests
+      # Run all unit and CLI tests, excluding the integration test
+      - name: Run unit and CLI tests (exclude integration)
         run: |
-          pytest --maxfail=1 --disable-warnings -v
+          pytest --maxfail=1 --disable-warnings -v -k "not test_integration"
+
+  integration:
+    # This job only runs when manually triggered (workflow_dispatch)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Upgrade pip and install build tools
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      # Install core dependencies (including torch, transformers, etc.)
+      - name: Install core dependencies (including torch)
+        run: |
+          pip install --no-cache-dir torch>=2.0.0 transformers>=4.30.0 tokenizers>=0.13.0 accelerate>=0.20.0
+
+      # Install remaining dependencies from requirements.txt
+      - name: Install remaining dependencies
+        run: |
+          pip install --no-cache-dir -U -r requirements.txt
+
+      # Install the model_converter_tool package in editable mode
+      - name: Install model_converter_tool package
+        run: |
+          pip install -e .
+
+      # Install llama.cpp Python dependencies
+      - name: Install llama.cpp Python dependencies
+        run: |
+          pip install --no-cache-dir -r llama.cpp/requirements.txt
+
+      # Run only the high-coverage integration test
+      - name: Run integration test
+        run: |
+          pytest --maxfail=1 --disable-warnings -v tests/test_integration.py
