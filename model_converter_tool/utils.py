@@ -598,6 +598,8 @@ def generate_fake_model(config, model_class, fake_weight_shape_dict: dict = None
             if fake_weight_shape_dict and name in fake_weight_shape_dict:
                 try:
                     shape = tuple(fake_weight_shape_dict[name])
+                    if shape != tuple(param.shape):
+                        print(f"[WARNING] Shape mismatch for {name}: config {shape}, model default {tuple(param.shape)}. Using config shape.")
                     param.data = torch.zeros(shape, dtype=param.dtype, device=param.device)
                 except Exception as e:
                     print(f"[WARNING] Could not set fake weight for {name} with shape {fake_weight_shape_dict[name]}: {e}")

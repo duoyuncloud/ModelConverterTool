@@ -46,3 +46,4 @@ random_word>=1.0.8
 numpy
 llama-cpp-python  # Required for GGUF inference and dynamic usability checks 
 mlx-lm  # Required for robust MLX conversion and inference 
+tiktoken 

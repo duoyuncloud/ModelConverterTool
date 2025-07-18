@@ -87,7 +87,7 @@ def convert(
     fake_weight: bool = typer.Option(False, help="Use fake weights for the model (for testing and debugging). Default: False"),
     fake_weight_config: str = typer.Option(
         None,
-        help="Path to a JSON or YAML file specifying custom shapes for fake weights. Overrides default shapes if provided."
+        help="Path to a JSON or YAML file specifying custom shapes for fake weights. Example: embed_tokens.weight: [32000, 4096] (YAML) or {\"embed_tokens.weight\": [32000, 4096]} (JSON). Overrides default shapes if provided."
     ),
 ):
     """
@@ -161,8 +161,17 @@ def convert(
                     fake_weight_shape_dict = json.load(f)
             else:
                 raise ValueError("Unsupported fake_weight_config file type. Please use .json or .yaml/.yml.")
+            # --- Enhanced validation ---
+            if not isinstance(fake_weight_shape_dict, dict):
+                raise ValueError("fake_weight_config must be a dict mapping parameter names to shape lists.")
+            for k, v in fake_weight_shape_dict.items():
+                if not (isinstance(v, (list, tuple)) and all(isinstance(i, int) and i > 0 for i in v)):
+                    raise ValueError(
+                        f"Invalid shape for '{k}': {v}. Each shape must be a list of positive integers, e.g. [4096, 4096]."
+                    )
         except Exception as e:
-            typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]")
+            typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]\n"
+                       "[yellow]Example YAML:\nembed_tokens.weight: [32000, 4096]\nlayers.0.self_attn.q_proj.weight: [4096, 4096]\n\nExample JSON:\n{\"embed_tokens.weight\": [32000, 4096]}[/yellow]")
             raise typer.Exit(1)
 
     result = convert_model(

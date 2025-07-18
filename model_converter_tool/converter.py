@@ -199,8 +199,8 @@ class ModelConverter:
                         output_path,
                         internal_model_type,
                         device,
-                        dtype,
-                        fake_weight=fake_weight  # Pass fake_weight flag for config patching
+                        dtype
+                        # Do NOT pass fake_weight or fake_weight_shape_dict here
                     )
                     if not success:
                         result.error = f"Safetensors conversion failed: {extra_info}"
