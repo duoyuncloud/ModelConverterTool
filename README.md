@@ -5,6 +5,11 @@ Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (fp16/fp32), Huggi
 
 ---
 
+## muP-to-LLaMA Support
+- The `--mup2llama` option is now available for all formats. It rescales muP-initialized models for LLaMA compatibility when used.
+
+---
+
 ## Installation
 
 ```sh
