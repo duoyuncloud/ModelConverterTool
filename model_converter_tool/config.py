@@ -64,9 +64,9 @@ class ConfigManager:
 
     GLOBAL_CONFIG_PATH = Path.home() / ".model_converter_tool_config.yaml"
     DEFAULT_GLOBAL_CONFIG = {
-        # HuggingFace Hub默认cache路径
+        # Default cache path for HuggingFace Hub
         "cache_dir": str(Path.home() / ".cache" / "huggingface" / "hub"),
-        # 输出目录默认到用户家目录下，避免源码路径
+        # Default output directory is set to the user's home directory to avoid source code path
         "default_output_dir": str(Path.home() / "model_converter_tool" / "outputs"),
     }
 
@@ -155,7 +155,7 @@ class ConfigManager:
                 data = yaml.safe_load(f)
                 if not isinstance(data, dict):
                     return self.DEFAULT_GLOBAL_CONFIG.copy()
-                # 合并默认配置和已有配置
+                # Merge default config and existing config
                 merged = self.DEFAULT_GLOBAL_CONFIG.copy()
                 merged.update(data)
                 return merged

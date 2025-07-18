@@ -120,7 +120,7 @@ class ModelConverterAPI:
         except Exception as e:
             return {"can_infer": False, "error": str(e)}
 
-    def convert_model(self, model_path: str, output_format: str, output_path: str, fake_weight_shape_dict: dict = None, **kwargs) -> ConversionResult:
+    def convert_model(self, model_path: str, output_format: str, output_path: str, fake_weight_shape_dict: dict = None, mup2llama: bool = False, **kwargs) -> ConversionResult:
         """
         Execute model conversion.
         """
@@ -144,6 +144,7 @@ class ModelConverterAPI:
                 use_large_calibration=plan.use_large_calibration,
                 quantization_config=getattr(plan, 'quantization_config', None),
                 fake_weight_shape_dict=fake_weight_shape_dict,  # Pass the custom shape dict
+                mup2llama=mup2llama,
                 **filtered_kwargs
             )
             return result

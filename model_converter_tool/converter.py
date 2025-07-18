@@ -172,17 +172,74 @@ class ModelConverter:
         quantization_config: dict = None,
         fake_weight: bool = False,
         fake_weight_shape_dict: dict = None,  # New argument for custom fake weight shapes
+        mup2llama: bool = False,  # New argument for muP-to-LLaMA scaling
     ) -> ConversionResult:
         """
         Convert a model to the specified format. Always performs static validation after conversion.
         Only returns success if both conversion and static validation succeed.
         """
+        def has_mup_params(config: dict) -> bool:
+            """Detect if config contains muP parameters."""
+            mup_keys = ["scale_emb", "scale_depth", "dim_model_base", "hidden_size", "num_hidden_layers"]
+            return any(k in config for k in mup_keys)
         result = ConversionResult(success=False)
         try:
             input_format, norm_path = self._detect_model_format(model_name)
             convert_func, validate_func = self._get_converter_functions(output_format)
-            # Internally map 'feature-extraction' to 'auto' for compatibility
             internal_model_type = self._map_model_type_internal(model_type)
+            # muP scaling: detect and compute scaling factors
+            mup_scales = None
+            mup_config_dict = None
+            if mup2llama:
+                try:
+                    from transformers import AutoConfig
+                    config = AutoConfig.from_pretrained(norm_path, trust_remote_code=True)
+                    config_dict = config.to_dict() if hasattr(config, 'to_dict') else dict(config)
+                    if has_mup_params(config_dict):
+                        import math
+                        embedding_scale = config_dict["scale_emb"]
+                        residual_scale = config_dict["scale_depth"] / math.sqrt(config_dict["num_hidden_layers"])
+                        logit_scale = config_dict["hidden_size"] / config_dict["dim_model_base"]
+                        logger.info(f"[muP2LLaMA] Detected muP params. embedding_scale={embedding_scale}, residual_scale={residual_scale}, logit_scale={logit_scale}")
+                        mup_scales = dict(embedding=embedding_scale, residual=residual_scale, logit=logit_scale)
+                        # Process config, remove muP parameters, keep LLaMA parameters
+                        mup_keys = ["scale_emb", "scale_depth", "dim_model_base"]
+                        llama_keys = ["hidden_size", "num_hidden_layers", "num_attention_heads"]
+                        mup_config_dict = {k: v for k, v in config_dict.items() if k not in mup_keys}
+                        logger.info(f"[muP2LLaMA] Removed muP keys: {mup_keys}")
+                        logger.info(f"[muP2LLaMA] Kept keys: {[k for k in llama_keys if k in mup_config_dict]}")
+                    else:
+                        logger.info("[muP2LLaMA] No muP parameters detected in config.")
+                except Exception as e:
+                    logger.warning(f"[muP2LLaMA] Failed to load config or compute muP scaling: {e}")
+            # Weight scaling logic
+            if mup_scales and model is not None:
+                try:
+                    # Embedding layer
+                    if hasattr(model, 'embed_tokens') and hasattr(model.embed_tokens, 'weight'):
+                        model.embed_tokens.weight.data.mul_(mup_scales['embedding'])
+                        logger.info("[muP2LLaMA] Scaled embed_tokens.weight by embedding_scale")
+                    # Logit layer
+                    if hasattr(model, 'lm_head') and hasattr(model.lm_head, 'weight'):
+                        model.lm_head.weight.data.mul_(mup_scales['logit'])
+                        logger.info("[muP2LLaMA] Scaled lm_head.weight by logit_scale")
+                    if hasattr(model, 'output') and hasattr(model.output, 'weight'):
+                        model.output.weight.data.mul_(mup_scales['logit'])
+                        logger.info("[muP2LLaMA] Scaled output.weight by logit_scale")
+                    # Residual layer (iterate over transformer blocks)
+                    if hasattr(model, 'layers') and isinstance(model.layers, (list, tuple)):
+                        for i, layer in enumerate(model.layers):
+                            # Common residual projection names: self_attn.out_proj, mlp.down_proj, mlp.gate_proj, mlp.up_proj
+                            for attr in ['self_attn', 'mlp']:
+                                sub = getattr(layer, attr, None)
+                                if sub:
+                                    for proj in ['out_proj', 'down_proj', 'gate_proj', 'up_proj']:
+                                        p = getattr(sub, proj, None)
+                                        if p and hasattr(p, 'weight'):
+                                            p.weight.data.mul_(mup_scales['residual'])
+                                            logger.info(f"[muP2LLaMA] Scaled layer {i} {attr}.{proj}.weight by residual_scale")
+                except Exception as e:
+                    logger.warning(f"[muP2LLaMA] Failed to scale weights: {e}")
             # Special handling for some formats
             if output_format == "safetensors":
                 try:
@@ -200,7 +257,6 @@ class ModelConverter:
                         internal_model_type,
                         device,
                         dtype
-                        # Do NOT pass fake_weight or fake_weight_shape_dict here
                     )
                     if not success:
                         result.error = f"Safetensors conversion failed: {extra_info}"
@@ -214,6 +270,22 @@ class ModelConverter:
                     result.validation = True
                     result.output_path = output_path
                     result.extra_info = extra_info
+                    # config.json overwrite moved here to ensure it happens after all saves
+                    if mup_config_dict and output_path:
+                        import os
+                        import json
+                        from pathlib import Path
+                        out_dir = Path(output_path)
+                        if out_dir.is_file() or (not out_dir.exists() and out_dir.suffix):
+                            out_dir = out_dir.parent
+                        out_dir.mkdir(parents=True, exist_ok=True)
+                        config_path = out_dir / "config.json"
+                        try:
+                            with open(config_path, "w") as f:
+                                json.dump(mup_config_dict, f, indent=2)
+                            logger.info(f"[muP2LLaMA] Overwrote config.json in {out_dir} for LLaMA compatibility.")
+                        except Exception as e:
+                            logger.warning(f"[muP2LLaMA] Failed to overwrite config.json: {e}")
                     return result
                 except Exception as e:
                     result.error = f"Safetensors conversion failed: {e}"

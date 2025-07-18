@@ -89,6 +89,7 @@ def convert(
         None,
         help="Path to a JSON or YAML file specifying custom shapes for fake weights. Example: embed_tokens.weight: [32000, 4096] (YAML) or {\"embed_tokens.weight\": [32000, 4096]} (JSON). Overrides default shapes if provided."
     ),
+    mup2llama: bool = typer.Option(False, help="Enable muP-to-LLaMA parameter scaling during conversion."),
 ):
     """
     Convert models between formats, with optional quantization, precision, and fake weights.
@@ -185,7 +186,8 @@ def convert(
         dtype=dtype,
         quantization_config=quantization_config,
         fake_weight=fake_weight,
-        fake_weight_shape_dict=fake_weight_shape_dict  # Pass the parsed config to the core logic
+        fake_weight_shape_dict=fake_weight_shape_dict,  # Pass the parsed config to the core logic
+        mup2llama=mup2llama,
     )
     typer.echo(f"[Output path used]: {output_path}")
     if result.success:

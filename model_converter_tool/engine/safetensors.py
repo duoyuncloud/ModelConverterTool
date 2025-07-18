@@ -13,7 +13,7 @@ def convert_to_safetensors(
     output_path: str,
     model_type: str,
     device: str,
-    dtype: str = None,
+    dtype: str = None
 ) -> tuple:
     """
     Save model in safetensors format, with optional precision control.
