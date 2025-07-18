@@ -6,6 +6,23 @@ import tempfile
 import pytest
 from model_converter_tool.api import ModelConverterAPI
 
+def create_fake_mup_model(model_dir, fake_mup_config):
+    """
+    Create a minimal fake muP model and config in the given directory.
+    """
+    from transformers import AutoModelForCausalLM, AutoConfig, GPT2TokenizerFast
+    config = AutoConfig.from_pretrained("gpt2")
+    for k, v in fake_mup_config.items():
+        setattr(config, k, v)
+    model = AutoModelForCausalLM.from_config(config)
+    model.save_pretrained(model_dir)
+    # Save a minimal tokenizer for the fake model
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer.save_pretrained(model_dir)
+    # Overwrite config.json with our muP config
+    with open(os.path.join(model_dir, "config.json"), "w") as f:
+        json.dump(fake_mup_config, f)
+
 @pytest.fixture(scope="module")
 def tmp_output_dir():
     d = tempfile.mkdtemp(prefix="mup2llama_test_")
@@ -27,21 +44,9 @@ def fake_mup_config():
 
 @pytest.fixture(scope="module")
 def fake_model_and_config(tmp_output_dir, fake_mup_config):
-    # Create a minimal fake model and config.json
-    from transformers import AutoModelForCausalLM, AutoConfig
-    config = AutoConfig.from_pretrained("gpt2")
-    for k, v in fake_mup_config.items():
-        setattr(config, k, v)
-    model = AutoModelForCausalLM.from_config(config)
     model_dir = os.path.join(tmp_output_dir, "fake_model")
-    model.save_pretrained(model_dir)
-    # Save a minimal tokenizer for the fake model
-    from transformers import GPT2TokenizerFast
-    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-    tokenizer.save_pretrained(model_dir)
-    # Overwrite config.json with our muP config
-    with open(os.path.join(model_dir, "config.json"), "w") as f:
-        json.dump(fake_mup_config, f)
+    os.makedirs(model_dir, exist_ok=True)
+    create_fake_mup_model(model_dir, fake_mup_config)
     return model_dir
 
 def test_mup2llama_safetensors(tmp_output_dir, fake_model_and_config, fake_mup_config):

@@ -1,12 +1,10 @@
 import typer
-from model_converter_tool.engine.gguf import convert_to_gguf
-from model_converter_tool.utils import auto_load_model_and_tokenizer
+from model_converter_tool.core.convert import convert_model
 from rich import print as rprint
 import sys
 import json
 import yaml
 import os
-
 
 def to_llama_format(
     input: str = typer.Argument(..., help="Input model path or repo id."),
@@ -15,12 +13,14 @@ def to_llama_format(
     quant_config: str = typer.Option(None, help="Advanced quantization config (JSON string or YAML file)."),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
+    mup2llama: bool = typer.Option(False, help="Enable muP-to-LLaMA parameter scaling during conversion."),
 ):
     """
     Convert a model to llama.cpp GGUF format (to-llama-format).
 
     Example:
       modelconvert to-llama-format meta-llama/Llama-2-7b-hf -o ./outputs/llama-2-7b.gguf --quant q4_k_m
+      modelconvert to-llama-format path/to/mup_model -o ./outputs/mup2llama.gguf --mup2llama
     """
     if '--help' in sys.argv or '-h' in sys.argv or not input:
         rprint(to_llama_format.__doc__)
@@ -48,13 +48,22 @@ def to_llama_format(
             rprint(f"[red]Failed to parse quantization config: {e}[/red]")
             raise typer.Exit(1)
 
-    model, tokenizer = auto_load_model_and_tokenizer(None, None, input, model_type)
-    success, extra = convert_to_gguf(
-        model, tokenizer, input, output_path, model_type, device, quant, False, quantization_config
+    # Route through the main convert_model workflow for full feature support
+    result = convert_model(
+        input_path=input,
+        output_path=output_path,
+        to="gguf",
+        quant=quant,
+        model_type=model_type,
+        device=device,
+        quantization_config=quantization_config,
+        mup2llama=mup2llama,
     )
-    if success:
-        rprint(f"[green]Conversion succeeded! Output: {output_path}[/green]")
+    if result.success:
+        rprint(f"[green]Conversion succeeded! Output: {result.output_path or output_path}[/green]")
+        if result.validation is not None:
+            rprint(f"Validation: {'Passed' if result.validation else 'Failed'}")
+        if result.extra_info:
+            rprint(f"Extra info: {result.extra_info}")
     else:
-        rprint(f"[red]Conversion failed.[/red]")
-        if extra:
-            rprint(f"[red]{extra}[/red]") 
+        rprint(f"[red]Conversion failed: {result.error}[/red]") 
