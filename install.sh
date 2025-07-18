@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Check if running inside a virtual environment
+if [ ! -z "$VIRTUAL_ENV" ]; then
+  echo "Error: Please deactivate any active Python virtual environment before running this script."
+  echo "Detected that you are in a virtual environment: $VIRTUAL_ENV. Please run 'deactivate' and then execute ./install.sh again."
+  exit 1
+fi
+
 set -e
 
 echo "=== ModelConverterTool Installation ==="

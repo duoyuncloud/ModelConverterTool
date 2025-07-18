@@ -1,0 +1,14 @@
+tasks:
+  - model_path: "sshleifer/tiny-gpt2"
+    output_format: "onnx"
+    output_path: "./outputs/tiny-gpt2.onnx"
+
+  - model_path: "Qwen/Qwen2-0.5B"
+    output_format: "gguf"
+    output_path: "./outputs/qwen2-0.5b.gguf"
+    quantization: "q4_k_m"
+
+  - model_path: "bert-base-uncased"
+    output_format: "safetensors"
+    output_path: "./outputs/bert-base-uncased-fp16.safetensors"
+    dtype: "fp16" 
