@@ -5,6 +5,9 @@ This document provides technical details about the model conversion engine, supp
 ## Overview
 The conversion engine transforms machine learning models between different formats, applies quantization, and optimizes for various hardware backends.
 
+- Supports muP-to-LLaMA scaling and config adaptation (`--mup2llama`)
+- Supports fake weight generation for testing (`--fake-weight`, `--fake-weight-config`)
+
 ## Supported Formats
 - GGUF
 - ONNX
@@ -31,14 +34,16 @@ This command will automatically handle model loading and conversion to GGUF, wit
 ## Conversion Workflow
 1. Load the input model
 2. Parse and validate model structure
-3. Optionally apply quantization or optimization
+3. Optionally apply quantization, muP scaling, or fake weight logic
 4. Convert to the target format
-5. Save the output model
+5. Adapt and save the output config (remove muP params, add LLaMA params if needed)
+6. Save the output model
 
 ## Engine Architecture
 - Modular design for easy extension
 - Pluggable backends for different formats
 - Device-aware conversion (CPU, GPU, Apple Silicon)
+- All special options (muP, fake weight, quantization) are handled in the main workflow for consistency
 
 ## Extending the Engine
 - Add support for new model formats by implementing a new engine module in `model_converter_tool/engine/`
@@ -46,4 +51,6 @@ This command will automatically handle model loading and conversion to GGUF, wit
 
 ## References
 - [Core API documentation](../model_converter_tool/api.py)
-- [Engine source code](../model_converter_tool/engine/) 
+- [Engine source code](../model_converter_tool/engine/)
+- [Test suite](../tests/)
+- [Example scripts](../examples/) 

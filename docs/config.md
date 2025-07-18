@@ -11,17 +11,16 @@ A configuration file typically contains a list of conversion jobs, each specifyi
 ## Example Config (YAML)
 ```yaml
 models:
-  - model_path: path/to/model1.bin
-    output_path: path/to/model1.gguf
-    output_format: gguf
-    quantization: q4
-    model_type: auto
-    device: auto
-  - model_path: path/to/model2.bin
-    output_path: path/to/model2.onnx
-    output_format: onnx
-    model_type: bert
-    device: cpu
+  - model_path: path/to/mup_model
+    output_path: path/to/llama_model
+    output_format: safetensors
+    mup2llama: true
+  - model_path: path/to/model
+    output_path: path/to/fake
+    output_format: safetensors
+    fake_weight: true
+    fake_weight_shape_dict:
+      embed_tokens.weight: [32000, 4096]
 ```
 
 ## Supported Fields
@@ -30,6 +29,9 @@ models:
 - `output_format`: Target output format (e.g., gguf, onnx, fp16, etc.)
 - `quantization`: Quantization type (optional)
 - `quantization_config`: Advanced quantization config (optional, dict). Supports keys like `bits`, `group_size`, `sym`, `desc`.
+- `mup2llama`: Enable muP-to-LLaMA scaling (bool, optional)
+- `fake_weight`: Use fake weights (bool, optional)
+- `fake_weight_shape_dict`: Custom fake weight shapes (dict, optional)
 - `model_type`: Model type (optional)
 - `device`: Device to use (optional)
 - `use_large_calibration`: Use large calibration dataset (optional)
@@ -50,7 +52,7 @@ models:
       group_size: 128
       sym: true
       desc: my custom quant
-``` 
+```
 
 ## Fine-grained Quantization Config (GPTQ/AWQ)
 

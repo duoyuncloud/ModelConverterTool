@@ -1,12 +1,14 @@
-# Tests
+# Test Suite for Model Converter Tool
 
-This directory contains all automated tests for the Model Converter Tool.
+This directory contains all automated tests for the Model Converter Tool. Each module targets a specific feature or workflow:
 
-- **test_basic_conversions.py**: Unit tests for basic model conversions.
-- **test_quantization.py**: Unit tests for quantization workflows.
-- **test_cli.py**: Unit tests for CLI commands and argument handling.
-- **test_disk_space.py**: Tests for disk space and file handling edge cases.
-- **test_integration.py**: High-coverage integration tests covering API, CLI, batch conversion, config/history, and error handling. Run this before releases.
+- **test_basic_conversions.py**: Basic model format conversions (ONNX, GGUF, MLX, safetensors, torchscript, HuggingFace, etc).
+- **test_quantization.py**: Quantization workflows and quantization config propagation.
+- **test_fake_weight.py**: Fake weight generation, including custom shape and config file support.
+- **test_mup2llama.py**: muP (μ-Parametrization) to LLaMA scaling, config adaptation, and correctness of --mup2llama option.
+- **test_cli.py**: CLI command coverage, help/version, error handling, and argument validation.
+- **test_disk_space.py**: Disk space checks, file size estimation, and related edge cases.
+- **test_integration.py**: High-coverage integration tests for API, CLI, batch conversion, config/history, and error handling. Run this before releases.
 
 ## Running Tests
 
@@ -15,17 +17,15 @@ To run all tests:
 pytest
 ```
 
-For release validation, ensure `test_integration.py` passes. 
+For release validation, ensure both `test_integration.py` and `test_mup2llama.py` pass, as they cover end-to-end and advanced parameter adaptation scenarios.
 
-## Manually Running Integration Test in CI
+## CI/Manual Integration Test
 
-To manually trigger the high-coverage integration test (`test_integration.py`) in GitHub Actions:
-
+To manually trigger the high-coverage integration test (`test_integration.py`) in CI:
 1. Go to the repository on GitHub.
-2. Click the "Actions" tab at the top.
-3. Select the "Test" workflow from the left sidebar.
-4. Click the "Run workflow" button (top right).
-5. Choose the branch (usually `main`) and click the green "Run workflow" button.
-6. The integration test job will run and its progress and results can be monitored in the Actions tab.
+2. Click the "Actions" tab.
+3. Select the "Test" workflow.
+4. Click "Run workflow" and choose the branch (usually `main`).
+5. Monitor progress and results in the Actions tab.
 
-This is useful for release validation or after major changes. 
+This is recommended before releases or after major changes. 
