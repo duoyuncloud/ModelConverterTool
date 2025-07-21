@@ -12,6 +12,38 @@ from rich.console import Console
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
 
+def auto_complete_output_path(input_path, output_path, to_format):
+    import os
+    from pathlib import Path
+    output_aliases = {"hf": "huggingface"}
+    to_format = output_aliases.get(to_format.lower(), to_format.lower())
+    file_exts = {
+        'onnx': '.onnx',
+        'gguf': '.gguf',
+        'pt': '.pt',
+        'torchscript': '.pt',
+        'safetensors': '.safetensors',
+        'fp16': '.safetensors',
+    }
+    base = os.path.splitext(os.path.basename(input_path))[0]
+    def to_dir_name(path, ext=None):
+        p = Path(path)
+        if ext and p.name.endswith(ext):
+            return str(p.with_suffix('')) + f'_{to_format}'
+        if p.suffix:
+            return str(p.with_suffix('')) + f'_{to_format}'
+        return str(p)
+    if not output_path:
+        return f'./outputs/{base}_{to_format}'
+    if os.path.isdir(output_path):
+        return output_path
+    for ext in file_exts.values():
+        if output_path.endswith(ext):
+            return to_dir_name(output_path, ext)
+    if not os.path.exists(output_path) and not output_path.endswith('/'):
+        return to_dir_name(output_path)
+    return output_path
+
 def batch(
     config_path: str = typer.Argument(..., help="Batch configuration file (YAML/JSON)"),
     max_workers: int = typer.Option(1, help="Maximum number of concurrent workers"),
@@ -108,9 +140,15 @@ def batch(
             desc = f"Task {i+1}/{len(tasks)}: {task.get('model_path')} → {task.get('output_format')}"
             progress.update(task_progress, description=desc)
             try:
+                # 统一输出路径为独立子目录
+                task_output_path = auto_complete_output_path(
+                    str(task.get('model_path')) if task.get('model_path') is not None else '',
+                    str(task.get('output_path')) if task.get('output_path') is not None else None,
+                    task.get('output_format')
+                )
                 result = convert_model(
                     input_path=str(task.get('model_path')) if task.get('model_path') is not None else None,
-                    output_path=str(task.get('output_path')) if task.get('output_path') is not None else None,
+                    output_path=task_output_path,
                     to=task.get('output_format'),
                     quant=task.get('quantization'),
                     model_type=task.get('model_type', 'auto'),
