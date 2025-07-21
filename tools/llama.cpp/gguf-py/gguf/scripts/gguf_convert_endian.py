@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 # Necessary to load the local gguf package
-if "NO_LOCAL_GGUF" not in os.environ and (Path(__file__).parent.parent.parent.parent / 'gguf-py').exists():
+if "NO_LOCAL_GGUF" not in os.environ and (Path(__file__).parent.parent.parent.parent / "gguf-py").exists():
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import gguf
@@ -21,8 +21,8 @@ logger = logging.getLogger("gguf-convert-endian")
 
 def convert_byteorder(reader: gguf.GGUFReader, args: argparse.Namespace) -> None:
     file_endian = reader.endianess.name
-    if reader.byte_order == 'S':
-        host_endian = 'BIG' if file_endian == 'LITTLE' else 'LITTLE'
+    if reader.byte_order == "S":
+        host_endian = "BIG" if file_endian == "LITTLE" else "LITTLE"
     else:
         host_endian = file_endian
     order = host_endian if args.order == "native" else args.order.upper()
@@ -77,14 +77,14 @@ def convert_byteorder(reader: gguf.GGUFReader, args: argparse.Namespace) -> None
             # Specific handling of block_q8_0 is required.
             # Each block_q8_0 consists of an f16 delta (scaling factor) followed by 32 int8 quantizations.
 
-            block_size = 34 # 34 bytes = <f16 delta scaling factor> + 32 * <int8 quant>
+            block_size = 34  # 34 bytes = <f16 delta scaling factor> + 32 * <int8 quant>
 
             n_blocks = len(tensor.data) // block_size
             for block_num in (inner_pbar := tqdm(range(n_blocks), desc="Byte-swapping Blocks", leave=False)):
                 block_offs = block_num * block_size
 
                 # Byte-Swap f16 sized delta field
-                delta = tensor.data[block_offs:block_offs + 2].view(dtype=np.uint16)
+                delta = tensor.data[block_offs : block_offs + 2].view(dtype=np.uint16)
                 delta.byteswap(inplace=True)
 
                 # Byte-Swap Q8 weights
@@ -109,10 +109,10 @@ def convert_byteorder(reader: gguf.GGUFReader, args: argparse.Namespace) -> None
                 block_offs = block_num * block_size
 
                 # Byte-Swap f16 sized fields
-                delta = tensor.data[block_offs:block_offs + 2].view(dtype=np.uint16)
+                delta = tensor.data[block_offs : block_offs + 2].view(dtype=np.uint16)
                 delta.byteswap(inplace=True)
 
-                delta = tensor.data[block_offs + 2:block_offs + 4].view(dtype=np.uint16)
+                delta = tensor.data[block_offs + 2 : block_offs + 4].view(dtype=np.uint16)
                 delta.byteswap(inplace=True)
 
                 # Byte-Swap
@@ -137,7 +137,7 @@ def convert_byteorder(reader: gguf.GGUFReader, args: argparse.Namespace) -> None
                 block_offs = block_num * block_size
 
                 # Byte-Swap f16 sized field
-                delta = tensor.data[block_offs + 208:block_offs + 210].view(dtype=np.uint16)
+                delta = tensor.data[block_offs + 208 : block_offs + 210].view(dtype=np.uint16)
                 delta.byteswap(inplace=True)
 
                 # Byte-Swap
@@ -156,15 +156,19 @@ def convert_byteorder(reader: gguf.GGUFReader, args: argparse.Namespace) -> None
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert GGUF file byte order")
     parser.add_argument(
-        "model", type=str,
+        "model",
+        type=str,
         help="GGUF format model filename",
     )
     parser.add_argument(
-        "order", type=str, choices=['big', 'little', 'native'],
+        "order",
+        type=str,
+        choices=["big", "little", "native"],
         help="Requested byte order",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Don't actually change anything",
     )
     parser.add_argument("--verbose", action="store_true", help="increase output verbosity")
@@ -173,8 +177,8 @@ def main() -> None:
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
-    logger.info(f'* Loading: {args.model}')
-    reader = gguf.GGUFReader(args.model, 'r' if args.dry_run else 'r+')
+    logger.info(f"* Loading: {args.model}")
+    reader = gguf.GGUFReader(args.model, "r" if args.dry_run else "r+")
     convert_byteorder(reader, args)
 
 

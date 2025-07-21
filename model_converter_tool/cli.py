@@ -1,8 +1,4 @@
 import typer
-from rich import print as rprint
-import os
-import shutil
-import sys
 
 EXAMPLES = """
 [bold cyan]Examples:[/bold cyan]
@@ -31,10 +27,12 @@ Run [green]modelconvert --help[/green] or [green]modelconvert <command> --help[/
     no_args_is_help=True,
 )
 
+
 def version_callback(value: bool):
     if value:
         typer.echo("modelconvertertool version 1.0.0")
         raise typer.Exit()
+
 
 @app.callback()
 def main(
@@ -43,6 +41,7 @@ def main(
     )
 ):
     pass
+
 
 # Subcommand registration
 from model_converter_tool.commands import inspect, convert, history, config, batch, check
@@ -55,4 +54,4 @@ app.add_typer(config.app, name="config")
 app.command()(check.check)
 
 if __name__ == "__main__":
-    app() 
+    app()

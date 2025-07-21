@@ -4,18 +4,21 @@ import shutil
 import tempfile
 import pytest
 from pathlib import Path
-from transformers import AutoModel, AutoTokenizer, GPT2Config
+from transformers import AutoModel, GPT2Config
 from model_converter_tool.api import ModelConverterAPI
+
 
 @pytest.fixture(scope="module")
 def api():
     return ModelConverterAPI()
+
 
 @pytest.fixture(scope="module")
 def output_dir():
     d = Path("test_outputs/fake_weight")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
 
 @pytest.mark.parametrize("model_id", ["gpt2"])
 def test_fake_weight_real_model(api, output_dir, model_id):
@@ -78,7 +81,7 @@ def test_fake_weight_custom_config(api, output_dir):
         "unk_token": "<unk>",
         "pad_token": "<pad>",
         "model_max_length": 8,
-        "tokenizer_class": "PreTrainedTokenizerFast"
+        "tokenizer_class": "PreTrainedTokenizerFast",
     }
     with open(f"{tmp_model_dir}/tokenizer_config.json", "w") as f:
         json.dump(tokenizer_config, f, indent=2)
@@ -87,6 +90,7 @@ def test_fake_weight_custom_config(api, output_dir):
         f.write("#version: 0.2\na b\nb c\n")
     # Save a complete tokenizer (including tokenizer.json) to the model dir
     from transformers import GPT2TokenizerFast
+
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     tokenizer.save_pretrained(tmp_model_dir)
     # Find embedding param name
@@ -121,4 +125,4 @@ def test_fake_weight_custom_config(api, output_dir):
             assert list(param.shape) == custom_shape
             assert param.data.sum().item() == 0
     assert found
-    shutil.rmtree(tmp_model_dir) 
+    shutil.rmtree(tmp_model_dir)

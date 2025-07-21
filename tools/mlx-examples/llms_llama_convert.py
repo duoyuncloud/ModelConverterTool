@@ -72,9 +72,7 @@ def tiny_llama(model_path, *, dtype: str):
         print("pip install transformers")
         exit(1)
 
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        str(model_path)
-    ).state_dict()
+    model = transformers.AutoModelForCausalLM.from_pretrained(str(model_path)).state_dict()
     config = transformers.AutoConfig.from_pretrained(model_path)
 
     # things to change
@@ -90,12 +88,8 @@ def tiny_llama(model_path, *, dtype: str):
     model = {k.replace("gate_proj", "w1"): v for k, v in model.items()}
 
     # 4. layernorms
-    model = {
-        k.replace("input_layernorm", "attention_norm"): v for k, v in model.items()
-    }
-    model = {
-        k.replace("post_attention_layernorm", "ffn_norm"): v for k, v in model.items()
-    }
+    model = {k.replace("input_layernorm", "attention_norm"): v for k, v in model.items()}
+    model = {k.replace("post_attention_layernorm", "ffn_norm"): v for k, v in model.items()}
 
     # 5. lm head
     model = {k.replace("lm_head", "output"): v for k, v in model.items()}
@@ -231,7 +225,7 @@ if __name__ == "__main__":
     )
     shards = make_shards(weights)
     if len(shards) == 1:
-        mx.savez(str(mlx_path / f"weights.npz"), **shards[0])
+        mx.savez(str(mlx_path / "weights.npz"), **shards[0])
     else:
         for i, shard in enumerate(shards):
             mx.savez(str(mlx_path / f"weights.{i:02d}.npz"), **shard)

@@ -54,8 +54,8 @@ class GGUFValue:
 
 class WriterState(Enum):
     NO_FILE = auto()
-    EMPTY   = auto()
-    HEADER  = auto()
+    EMPTY = auto()
+    HEADER = auto()
     KV_DATA = auto()
     TI_DATA = auto()
     WEIGHTS = auto()
@@ -69,22 +69,29 @@ class GGUFWriter:
     kv_data: list[dict[str, GGUFValue]]
     state: WriterState
     _simple_value_packing = {
-        GGUFValueType.UINT8:   "B",
-        GGUFValueType.INT8:    "b",
-        GGUFValueType.UINT16:  "H",
-        GGUFValueType.INT16:   "h",
-        GGUFValueType.UINT32:  "I",
-        GGUFValueType.INT32:   "i",
+        GGUFValueType.UINT8: "B",
+        GGUFValueType.INT8: "b",
+        GGUFValueType.UINT16: "H",
+        GGUFValueType.INT16: "h",
+        GGUFValueType.UINT32: "I",
+        GGUFValueType.INT32: "i",
         GGUFValueType.FLOAT32: "f",
-        GGUFValueType.UINT64:  "Q",
-        GGUFValueType.INT64:   "q",
+        GGUFValueType.UINT64: "Q",
+        GGUFValueType.INT64: "q",
         GGUFValueType.FLOAT64: "d",
-        GGUFValueType.BOOL:    "?",
+        GGUFValueType.BOOL: "?",
     }
 
     def __init__(
-        self, path: os.PathLike[str] | str | None, arch: str, use_temp_file: bool = False, endianess: GGUFEndian = GGUFEndian.LITTLE,
-        split_max_tensors: int = 0, split_max_size: int = 0, dry_run: bool = False, small_first_shard: bool = False
+        self,
+        path: os.PathLike[str] | str | None,
+        arch: str,
+        use_temp_file: bool = False,
+        endianess: GGUFEndian = GGUFEndian.LITTLE,
+        split_max_tensors: int = 0,
+        split_max_size: int = 0,
+        dry_run: bool = False,
+        small_first_shard: bool = False,
     ):
         self.fout = None
         self.path = Path(path) if path else None
@@ -99,9 +106,11 @@ class GGUFWriter:
         self.split_max_size = split_max_size
         self.dry_run = dry_run
         self.small_first_shard = small_first_shard
-        logger.info("gguf: This GGUF file is for {0} Endian only".format(
-            "Big" if self.endianess == GGUFEndian.BIG else "Little",
-        ))
+        logger.info(
+            "gguf: This GGUF file is for {0} Endian only".format(
+                "Big" if self.endianess == GGUFEndian.BIG else "Little",
+            )
+        )
         self.state = WriterState.NO_FILE
 
         if self.small_first_shard:
@@ -138,7 +147,7 @@ class GGUFWriter:
                 size = prod(shape)
 
                 if "_exps." in name:
-                    expert_params += (size // shape[-3])
+                    expert_params += size // shape[-3]
                     expert_sum += shape[-3]
                     n_expert_tensors += 1
                 else:
@@ -159,7 +168,10 @@ class GGUFWriter:
     def format_shard_names(self, path: Path) -> list[Path]:
         if len(self.tensors) == 1:
             return [path]
-        return [path.with_name(SHARD_NAME_FORMAT.format(path.stem, i + 1, len(self.tensors))) for i in range(len(self.tensors))]
+        return [
+            path.with_name(SHARD_NAME_FORMAT.format(path.stem, i + 1, len(self.tensors)))
+            for i in range(len(self.tensors))
+        ]
 
     def open_output_file(self, path: Path | None = None) -> None:
         if self.state is WriterState.EMPTY and self.fout is not None and (path is None or path == self.path):
@@ -167,7 +179,7 @@ class GGUFWriter:
             return
 
         if self.state is not WriterState.NO_FILE:
-            raise ValueError(f'Expected output file to be not yet opened, got {self.state}')
+            raise ValueError(f"Expected output file to be not yet opened, got {self.state}")
 
         if path is not None:
             self.path = path
@@ -183,7 +195,9 @@ class GGUFWriter:
         filenames = self.format_shard_names(self.path)
         assert len(filenames) == len(self.tensors)
         for name, tensors in zip(filenames, self.tensors):
-            logger.info(f"{name}: n_tensors = {len(tensors)}, total_size = {GGUFWriter.format_n_bytes_to_str(sum(ti.nbytes for ti in tensors.values()))}")
+            logger.info(
+                f"{name}: n_tensors = {len(tensors)}, total_size = {GGUFWriter.format_n_bytes_to_str(sum(ti.nbytes for ti in tensors.values()))}"
+            )
 
         if self.dry_run:
             logger.info("Dry run, not writing files")
@@ -213,7 +227,7 @@ class GGUFWriter:
         self.open_output_file(path)
 
         if self.state is not WriterState.EMPTY:
-            raise ValueError(f'Expected output file to be empty, got {self.state}')
+            raise ValueError(f"Expected output file to be empty, got {self.state}")
 
         assert self.fout is not None
         assert len(self.fout) == len(self.tensors)
@@ -222,7 +236,7 @@ class GGUFWriter:
         self.add_shard_kv_data()
 
         for fout, tensors, kv_data in zip(self.fout, self.tensors, self.kv_data):
-            fout.write(self._pack("<I", GGUF_MAGIC, skip_pack_prefix = True))
+            fout.write(self._pack("<I", GGUF_MAGIC, skip_pack_prefix=True))
             fout.write(self._pack("I", GGUF_VERSION))
             fout.write(self._pack("Q", len(tensors)))
             fout.write(self._pack("Q", len(kv_data)))
@@ -231,7 +245,7 @@ class GGUFWriter:
 
     def write_kv_data_to_file(self) -> None:
         if self.state is not WriterState.HEADER:
-            raise ValueError(f'Expected output file to contain the header, got {self.state}')
+            raise ValueError(f"Expected output file to contain the header, got {self.state}")
         assert self.fout is not None
 
         for fout, kv_data in zip(self.fout, self.kv_data):
@@ -248,7 +262,7 @@ class GGUFWriter:
 
     def write_ti_data_to_file(self) -> None:
         if self.state is not WriterState.KV_DATA:
-            raise ValueError(f'Expected output file to contain KV data, got {self.state}')
+            raise ValueError(f"Expected output file to contain KV data, got {self.state}")
         assert self.fout is not None
 
         for fout, tensors in zip(self.fout, self.tensors):
@@ -271,12 +285,12 @@ class GGUFWriter:
 
     def add_key_value(self, key: str, val: Any, vtype: GGUFValueType, sub_type: GGUFValueType | None = None) -> None:
         if any(key in kv_data for kv_data in self.kv_data):
-            logger.warning(f'Duplicated key name {key!r}, overwriting it with new value {val!r} of type {vtype.name}')
+            logger.warning(f"Duplicated key name {key!r}, overwriting it with new value {val!r} of type {vtype.name}")
 
         self.kv_data[0][key] = GGUFValue(value=val, type=vtype, sub_type=sub_type)
 
     def add_uint8(self, key: str, val: int) -> None:
-        self.add_key_value(key,val, GGUFValueType.UINT8)
+        self.add_key_value(key, val, GGUFValueType.UINT8)
 
     def add_int8(self, key: str, val: int) -> None:
         self.add_key_value(key, val, GGUFValueType.INT8)
@@ -323,14 +337,18 @@ class GGUFWriter:
         return ((x + n - 1) // n) * n
 
     def add_tensor_info(
-        self, name: str, tensor_shape: Sequence[int], tensor_dtype: np.dtype,
-        tensor_nbytes: int, raw_dtype: GGMLQuantizationType | None = None,
+        self,
+        name: str,
+        tensor_shape: Sequence[int],
+        tensor_dtype: np.dtype,
+        tensor_nbytes: int,
+        raw_dtype: GGMLQuantizationType | None = None,
     ) -> None:
         if self.state is not WriterState.NO_FILE:
-            raise ValueError(f'Expected output file to be not yet opened, got {self.state}')
+            raise ValueError(f"Expected output file to be not yet opened, got {self.state}")
 
         if any(name in tensors for tensors in self.tensors):
-            raise ValueError(f'Duplicated tensor name {name!r}')
+            raise ValueError(f"Duplicated tensor name {name!r}")
 
         if raw_dtype is None:
             if tensor_dtype == np.float16:
@@ -357,9 +375,8 @@ class GGUFWriter:
         # make sure there is at least one tensor before splitting
         if len(self.tensors[-1]) > 0:
             if (  # split when over tensor limit
-                self.split_max_tensors != 0
-                and len(self.tensors[-1]) >= self.split_max_tensors
-            ) or (   # split when over size limit
+                self.split_max_tensors != 0 and len(self.tensors[-1]) >= self.split_max_tensors
+            ) or (  # split when over size limit
                 self.split_max_size != 0
                 and sum(ti.nbytes for ti in self.tensors[-1].values()) + tensor_nbytes > self.split_max_size
             ):
@@ -368,7 +385,10 @@ class GGUFWriter:
         self.tensors[-1][name] = TensorInfo(shape=tensor_shape, dtype=dtype, nbytes=tensor_nbytes)
 
     def add_tensor(
-        self, name: str, tensor: np.ndarray[Any, Any], raw_shape: Sequence[int] | None = None,
+        self,
+        name: str,
+        tensor: np.ndarray[Any, Any],
+        raw_shape: Sequence[int] | None = None,
         raw_dtype: GGMLQuantizationType | None = None,
     ) -> None:
         if self.endianess == GGUFEndian.BIG:
@@ -395,7 +415,7 @@ class GGUFWriter:
 
     def write_tensor_data(self, tensor: np.ndarray[Any, Any]) -> None:
         if self.state is not WriterState.TI_DATA and self.state is not WriterState.WEIGHTS:
-            raise ValueError(f'Expected output file to contain tensor info or weights, got {self.state}')
+            raise ValueError(f"Expected output file to contain tensor info or weights, got {self.state}")
         assert self.fout is not None
 
         if self.endianess == GGUFEndian.BIG:
@@ -930,14 +950,14 @@ class GGUFWriter:
             template_names = set()
 
             for choice in value:
-                name = choice.get('name', '')
-                template = choice.get('template')
+                name = choice.get("name", "")
+                template = choice.get("template")
 
                 # Allowing non-alphanumerical characters in template name is probably not a good idea, so filter it
-                name = ''.join((c if c in ascii_letters + digits else '_' for c in name))
+                name = "".join((c if c in ascii_letters + digits else "_" for c in name))
 
                 if name and template is not None:
-                    if name == 'default':
+                    if name == "default":
                         template_default = template
                     else:
                         template_names.add(name)
@@ -1045,12 +1065,14 @@ class GGUFWriter:
         self.add_uint32(Keys.ClipAudio.Projector.STACK_FACTOR, value)
 
     def _pack(self, fmt: str, value: Any, skip_pack_prefix: bool = False) -> bytes:
-        pack_prefix = ''
+        pack_prefix = ""
         if not skip_pack_prefix:
-            pack_prefix = '<' if self.endianess == GGUFEndian.LITTLE else '>'
-        return struct.pack(f'{pack_prefix}{fmt}', value)
+            pack_prefix = "<" if self.endianess == GGUFEndian.LITTLE else ">"
+        return struct.pack(f"{pack_prefix}{fmt}", value)
 
-    def _pack_val(self, val: Any, vtype: GGUFValueType, add_vtype: bool, sub_type: GGUFValueType | None = None) -> bytes:
+    def _pack_val(
+        self, val: Any, vtype: GGUFValueType, add_vtype: bool, sub_type: GGUFValueType | None = None
+    ) -> bytes:
         kv_data = bytearray()
 
         if add_vtype:
@@ -1058,7 +1080,7 @@ class GGUFWriter:
 
         pack_fmt = self._simple_value_packing.get(vtype)
         if pack_fmt is not None:
-            kv_data += self._pack(pack_fmt, val, skip_pack_prefix = vtype == GGUFValueType.BOOL)
+            kv_data += self._pack(pack_fmt, val, skip_pack_prefix=vtype == GGUFValueType.BOOL)
         elif vtype == GGUFValueType.STRING:
             encoded_val = val.encode("utf-8") if isinstance(val, str) else val
             kv_data += self._pack("Q", len(encoded_val))

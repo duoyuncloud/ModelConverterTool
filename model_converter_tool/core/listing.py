@@ -1,5 +1,6 @@
 from model_converter_tool.api import ModelConverterAPI
 
+
 def list_supported(target: str = "formats"):
     """
     List supported formats or quantizations using the API layer.
@@ -15,4 +16,4 @@ def list_supported(target: str = "formats"):
                 quant[fmt] = info.get("quantization_options", [])
         return quant
     else:
-        return formats 
+        return formats

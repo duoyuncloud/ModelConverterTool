@@ -1,10 +1,10 @@
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional
 from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset, patch_quantization_config
 
 logger = logging.getLogger(__name__)
+
 
 def convert_to_awq(
     model: Any,
@@ -15,7 +15,7 @@ def convert_to_awq(
     device: str,
     quantization: Optional[str] = None,
     use_large_calibration: bool = False,
-    quantization_config: dict = None
+    quantization_config: dict = None,
 ) -> tuple:
     """
     Export model to AWQ quantization format.
@@ -36,6 +36,7 @@ def convert_to_awq(
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
+
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         # Parse quantization config
@@ -49,7 +50,28 @@ def convert_to_awq(
             sym = quantization_config.get("sym", sym)
             desc = quantization_config.get("desc", desc)
             # Only pass supported keys to QuantizeConfig
-            allowed_keys = {"bits", "dynamic", "group_size", "damp_percent", "damp_auto_increment", "desc_act", "static_groups", "sym", "true_sequential", "lm_head", "quant_method", "format", "mse", "parallel_packing", "meta", "device", "pack_dtype", "adapter", "rotation", "is_marlin_format"}
+            allowed_keys = {
+                "bits",
+                "dynamic",
+                "group_size",
+                "damp_percent",
+                "damp_auto_increment",
+                "desc_act",
+                "static_groups",
+                "sym",
+                "true_sequential",
+                "lm_head",
+                "quant_method",
+                "format",
+                "mse",
+                "parallel_packing",
+                "meta",
+                "device",
+                "pack_dtype",
+                "adapter",
+                "rotation",
+                "is_marlin_format",
+            }
             filtered_config = {k: v for k, v in quantization_config.items() if k in allowed_keys}
             quantize_config = QuantizeConfig(**filtered_config)
         elif quantization:
@@ -72,6 +94,7 @@ def convert_to_awq(
         logger.error(f"AWQ conversion error: {e}")
         return False, None
 
+
 def validate_awq_file(path: str, *args, **kwargs) -> bool:
     """
     Static validation for AWQ files. Accepts either a file or directory path.
@@ -79,8 +102,8 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
     Returns True if the model can be loaded, False otherwise.
     Prints detailed exception info on failure for debugging.
     """
-    import os
     from pathlib import Path
+
     p = Path(path)
     if p.is_file():
         path = str(p.parent)
@@ -91,6 +114,7 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
         return False
     try:
         from gptqmodel import GPTQModel
+
         _ = GPTQModel.load(path)
         print("[validate_awq_file] Loaded AWQ model successfully.")
         return True
@@ -99,8 +123,10 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
         return False
     except Exception as e:
         import traceback
+
         print(f"[validate_awq_file] Exception: {e}\n" + traceback.format_exc())
         return False
+
 
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     """
@@ -109,22 +135,24 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     Returns True if inference is possible, False otherwise.
     """
     import traceback
+
     try:
         from gptqmodel import GPTQModel
         import torch
+
         try:
             model = GPTQModel.load(path)
         except Exception as e:
             logger.error(f"[AWQ] Failed to load model: {e}\n{traceback.format_exc()}")
             return False
         # Try to detect architecture
-        arch = getattr(model, 'arch', None)
-        if arch is None and hasattr(model, 'config'):
-            arch = getattr(model.config, 'architectures', [None])[0]
+        arch = getattr(model, "arch", None)
+        if arch is None and hasattr(model, "config"):
+            arch = getattr(model.config, "architectures", [None])[0]
         logger.info(f"[AWQ] Detected architecture: {arch}")
         # Try to get tokenizer
-        tokenizer = getattr(model, 'tokenizer', None)
-        if tokenizer is None and hasattr(model, 'get_tokenizer'):
+        tokenizer = getattr(model, "tokenizer", None)
+        if tokenizer is None and hasattr(model, "get_tokenizer"):
             try:
                 tokenizer = model.get_tokenizer()
             except Exception:
@@ -139,13 +167,13 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
             pass
         if model_device is None:
             try:
-                for param in getattr(model, 'model', model).parameters():
+                for param in getattr(model, "model", model).parameters():
                     model_device = param.device
                     break
             except Exception:
                 pass
         if model_device is None:
-            model_device = torch.device('cpu')
+            model_device = torch.device("cpu")
         logger.info(f"[AWQ] Using device: {model_device}")
         prompt = "Hello world!"
         try:
@@ -191,4 +219,4 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         return False
     except Exception as e:
         logger.error(f"[AWQ] Unexpected error: {e}\n{traceback.format_exc()}")
-        return False 
+        return False

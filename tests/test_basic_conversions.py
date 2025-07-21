@@ -3,37 +3,28 @@
 Basic model format conversion tests
 """
 
-import importlib.util
 import os
-import tempfile
-import shutil
-import json
 from pathlib import Path
 import sys
 import platform
 import requests
-import numpy as np
-import onnx
-import onnxruntime
 import pytest
-from transformers import AutoModel, AutoTokenizer
-import yaml
-import torch
 
 from model_converter_tool.api import ModelConverterAPI
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 MODEL_NAME = "HuggingFaceM4/tiny-random-LlamaForCausalLM"
 
 skip_mlx = pytest.mark.skipif(
-    platform.system() != "Darwin" or platform.machine() != "arm64",
-    reason="MLX only supported on Apple Silicon macOS"
+    platform.system() != "Darwin" or platform.machine() != "arm64", reason="MLX only supported on Apple Silicon macOS"
 )
+
 
 @pytest.fixture(scope="module")
 def api():
     return ModelConverterAPI()
+
 
 @pytest.fixture(scope="module")
 def output_dir():
@@ -41,18 +32,41 @@ def output_dir():
     d.mkdir(parents=True, exist_ok=True)
     return d
 
+
 # Use dict to drive all README demos
 DEMO_TASKS = [
     {"input_model": "gpt2", "output_format": "onnx", "output_file": "bert.onnx", "model_type": "text-classification"},
     # Use Qwen/Qwen2-0.5B for GGUF
-    {"input_model": "Qwen/Qwen2-0.5B", "output_format": "gguf", "output_file": "qwen2-0.5b.gguf", "model_type": "text-generation"},
+    {
+        "input_model": "Qwen/Qwen2-0.5B",
+        "output_format": "gguf",
+        "output_file": "qwen2-0.5b.gguf",
+        "model_type": "text-generation",
+    },
     {"input_model": "gpt2", "output_format": "mlx", "output_file": "gpt2.mlx", "model_type": "text-generation"},
     # fp16 is now tested as a safetensors variant
-    {"input_model": "gpt2", "output_format": "safetensors", "output_file": "tiny_gpt2_fp16_safetensors", "model_type": "text-generation", "dtype": "fp16"},
-    {"input_model": "bert-base-uncased", "output_format": "torchscript", "output_file": "bert.pt", "model_type": "text-classification"},
-    {"input_model": "gpt2", "output_format": "safetensors", "output_file": "gpt2_safetensors", "model_type": "text-generation"},
+    {
+        "input_model": "gpt2",
+        "output_format": "safetensors",
+        "output_file": "tiny_gpt2_fp16_safetensors",
+        "model_type": "text-generation",
+        "dtype": "fp16",
+    },
+    {
+        "input_model": "bert-base-uncased",
+        "output_format": "torchscript",
+        "output_file": "bert.pt",
+        "model_type": "text-classification",
+    },
+    {
+        "input_model": "gpt2",
+        "output_format": "safetensors",
+        "output_file": "gpt2_safetensors",
+        "model_type": "text-generation",
+    },
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
 ]
+
 
 def is_hf_model_available(model_id):
     url = f"https://huggingface.co/{model_id}/resolve/main/config.json"
@@ -62,11 +76,8 @@ def is_hf_model_available(model_id):
     except Exception:
         return False
 
-@pytest.mark.parametrize(
-    "task",
-    DEMO_TASKS,
-    ids=[f"{t['input_model']}_to_{t['output_format']}" for t in DEMO_TASKS]
-)
+
+@pytest.mark.parametrize("task", DEMO_TASKS, ids=[f"{t['input_model']}_to_{t['output_format']}" for t in DEMO_TASKS])
 def test_basic_conversion(api, output_dir, task):
     # If it's an MLX task and not Apple Silicon, automatically skip
     if task["output_format"] == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):

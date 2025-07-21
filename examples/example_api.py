@@ -1,6 +1,7 @@
 """
 API example: Use the Model Converter Tool programmatically from Python.
 """
+
 from model_converter_tool.api import ModelConverterAPI
 
 api = ModelConverterAPI()
@@ -10,11 +11,7 @@ info = api.detect_model("gpt2")
 print("Model info:", info)
 
 # Convert model to ONNX format
-result = api.convert_model(
-    model_path="gpt2",
-    output_format="onnx",
-    output_path="outputs/gpt2.onnx"
-)
+result = api.convert_model(model_path="gpt2", output_format="onnx", output_path="outputs/gpt2.onnx")
 print("ONNX conversion result:", result)
 
 # Convert a muP model to LLaMA format with scaling (if muP params present)
@@ -33,4 +30,4 @@ print("ONNX conversion result:", result)
 #     output_path="outputs/gpt2_fake",
 #     fake_weight=True
 # )
-# print("Fake weight result:", result) 
+# print("Fake weight result:", result)

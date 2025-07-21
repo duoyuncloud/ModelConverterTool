@@ -6,9 +6,9 @@ from pathlib import Path
 import logging
 from typing import Any, Optional, Tuple
 from model_converter_tool.utils import auto_load_model_and_tokenizer
-import os
 
 logger = logging.getLogger(__name__)
+
 
 def convert_to_onnx(
     model: Any = None,
@@ -20,7 +20,7 @@ def convert_to_onnx(
     batch_size: int = 1,
     sequence_length: int = 8,
     device: str = "cpu",
-    **kwargs
+    **kwargs,
 ) -> Tuple[bool, Optional[dict]]:
     """
     Export model to ONNX format.
@@ -60,7 +60,7 @@ def convert_to_onnx(
     try:
         if model is None or tokenizer is None or (getattr(tokenizer, "pad_token", None) is None):
             from transformers import AutoTokenizer, AutoModelForCausalLM
-            import torch
+
             if model is None:
                 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", trust_remote_code=True)
             if tokenizer is None:
@@ -68,7 +68,9 @@ def convert_to_onnx(
             if getattr(tokenizer, "pad_token", None) is None:
                 tokenizer.pad_token = tokenizer.eos_token
     except Exception:
-        logger.info("Failed to load the model or tokenizer. Please check your model name, network connection, and ensure the model is supported by transformers. You may retry or consult the documentation: https://huggingface.co/docs/transformers/main/en/model_doc/auto")
+        logger.info(
+            "Failed to load the model or tokenizer. Please check your model name, network connection, and ensure the model is supported by transformers. You may retry or consult the documentation: https://huggingface.co/docs/transformers/main/en/model_doc/auto"
+        )
         return False, None
     lower_name = model_name.lower() if model_name else ""
     if "qwen" in lower_name:
@@ -78,12 +80,18 @@ def convert_to_onnx(
             "or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model"
         )
     command = [
-        sys.executable, "-m", "optimum.exporters.onnx",
-        "--model", model_name,
+        sys.executable,
+        "-m",
+        "optimum.exporters.onnx",
+        "--model",
+        model_name,
         str(output_dir),
-        "--task", task,
-        "--batch_size", str(batch_size),
-        "--sequence_length", str(sequence_length)
+        "--task",
+        task,
+        "--batch_size",
+        str(batch_size),
+        "--sequence_length",
+        str(sequence_length),
     ]
     logger.info(f"Running: {' '.join(command)}")
     try:
@@ -94,11 +102,16 @@ def convert_to_onnx(
             extra_info = {"opset": 17, "custom_onnx_configs": False}
             return True, extra_info
         else:
-            logger.info("ONNX export did not complete successfully. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
+            logger.info(
+                "ONNX export did not complete successfully. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model"
+            )
             return False, None
     except Exception:
-        logger.info("ONNX export failed due to an unexpected error. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model")
+        logger.info(
+            "ONNX export failed due to an unexpected error. Please check your model name, network, and optimum support. You may retry or consult the documentation: https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model"
+        )
         return False, None
+
 
 def validate_onnx_file(path: str, *args, **kwargs) -> bool:
     """
@@ -107,8 +120,8 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
     Returns True if the file passes static validation, False otherwise.
     Prints detailed exception info on failure for debugging.
     """
-    import os
     from pathlib import Path
+
     p = Path(path)
     if p.is_dir():
         candidate = p / "model.onnx"
@@ -122,6 +135,7 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
         return False
     try:
         import onnx
+
         model = onnx.load(path)
         onnx.checker.check_model(model)
         return True
@@ -130,8 +144,10 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
         return False
     except Exception as e:
         import traceback
+
         print(f"[validate_onnx_file] Exception: {e}\n" + traceback.format_exc())
         return False
+
 
 def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
     """
@@ -141,6 +157,7 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
     try:
         import onnxruntime as ort
         import numpy as np
+
         sess = ort.InferenceSession(path)
         inputs = sess.get_inputs()
         if not inputs:
@@ -149,13 +166,13 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
         for inp in inputs:
             shape = [1 if not isinstance(d, int) or d <= 0 else d for d in inp.shape]
             dtype_str = inp.type
-            if dtype_str == 'tensor(int64)':
+            if dtype_str == "tensor(int64)":
                 dtype = np.int64
-            elif dtype_str == 'tensor(float)' or dtype_str == 'tensor(float32)':
+            elif dtype_str == "tensor(float)" or dtype_str == "tensor(float32)":
                 dtype = np.float32
-            elif dtype_str == 'tensor(int32)':
+            elif dtype_str == "tensor(int32)":
                 dtype = np.int32
-            elif dtype_str == 'tensor(float16)':
+            elif dtype_str == "tensor(float16)":
                 dtype = np.float16
             else:
                 dtype = np.float32
@@ -164,5 +181,5 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
         return True
     except ImportError:
         return False
-    except Exception as e:
-        return False 
+    except Exception:
+        return False

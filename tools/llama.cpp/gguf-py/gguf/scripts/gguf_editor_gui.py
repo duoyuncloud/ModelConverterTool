@@ -13,16 +13,30 @@ import warnings
 
 import numpy as np
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QLineEdit, QFileDialog, QTableWidget,
-    QTableWidgetItem, QComboBox, QMessageBox, QTabWidget,
-    QTextEdit, QFormLayout,
-    QHeaderView, QDialog, QDialogButtonBox
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QFileDialog,
+    QTableWidget,
+    QTableWidgetItem,
+    QComboBox,
+    QMessageBox,
+    QTabWidget,
+    QTextEdit,
+    QFormLayout,
+    QHeaderView,
+    QDialog,
+    QDialogButtonBox,
 )
 from PySide6.QtCore import Qt
 
 # Necessary to load the local gguf package
-if "NO_LOCAL_GGUF" not in os.environ and (Path(__file__).parent.parent.parent.parent / 'gguf-py').exists():
+if "NO_LOCAL_GGUF" not in os.environ and (Path(__file__).parent.parent.parent.parent / "gguf-py").exists():
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import gguf
@@ -40,11 +54,7 @@ KEY_TO_ENUM_TYPE = {
 }
 
 # Define the tokenizer keys that should be edited together
-TOKENIZER_LINKED_KEYS = [
-    gguf.Keys.Tokenizer.LIST,
-    gguf.Keys.Tokenizer.TOKEN_TYPE,
-    gguf.Keys.Tokenizer.SCORES
-]
+TOKENIZER_LINKED_KEYS = [gguf.Keys.Tokenizer.LIST, gguf.Keys.Tokenizer.TOKEN_TYPE, gguf.Keys.Tokenizer.SCORES]
 
 
 class TokenizerEditorDialog(QDialog):
@@ -802,7 +812,7 @@ class AddMetadataDialog(QDialog):
         elif value_type == GGUFValueType.FLOAT32:
             value = np.float32(float(value_text))
         elif value_type == GGUFValueType.BOOL:
-            value = value_text.lower() in ('true', 'yes', '1')
+            value = value_text.lower() in ("true", "yes", "1")
         elif value_type == GGUFValueType.STRING:
             value = value_text
         else:
@@ -907,7 +917,7 @@ class GGUFEditorWindow(QMainWindow):
             self.statusBar().showMessage(f"Loading {file_path}...")
             QApplication.processEvents()
 
-            self.reader = GGUFReader(file_path, 'r')
+            self.reader = GGUFReader(file_path, "r")
             self.current_file = file_path
             self.file_path_edit.setText(file_path)
 
@@ -926,9 +936,7 @@ class GGUFEditorWindow(QMainWindow):
             return False
 
     def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open GGUF File", "", "GGUF Files (*.gguf);;All Files (*)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open GGUF File", "", "GGUF Files (*.gguf);;All Files (*)")
 
         if not file_path:
             return
@@ -944,7 +952,7 @@ class GGUFEditorWindow(QMainWindow):
         # Disconnect to prevent triggering during loading
         if self.on_metadata_changed_is_connected:
             with warnings.catch_warnings():
-                warnings.filterwarnings('ignore')
+                warnings.filterwarnings("ignore")
                 self.metadata_table.itemChanged.disconnect(self.on_metadata_changed)
             self.on_metadata_changed_is_connected = False
 
@@ -966,7 +974,7 @@ class GGUFEditorWindow(QMainWindow):
                 enum_type = self.get_enum_for_key(key)
                 if enum_type is not None and field.types[-1] == GGUFValueType.INT32:
                     element_type = enum_type.__name__
-                type_str = '[' * nest_count + element_type + ']' * nest_count
+                type_str = "[" * nest_count + element_type + "]" * nest_count
             else:
                 type_str = str(field.types[0].name)
                 # Check if this is an enum field
@@ -1037,7 +1045,7 @@ class GGUFEditorWindow(QMainWindow):
 
         if curr_type == GGUFValueType.STRING:
             for element_pos in range(total_elements):
-                value_string = str(bytes(field.parts[-1 - (total_elements - element_pos - 1) * 2]), encoding='utf-8')
+                value_string = str(bytes(field.parts[-1 - (total_elements - element_pos - 1) * 2]), encoding="utf-8")
                 array_values.append(value_string)
         elif self.reader and curr_type in self.reader.gguf_scalar_to_np:
             for element_pos in range(total_elements):
@@ -1066,7 +1074,7 @@ class GGUFEditorWindow(QMainWindow):
         if len(field.types) == 1:
             curr_type = field.types[0]
             if curr_type == GGUFValueType.STRING:
-                return str(bytes(field.parts[-1]), encoding='utf-8')
+                return str(bytes(field.parts[-1]), encoding="utf-8")
             elif self.reader and curr_type in self.reader.gguf_scalar_to_np:
                 value = field.parts[-1][0]
                 # Check if this field has an enum type
@@ -1089,7 +1097,9 @@ class GGUFEditorWindow(QMainWindow):
             else:
                 array_elements = [str(array_values[i]) for i in range(render_element)]
 
-            return f"[ {', '.join(array_elements).strip()}{', ...' if len(array_values) > len(array_elements) else ''} ]"
+            return (
+                f"[ {', '.join(array_elements).strip()}{', ...' if len(array_values) > len(array_elements) else ''} ]"
+            )
 
         return "Complex value"
 
@@ -1158,9 +1168,9 @@ class GGUFEditorWindow(QMainWindow):
                     converted_value = enum_val.value
                 except (KeyError, AttributeError):
                     # Check if it's a number or "NAME (value)" format
-                    if '(' in new_value and ')' in new_value:
+                    if "(" in new_value and ")" in new_value:
                         # Extract the value from "NAME (value)" format
-                        value_part = new_value.split('(')[1].split(')')[0].strip()
+                        value_part = new_value.split("(")[1].split(")")[0].strip()
                         converted_value = int(value_part)
                     else:
                         # Try to convert directly to int
@@ -1184,7 +1194,8 @@ class GGUFEditorWindow(QMainWindow):
                     self,
                     f"Invalid Enum Value ({e})",
                     f"'{new_value}' is not a valid {enum_type.__name__} value.\n"
-                    f"Valid values are: {', '.join(v.name for v in enum_type)}")
+                    f"Valid values are: {', '.join(v.name for v in enum_type)}",
+                )
 
                 # Revert to original value
                 original_value = self.format_field_value(field)
@@ -1208,7 +1219,7 @@ class GGUFEditorWindow(QMainWindow):
             elif value_type == GGUFValueType.FLOAT32:
                 converted_value = np.float32(float(new_value))
             elif value_type == GGUFValueType.BOOL:
-                converted_value = new_value.lower() in ('true', 'yes', '1')
+                converted_value = new_value.lower() in ("true", "yes", "1")
             elif value_type == GGUFValueType.STRING:
                 converted_value = new_value
             else:
@@ -1221,7 +1232,9 @@ class GGUFEditorWindow(QMainWindow):
 
             self.statusBar().showMessage(f"Changed {key} to {new_value}")
         except ValueError:
-            QMessageBox.warning(self, "Invalid Value", f"The value '{new_value}' is not valid for type {value_type.name}")
+            QMessageBox.warning(
+                self, "Invalid Value", f"The value '{new_value}' is not valid for type {value_type.name}"
+            )
 
             # Revert to original value
             original_value = self.format_field_value(field)
@@ -1233,9 +1246,11 @@ class GGUFEditorWindow(QMainWindow):
         row = button.property("row")
 
         reply = QMessageBox.question(
-            self, "Confirm Removal",
+            self,
+            "Confirm Removal",
             f"Are you sure you want to remove the metadata key '{key}'?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
@@ -1384,19 +1399,19 @@ class GGUFEditorWindow(QMainWindow):
             if tokens_field:
                 self.metadata_changes[gguf.Keys.Tokenizer.LIST] = (
                     GGUFValueType.ARRAY,
-                    (tokens_field.types[1], new_tokens)
+                    (tokens_field.types[1], new_tokens),
                 )
 
             if token_types_field:
                 self.metadata_changes[gguf.Keys.Tokenizer.TOKEN_TYPE] = (
                     GGUFValueType.ARRAY,
-                    (token_types_field.types[1], new_token_types)
+                    (token_types_field.types[1], new_token_types),
                 )
 
             if scores_field:
                 self.metadata_changes[gguf.Keys.Tokenizer.SCORES] = (
                     GGUFValueType.ARRAY,
-                    (scores_field.types[1], new_scores)
+                    (scores_field.types[1], new_scores),
                 )
 
             self.modified = True
@@ -1482,9 +1497,7 @@ class GGUFEditorWindow(QMainWindow):
             QMessageBox.information(self, "No Changes", "No changes to save")
             return
 
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save GGUF File As", "", "GGUF Files (*.gguf);;All Files (*)"
-        )
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save GGUF File As", "", "GGUF Files (*.gguf);;All Files (*)")
 
         if not file_path:
             return
@@ -1494,7 +1507,7 @@ class GGUFEditorWindow(QMainWindow):
             QApplication.processEvents()
 
             # Get architecture and endianness from the original file
-            arch = 'unknown'
+            arch = "unknown"
             field = self.reader.get_field(gguf.Keys.General.ARCHITECTURE)
             if field:
                 arch = field.contents()
@@ -1513,7 +1526,7 @@ class GGUFEditorWindow(QMainWindow):
             # Copy metadata with changes
             for field in self.reader.fields.values():
                 # Skip virtual fields and fields written by GGUFWriter
-                if field.name == gguf.Keys.General.ARCHITECTURE or field.name.startswith('GGUF.'):
+                if field.name == gguf.Keys.General.ARCHITECTURE or field.name.startswith("GGUF."):
                     continue
 
                 # Skip fields marked for removal
@@ -1568,13 +1581,15 @@ class GGUFEditorWindow(QMainWindow):
 
             # Ask if user wants to open the new file
             reply = QMessageBox.question(
-                self, "Open Saved File",
+                self,
+                "Open Saved File",
                 "Would you like to open the newly saved file?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
-                self.reader = GGUFReader(file_path, 'r')
+                self.reader = GGUFReader(file_path, "r")
                 self.current_file = file_path
                 self.file_path_edit.setText(file_path)
 
@@ -1605,17 +1620,18 @@ def main() -> None:
 
     # Load model if specified
     if args.model_path:
-        if os.path.isfile(args.model_path) and args.model_path.endswith('.gguf'):
+        if os.path.isfile(args.model_path) and args.model_path.endswith(".gguf"):
             window.load_file(args.model_path)
         else:
             logger.error(f"Invalid model path: {args.model_path}")
             QMessageBox.warning(
                 window,
                 "Invalid Model Path",
-                f"The specified file does not exist or is not a GGUF file: {args.model_path}")
+                f"The specified file does not exist or is not a GGUF file: {args.model_path}",
+            )
 
     sys.exit(app.exec())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

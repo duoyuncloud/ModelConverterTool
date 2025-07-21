@@ -1,19 +1,18 @@
 import subprocess
 import sys
-import os
 import pytest
-import yaml
 from pathlib import Path
 from model_converter_tool.api import ModelConverterAPI
 import tempfile
-import shutil
 
 CLI_CMD = [sys.executable, "-m", "model_converter_tool.cli"]
+
 
 @pytest.fixture(scope="module")
 def tmp_output(tmp_path_factory):
     d = tmp_path_factory.mktemp("integration_outputs")
     return d
+
 
 # --- API and CLI single conversion integration ---
 def test_api_and_cli_conversion(tmp_output):
@@ -35,12 +34,21 @@ def test_api_and_cli_conversion(tmp_output):
         # Check for model.onnx in the output directory
         assert (api_output / "model.onnx").exists()
         # CLI conversion
-        subprocess.check_call([
-            sys.executable, "-m", "model_converter_tool.cli", "convert",
-            "sshleifer/tiny-gpt2", "onnx", "-o", str(cli_output)
-        ])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "model_converter_tool.cli",
+                "convert",
+                "sshleifer/tiny-gpt2",
+                "onnx",
+                "-o",
+                str(cli_output),
+            ]
+        )
         # Check for model.onnx in the output directory
         assert (cli_output / "model.onnx").exists()
+
 
 # --- Batch conversion integration ---
 def test_batch_conversion(tmp_output):
@@ -59,11 +67,10 @@ tasks:
     output_path: {tmp_output}/batch_gpt2_onnx
 """
         batch_config.write_text(batch_yaml)
-        subprocess.check_call([
-            sys.executable, "-m", "model_converter_tool.cli", "batch", str(batch_config)
-        ])
+        subprocess.check_call([sys.executable, "-m", "model_converter_tool.cli", "batch", str(batch_config)])
         # Check for model.onnx in the output directory
         assert (tmp_output / "batch_gpt2_onnx" / "model.onnx").exists()
+
 
 # --- Config, history, cache integration ---
 def test_config_show_and_set():
@@ -78,6 +85,7 @@ def test_config_show_and_set():
     assert result2.returncode == 0
     assert "test_key" in result2.stdout
 
+
 def test_history():
     """
     Test history commands via CLI.
@@ -86,6 +94,7 @@ def test_history():
     assert result.returncode == 0
     assert "Completed tasks" in result.stdout
 
+
 # --- Error and edge case integration ---
 def test_invalid_format_error(tmp_output):
     """
@@ -93,11 +102,15 @@ def test_invalid_format_error(tmp_output):
     """
     output_path = tmp_output / "invalid_format.out"
     result = subprocess.run(
-        CLI_CMD + ["convert", "gpt2", "invalidformat", "-o", str(output_path)],
-        capture_output=True, text=True
+        CLI_CMD + ["convert", "gpt2", "invalidformat", "-o", str(output_path)], capture_output=True, text=True
     )
     assert result.returncode != 0
-    assert "unsupported output format" in result.stdout.lower() or "validation failed" in result.stdout.lower() or "failed" in result.stdout.lower()
+    assert (
+        "unsupported output format" in result.stdout.lower()
+        or "validation failed" in result.stdout.lower()
+        or "failed" in result.stdout.lower()
+    )
+
 
 # --- Help/version integration ---
 def test_cli_main_help_and_version():
@@ -109,4 +122,4 @@ def test_cli_main_help_and_version():
     assert "usage" in help_result.stdout.lower() or "help" in help_result.stdout.lower()
     version_result = subprocess.run(CLI_CMD + ["--version"], capture_output=True, text=True)
     assert version_result.returncode == 0
-    assert "version" in version_result.stdout.lower() 
+    assert "version" in version_result.stdout.lower()

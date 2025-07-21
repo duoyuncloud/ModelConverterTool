@@ -1,22 +1,33 @@
 import typer
 import yaml
 import json
-import os
 from pathlib import Path
-from typing import List, Dict, Any
 from model_converter_tool.core.convert import convert_model
-from model_converter_tool.utils import check_and_handle_disk_space, estimate_model_size, format_bytes, auto_complete_output_path
-from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, SpinnerColumn, TaskProgressColumn
+from model_converter_tool.utils import (
+    estimate_model_size,
+    format_bytes,
+    auto_complete_output_path,
+)
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+    SpinnerColumn,
+    TaskProgressColumn,
+)
 from rich.console import Console
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
 
+
 def batch(
     config_path: str = typer.Argument(..., help="Batch configuration file (YAML/JSON)"),
     max_workers: int = typer.Option(1, help="Maximum number of concurrent workers"),
     max_retries: int = typer.Option(1, help="Maximum number of retries per task"),
-    skip_disk_check: bool = typer.Option(False, help="Skip disk space checking (not recommended)")
+    skip_disk_check: bool = typer.Option(False, help="Skip disk space checking (not recommended)"),
 ):
     """
     Batch convert multiple models using a configuration file.
@@ -37,11 +48,11 @@ def batch(
         raise typer.Exit(1)
 
     try:
-        if config_file.suffix.lower() in ['.yaml', '.yml']:
-            with open(config_file, 'r', encoding='utf-8') as f:
+        if config_file.suffix.lower() in [".yaml", ".yml"]:
+            with open(config_file, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
-        elif config_file.suffix.lower() == '.json':
-            with open(config_file, 'r', encoding='utf-8') as f:
+        elif config_file.suffix.lower() == ".json":
+            with open(config_file, "r", encoding="utf-8") as f:
                 config = json.load(f)
         else:
             console.print(f"[ERROR] Unsupported file format: {config_file.suffix}")
@@ -51,10 +62,10 @@ def batch(
         console.print(f"[ERROR] Failed to load configuration file: {e}")
         raise typer.Exit(1)
 
-    if 'tasks' in config:
-        tasks = config['tasks']
-    elif 'models' in config:
-        tasks = config['models']
+    if "tasks" in config:
+        tasks = config["tasks"]
+    elif "models" in config:
+        tasks = config["models"]
     else:
         console.print("[ERROR] Configuration file must contain 'tasks' or 'models' key")
         raise typer.Exit(1)
@@ -69,9 +80,9 @@ def batch(
         console.print("\n[bold]Checking disk space for all tasks...[/bold]")
         total_required_bytes = 0
         for i, task in enumerate(tasks):
-            model_path = task.get('model_path')
-            output_format = task.get('output_format')
-            quantization = task.get('quantization')
+            model_path = task.get("model_path")
+            output_format = task.get("output_format")
+            quantization = task.get("quantization")
             if not model_path or not output_format:
                 console.print(f"[ERROR] Task {i+1}: Missing required fields 'model_path' or 'output_format'")
                 raise typer.Exit(1)
@@ -100,31 +111,28 @@ def batch(
         transient=True,
         console=Console(force_terminal=True),  # 兼容 rich 14.x
     ) as progress:
-        task_progress = progress.add_task(
-            "Batch Conversion Progress",
-            total=len(tasks)
-        )
+        task_progress = progress.add_task("Batch Conversion Progress", total=len(tasks))
         for i, task in enumerate(tasks):
             desc = f"Task {i+1}/{len(tasks)}: {task.get('model_path')} → {task.get('output_format')}"
             progress.update(task_progress, description=desc)
             try:
                 # 统一输出路径为独立子目录
                 task_output_path = auto_complete_output_path(
-                    str(task.get('model_path')) if task.get('model_path') is not None else '',
-                    str(task.get('output_path')) if task.get('output_path') is not None else None,
-                    task.get('output_format')
+                    str(task.get("model_path")) if task.get("model_path") is not None else "",
+                    str(task.get("output_path")) if task.get("output_path") is not None else None,
+                    task.get("output_format"),
                 )
                 result = convert_model(
-                    input_path=str(task.get('model_path')) if task.get('model_path') is not None else None,
+                    input_path=str(task.get("model_path")) if task.get("model_path") is not None else None,
                     output_path=task_output_path,
-                    to=task.get('output_format'),
-                    quant=task.get('quantization'),
-                    model_type=task.get('model_type', 'auto'),
-                    device=task.get('device', 'auto'),
-                    use_large_calibration=task.get('use_large_calibration', False),
-                    dtype=task.get('dtype'),
-                    quantization_config=task.get('quantization_config'),
-                    fake_weight=task.get('fake_weight', False)
+                    to=task.get("output_format"),
+                    quant=task.get("quantization"),
+                    model_type=task.get("model_type", "auto"),
+                    device=task.get("device", "auto"),
+                    use_large_calibration=task.get("use_large_calibration", False),
+                    dtype=task.get("dtype"),
+                    quantization_config=task.get("quantization_config"),
+                    fake_weight=task.get("fake_weight", False),
                 )
                 if result.success:
                     progress.console.print(f"[green]Success! Output: {result.output_path}[/green]")
@@ -133,12 +141,12 @@ def batch(
                 else:
                     progress.console.print(f"[red]Failed: {result.error}[/red]")
                     failed += 1
-                    failed_tasks.append(task.get('name') or task.get('model_path') or f'Task {i+1}')
+                    failed_tasks.append(task.get("name") or task.get("model_path") or f"Task {i+1}")
                 results.append(result)
             except Exception as e:
                 progress.console.print(f"[red]Exception during conversion: {e}[/red]")
                 failed += 1
-                failed_tasks.append(task.get('name') or task.get('model_path') or f'Task {i+1}')
+                failed_tasks.append(task.get("name") or task.get("model_path") or f"Task {i+1}")
             progress.advance(task_progress)
     console.print(f"\n[bold]Batch conversion completed: {successful} succeeded, {failed} failed.[/bold]")
     if succeeded_outputs:
@@ -152,27 +160,29 @@ def batch(
     if failed > 0:
         raise typer.Exit(2)
 
+
 def check_and_handle_disk_space_batch(total_required_bytes: int, console: Console) -> bool:
     """
     Check disk space for batch operations.
     Returns True if operation should proceed, False if aborted.
     """
     from model_converter_tool.utils import check_disk_space_safety, prompt_user_confirmation_low_space
-    has_enough_space, space_info = check_disk_space_safety(
-        total_required_bytes, safety_margin_gib=5.0, path="/"
-    )
+
+    has_enough_space, space_info = check_disk_space_safety(total_required_bytes, safety_margin_gib=5.0, path="/")
     if has_enough_space:
         formatted = space_info["formatted"]
-        console.print(f"[green]✓[/green] Sufficient disk space available:")
-        console.print(f"  Free: {formatted['free']} | Required: {formatted['required']} | Safety margin: {formatted['safety_margin']}")
+        console.print("[green]✓[/green] Sufficient disk space available:")
+        console.print(
+            f"  Free: {formatted['free']} | Required: {formatted['required']} | Safety margin: {formatted['safety_margin']}"
+        )
         return True
     if space_info["has_enough_for_operation"] and not space_info["has_safety_margin"]:
         return prompt_user_confirmation_low_space(space_info)
     formatted = space_info["formatted"]
-    console.print(f"[red]❌[/red] INSUFFICIENT DISK SPACE")
-    console.print(f"Current disk space:")
+    console.print("[red]❌[/red] INSUFFICIENT DISK SPACE")
+    console.print("Current disk space:")
     console.print(f"  Free: {formatted['free']}")
     console.print(f"  Required: {formatted['required']}")
     console.print(f"  Shortage: {format_bytes(total_required_bytes - space_info['free_bytes'])}")
     console.print("Please free up disk space and try again.")
-    return False 
+    return False

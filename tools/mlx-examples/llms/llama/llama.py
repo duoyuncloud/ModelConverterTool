@@ -44,9 +44,7 @@ class Attention(nn.Module):
         self.wk = nn.Linear(args.dim, args.n_kv_heads * args.head_dim, bias=False)
         self.wv = nn.Linear(args.dim, args.n_kv_heads * args.head_dim, bias=False)
         self.wo = nn.Linear(args.n_heads * args.head_dim, args.dim, bias=False)
-        self.rope = nn.RoPE(
-            args.head_dim, traditional=args.rope_traditional, base=args.rope_theta
-        )
+        self.rope = nn.RoPE(args.head_dim, traditional=args.rope_traditional, base=args.rope_theta)
 
     def __call__(
         self,
@@ -361,15 +359,9 @@ if __name__ == "__main__":
         "--few-shot",
         help="Read a few shot prompt from a file (as in `sample_prompt.txt`).",
     )
-    parser.add_argument(
-        "--max-tokens", "-m", type=int, default=100, help="How many tokens to generate"
-    )
-    parser.add_argument(
-        "--write-every", type=int, default=1, help="After how many tokens to detokenize"
-    )
-    parser.add_argument(
-        "--temp", type=float, default=0.0, help="The sampling temperature"
-    )
+    parser.add_argument("--max-tokens", "-m", type=int, default=100, help="How many tokens to generate")
+    parser.add_argument("--write-every", type=int, default=1, help="After how many tokens to detokenize")
+    parser.add_argument("--temp", type=float, default=0.0, help="The sampling temperature")
     parser.add_argument("--seed", type=int, default=0, help="The PRNG seed")
 
     args = parser.parse_args()

@@ -1,19 +1,13 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from model_converter_tool.utils import auto_load_model_and_tokenizer
 
 logger = logging.getLogger(__name__)
 
-def convert_to_hf(
-    model: Any,
-    tokenizer: Any,
-    model_name: str,
-    output_path: str,
-    model_type: str,
-    device: str
-) -> tuple:
+
+def convert_to_hf(model: Any, tokenizer: Any, model_name: str, output_path: str, model_type: str, device: str) -> tuple:
     """
     Save model in HuggingFace native format.
     Args:
@@ -44,6 +38,7 @@ def convert_to_hf(
         logger.error(f"HF conversion error: {e}")
         return False, None
 
+
 def validate_hf_file(path: str, *args, **kwargs) -> bool:
     """
     Static validation for HuggingFace model directories. Checks if config.json exists and the model can be loaded by transformers.AutoModel.
@@ -51,11 +46,12 @@ def validate_hf_file(path: str, *args, **kwargs) -> bool:
     """
     if not os.path.exists(path) or not os.path.isdir(path):
         return False
-    config_path = os.path.join(path, 'config.json')
+    config_path = os.path.join(path, "config.json")
     if not os.path.exists(config_path):
         return False
     try:
         from transformers import AutoModel
+
         _ = AutoModel.from_pretrained(path)
         return True
     except ImportError:
@@ -64,6 +60,7 @@ def validate_hf_file(path: str, *args, **kwargs) -> bool:
     except Exception:
         return False
 
+
 def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
     """
     Dynamic check for HuggingFace model directories. Loads the model and tokenizer and runs a real dummy inference.
@@ -71,6 +68,7 @@ def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
     """
     try:
         from transformers import AutoModel, AutoTokenizer
+
         model = AutoModel.from_pretrained(path)
         tokenizer = AutoTokenizer.from_pretrained(path)
         dummy = tokenizer("Hello world!", return_tensors="pt")
@@ -80,4 +78,4 @@ def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
         # transformers not installed
         return False
     except Exception:
-        return False 
+        return False

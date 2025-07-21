@@ -5,9 +5,9 @@ import subprocess
 import sys
 import tempfile
 from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
-import os
 
 logger = logging.getLogger(__name__)
+
 
 def convert_to_gguf(
     model: Any,
@@ -18,7 +18,7 @@ def convert_to_gguf(
     device: str,
     quantization: str = None,
     use_large_calibration: bool = False,
-    quantization_config: dict = None
+    quantization_config: dict = None,
 ) -> tuple:
     """
     Export model to GGUF format.
@@ -68,11 +68,13 @@ def convert_to_gguf(
                 # Try to infer from quantization string if not provided
                 if bits is None and quantization:
                     import re
+
                     m = re.match(r"(\d+)bit", quantization)
                     if m:
                         bits = int(m.group(1))
                 if group_size is None and quantization:
                     import re
+
                     m = re.match(r".*g(\d+)", quantization)
                     if m:
                         group_size = int(m.group(1))
@@ -84,17 +86,23 @@ def convert_to_gguf(
                     sym = False
                 patch_quantization_config(gguf_file.parent / "config.json", bits, group_size, sym, desc)
                 # After saving model, patch config if fake_weight
-                if 'fake_weight' in locals() and fake_weight:
+                if "fake_weight" in locals() and fake_weight:
                     from model_converter_tool.utils import patch_config_remove_quantization_config
+
                     patch_config_remove_quantization_config(output_dir)
                 return True, None
-            logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
+            logger.error(
+                "GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed."
+            )
             return False, None
-        logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
+        logger.error(
+            "GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed."
+        )
         return False, None
     except Exception as e:
         logger.error(f"GGUF conversion error: {e}")
         return False, None
+
 
 def validate_gguf_file(path: str, *args, **kwargs) -> bool:
     """
@@ -103,8 +111,8 @@ def validate_gguf_file(path: str, *args, **kwargs) -> bool:
     Returns True if the file passes static validation, False otherwise.
     Prints detailed exception info on failure for debugging.
     """
-    import os
     from pathlib import Path
+
     p = Path(path)
     if p.is_dir():
         candidate = p / "model.gguf"
@@ -118,16 +126,18 @@ def validate_gguf_file(path: str, *args, **kwargs) -> bool:
         return False
     try:
         # Insert actual GGUF validation logic here, e.g., open and check file header
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             magic = f.read(4)
-            if magic != b'GGUF':
+            if magic != b"GGUF":
                 print(f"[validate_gguf_file] Invalid GGUF file magic: {magic}")
                 return False
         return True
     except Exception as e:
         import traceback
+
         print(f"[validate_gguf_file] Exception: {e}\n" + traceback.format_exc())
         return False
+
 
 def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:
     """
@@ -136,6 +146,7 @@ def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:
     """
     try:
         import llama_cpp
+
         llm = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
         # Run a real dummy inference
         _ = llm("Hello", max_tokens=1)
@@ -144,4 +155,4 @@ def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:
         # llama_cpp not installed
         return False
     except Exception:
-        return False 
+        return False

@@ -2,11 +2,7 @@ import logging
 from pathlib import Path
 from typing import Any
 import subprocess
-import sys
 import os
-import json
-from datetime import datetime
-from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config
 import shutil
 
 logger = logging.getLogger(__name__)
@@ -61,7 +57,7 @@ def convert_to_mlx(
     device: str,
     quantization: str = None,
     use_large_calibration: bool = False,
-    quantization_config: dict = None
+    quantization_config: dict = None,
 ) -> tuple:
     """
     Convert a HuggingFace model to MLX format using the official mlx-lm conversion script.
@@ -69,21 +65,17 @@ def convert_to_mlx(
     The output is always a directory (never a .npz file).
     """
     import subprocess
-    import sys
     import os
     import tempfile
     import shutil
+
     try:
         # Use a unique temporary directory for mlx-lm output
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_output = os.path.join(tmpdir, "mlx-out")
-            cmd = [
-                sys.executable, '-m', 'mlx_lm.convert',
-                '--hf-path', model_name,
-                '--mlx-path', tmp_output
-            ]
+            cmd = [sys.executable, "-m", "mlx_lm.convert", "--hf-path", model_name, "--mlx-path", tmp_output]
             if quantization:
-                cmd += ['-q', quantization]
+                cmd += ["-q", quantization]
             subprocess.check_call(cmd)
             # Print the contents of the temp directory for debugging
             print("[DEBUG] Contents of tempdir after mlx-lm.convert:", os.listdir(tmpdir))
@@ -110,6 +102,7 @@ def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
     try:
         import os
         from mlx_lm import load, generate
+
         # path should be a directory containing MLX weights/config
         if not os.path.isdir(path):
             raise ValueError(f"MLX check expects a directory, got: {path}")
@@ -120,11 +113,12 @@ def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
         logger.error(f"MLX dynamic check failed: {e}")
         return False
 
+
 def validate_mlx_file(path: str, *args, **kwargs) -> bool:
-    import os
+
     if not os.path.isdir(path):
         return False
     files = os.listdir(path)
-    has_config = 'config.json' in files
-    has_weights = any(f.endswith('.npz') or f.endswith('.safetensors') for f in files)
-    return has_config and has_weights 
+    has_config = "config.json" in files
+    has_weights = any(f.endswith(".npz") or f.endswith(".safetensors") for f in files)
+    return has_config and has_weights

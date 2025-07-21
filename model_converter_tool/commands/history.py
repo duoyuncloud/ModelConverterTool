@@ -1,6 +1,7 @@
 import typer
 from model_converter_tool.core.history import get_history
 
+
 def history():
     """
     Show conversion history.
@@ -14,4 +15,4 @@ def history():
         typer.echo(f"  {t}")
     typer.echo("Active tasks:")
     for t in history["active"]:
-        typer.echo(f"  {t}") 
+        typer.echo(f"  {t}")

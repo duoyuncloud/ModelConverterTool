@@ -4,11 +4,9 @@ Configuration management for the model converter tool
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import yaml
-import os
-import logging
 
 
 @dataclass
@@ -147,6 +145,7 @@ class ConfigManager:
 
     def _load_global_config(self):
         import yaml
+
         if not self.GLOBAL_CONFIG_PATH.exists():
             self._save_global_config(self.DEFAULT_GLOBAL_CONFIG)
             return self.DEFAULT_GLOBAL_CONFIG.copy()
@@ -164,6 +163,7 @@ class ConfigManager:
 
     def _save_global_config(self, config_dict):
         import yaml
+
         with open(self.GLOBAL_CONFIG_PATH, "w") as f:
             yaml.dump(config_dict, f, default_flow_style=False, indent=2)
 

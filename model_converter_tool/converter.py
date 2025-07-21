@@ -1,16 +1,27 @@
 import logging
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from typing import Any, Dict, List, Optional, Union, Tuple
-import importlib
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Supported format list
 SUPPORTED_FORMATS = [
-    "onnx", "torchscript", "gguf", "awq", "gptq", "hf", "huggingface", "safetensors", "mlx",
-    "mtk", "rk", "ax", "qnn", "megatron2hf"  # Newly added planned formats
+    "onnx",
+    "torchscript",
+    "gguf",
+    "awq",
+    "gptq",
+    "hf",
+    "huggingface",
+    "safetensors",
+    "mlx",
+    "mtk",
+    "rk",
+    "ax",
+    "qnn",
+    "megatron2hf",  # Newly added planned formats
 ]
+
 
 @dataclass
 class ConversionResult:
@@ -20,60 +31,75 @@ class ConversionResult:
     validation: Optional[bool] = None
     extra_info: Optional[Dict[str, Any]] = None
 
+
 class ModelConverter:
     """
     Model converter with engine-based logic and unified dispatch.
     API-First: All parameters explicit, type-safe, well-documented, returns dataclass.
     """
-    
+
     def _get_converter_functions(self, output_format: str):
         """Lazy import converter functions"""
         if output_format in ("hf", "huggingface"):
             from .engine.hf import convert_to_hf, validate_hf_file
+
             return convert_to_hf, validate_hf_file
         if output_format == "onnx":
             from .engine.onnx import convert_to_onnx, validate_onnx_file
+
             return convert_to_onnx, validate_onnx_file
         elif output_format == "torchscript":
             from .engine.torchscript import convert_to_torchscript, validate_torchscript_file
+
             return convert_to_torchscript, validate_torchscript_file
         elif output_format == "gguf":
             from .engine.gguf import convert_to_gguf, validate_gguf_file
+
             return convert_to_gguf, validate_gguf_file
         elif output_format == "awq":
             from .engine.awq import convert_to_awq, validate_awq_file
+
             return convert_to_awq, validate_awq_file
         elif output_format == "gptq":
             from .engine.gptq import convert_to_gptq, validate_gptq_file
+
             return convert_to_gptq, validate_gptq_file
         elif output_format == "safetensors":
             from .engine.safetensors import convert_to_safetensors, validate_safetensors_file
+
             return convert_to_safetensors, validate_safetensors_file
         elif output_format == "mlx":
             from .engine.mlx import convert_to_mlx, validate_mlx_file
+
             return convert_to_mlx, validate_mlx_file
         elif output_format == "custom_quant":
             from .engine.custom_quant import convert_to_custom_quant, validate_custom_quant_file
+
             return convert_to_custom_quant, validate_custom_quant_file
         # Register new shell converters
         elif output_format == "mtk":
             from .engine.mtk import convert_hf_to_mtk
+
             return convert_hf_to_mtk, (lambda *a, **kw: True)
         elif output_format == "rk":
             from .engine.rk import convert_hf_to_rk
+
             return convert_hf_to_rk, (lambda *a, **kw: True)
         elif output_format == "ax":
             from .engine.ax import convert_hf_to_ax
+
             return convert_hf_to_ax, (lambda *a, **kw: True)
         elif output_format == "qnn":
             from .engine.qnn import convert_hf_to_qnn
+
             return convert_hf_to_qnn, (lambda *a, **kw: True)
         elif output_format == "megatron2hf":
             from .engine.megatron2hf import convert_megatron_to_hf
+
             return convert_megatron_to_hf, (lambda *a, **kw: True)
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
-    
+
     def _detect_model_format(self, input_model: str) -> Tuple[str, str]:
         """
         Detect the format of input model.
@@ -82,7 +108,7 @@ class ModelConverter:
         Returns:
             Tuple of (format, normalized_path)
         """
-        from pathlib import Path
+
         path = Path(input_model)
         suffix = path.suffix.lower()
         # If the path is a directory and contains model.onnx or model.gguf, treat as ONNX or GGUF format
@@ -92,7 +118,11 @@ class ModelConverter:
             if (path / "model.gguf").exists():
                 return "gguf", str(path / "model.gguf")
             # (other directory format checks can go here)
-            if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or any(path.glob("*.safetensors")):
+            if (
+                (path / "config.json").exists()
+                or (path / "pytorch_model.bin").exists()
+                or any(path.glob("*.safetensors"))
+            ):
                 return "huggingface", str(path)
             return "unknown", str(path)
         # File extension based detection
@@ -117,21 +147,16 @@ class ModelConverter:
             return "unknown", str(path)
         # Default to unknown
         return "unknown", str(path)
-    
+
     def _validate_conversion_inputs(
-        self, 
-        input_format: str, 
-        output_format: str, 
-        model_type: str, 
-        quantization: str = "", 
-        device: str = "auto"
+        self, input_format: str, output_format: str, model_type: str, quantization: str = "", device: str = "auto"
     ) -> Dict[str, Any]:
         errors = []
         warnings = []
 
         # Treat 'hf' and 'huggingface' as equivalent
-        input_format_norm = input_format.replace('hf', 'huggingface') if input_format == 'hf' else input_format
-        output_format_norm = output_format.replace('hf', 'huggingface') if output_format == 'hf' else output_format
+        input_format_norm = input_format.replace("hf", "huggingface") if input_format == "hf" else input_format
+        output_format_norm = output_format.replace("hf", "huggingface") if output_format == "hf" else output_format
 
         # Check if input format is supported
         if input_format_norm not in self.get_conversion_matrix() and input_format_norm != "huggingface":
@@ -156,11 +181,7 @@ class ModelConverter:
         if quantization and output_format_norm not in ["gguf", "gptq", "awq", "mlx", "custom_quant"]:
             warnings.append(f"Quantization not supported for {output_format} format")
 
-        return {
-            "valid": len(errors) == 0,
-            "errors": errors,
-            "warnings": warnings
-        }
+        return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
 
     def _map_model_type_internal(self, model_type: str) -> str:
         """
@@ -192,10 +213,12 @@ class ModelConverter:
         Convert a model to the specified format. Always performs static validation after conversion.
         Only returns success if both conversion and static validation succeed.
         """
+
         def has_mup_params(config: dict) -> bool:
             """Detect if config contains muP parameters."""
             mup_keys = ["scale_emb", "scale_depth", "dim_model_base", "hidden_size", "num_hidden_layers"]
             return any(k in config for k in mup_keys)
+
         result = ConversionResult(success=False)
         try:
             input_format, norm_path = self._detect_model_format(model_name)
@@ -207,14 +230,18 @@ class ModelConverter:
             if mup2llama:
                 try:
                     from transformers import AutoConfig
+
                     config = AutoConfig.from_pretrained(norm_path, trust_remote_code=True)
-                    config_dict = config.to_dict() if hasattr(config, 'to_dict') else dict(config)
+                    config_dict = config.to_dict() if hasattr(config, "to_dict") else dict(config)
                     if has_mup_params(config_dict):
                         import math
+
                         embedding_scale = config_dict["scale_emb"]
                         residual_scale = config_dict["scale_depth"] / math.sqrt(config_dict["num_hidden_layers"])
                         logit_scale = config_dict["hidden_size"] / config_dict["dim_model_base"]
-                        logger.info(f"[muP2LLaMA] Detected muP params. embedding_scale={embedding_scale}, residual_scale={residual_scale}, logit_scale={logit_scale}")
+                        logger.info(
+                            f"[muP2LLaMA] Detected muP params. embedding_scale={embedding_scale}, residual_scale={residual_scale}, logit_scale={logit_scale}"
+                        )
                         mup_scales = dict(embedding=embedding_scale, residual=residual_scale, logit=logit_scale)
                         # Process config, remove muP parameters, keep LLaMA parameters
                         mup_keys = ["scale_emb", "scale_depth", "dim_model_base"]
@@ -230,47 +257,49 @@ class ModelConverter:
             if mup_scales and model is not None:
                 try:
                     # Embedding layer
-                    if hasattr(model, 'embed_tokens') and hasattr(model.embed_tokens, 'weight'):
-                        model.embed_tokens.weight.data.mul_(mup_scales['embedding'])
+                    if hasattr(model, "embed_tokens") and hasattr(model.embed_tokens, "weight"):
+                        model.embed_tokens.weight.data.mul_(mup_scales["embedding"])
                         logger.info("[muP2LLaMA] Scaled embed_tokens.weight by embedding_scale")
                     # Logit layer
-                    if hasattr(model, 'lm_head') and hasattr(model.lm_head, 'weight'):
-                        model.lm_head.weight.data.mul_(mup_scales['logit'])
+                    if hasattr(model, "lm_head") and hasattr(model.lm_head, "weight"):
+                        model.lm_head.weight.data.mul_(mup_scales["logit"])
                         logger.info("[muP2LLaMA] Scaled lm_head.weight by logit_scale")
-                    if hasattr(model, 'output') and hasattr(model.output, 'weight'):
-                        model.output.weight.data.mul_(mup_scales['logit'])
+                    if hasattr(model, "output") and hasattr(model.output, "weight"):
+                        model.output.weight.data.mul_(mup_scales["logit"])
                         logger.info("[muP2LLaMA] Scaled output.weight by logit_scale")
                     # Residual layer (iterate over transformer blocks)
-                    if hasattr(model, 'layers') and isinstance(model.layers, (list, tuple)):
+                    if hasattr(model, "layers") and isinstance(model.layers, (list, tuple)):
                         for i, layer in enumerate(model.layers):
                             # Common residual projection names: self_attn.out_proj, mlp.down_proj, mlp.gate_proj, mlp.up_proj
-                            for attr in ['self_attn', 'mlp']:
+                            for attr in ["self_attn", "mlp"]:
                                 sub = getattr(layer, attr, None)
                                 if sub:
-                                    for proj in ['out_proj', 'down_proj', 'gate_proj', 'up_proj']:
+                                    for proj in ["out_proj", "down_proj", "gate_proj", "up_proj"]:
                                         p = getattr(sub, proj, None)
-                                        if p and hasattr(p, 'weight'):
-                                            p.weight.data.mul_(mup_scales['residual'])
-                                            logger.info(f"[muP2LLaMA] Scaled layer {i} {attr}.{proj}.weight by residual_scale")
+                                        if p and hasattr(p, "weight"):
+                                            p.weight.data.mul_(mup_scales["residual"])
+                                            logger.info(
+                                                f"[muP2LLaMA] Scaled layer {i} {attr}.{proj}.weight by residual_scale"
+                                            )
                 except Exception as e:
                     logger.warning(f"[muP2LLaMA] Failed to scale weights: {e}")
             # Special handling for some formats
             if output_format == "safetensors":
                 try:
-                    import torch
-                    from model_converter_tool.engine.safetensors import convert_to_safetensors, validate_safetensors_file
+                    from model_converter_tool.engine.safetensors import (
+                        convert_to_safetensors,
+                        validate_safetensors_file,
+                    )
+
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict)
+
+                        model = load_model_with_cache(
+                            norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict
+                        )
                     success, extra_info = convert_to_safetensors(
-                        model,
-                        tokenizer,
-                        model_name,
-                        output_path,
-                        internal_model_type,
-                        device,
-                        dtype
+                        model, tokenizer, model_name, output_path, internal_model_type, device, dtype
                     )
                     if not success:
                         result.error = f"Safetensors conversion failed: {extra_info}"
@@ -286,9 +315,9 @@ class ModelConverter:
                     result.extra_info = extra_info
                     # config.json overwrite moved here to ensure it happens after all saves
                     if mup_config_dict and output_path:
-                        import os
                         import json
                         from pathlib import Path
+
                         out_dir = Path(output_path)
                         if out_dir.is_file() or (not out_dir.exists() and out_dir.suffix):
                             out_dir = out_dir.parent
@@ -306,12 +335,18 @@ class ModelConverter:
                     return result
             if output_format == "custom_quant":
                 try:
-                    import torch
-                    from model_converter_tool.engine.custom_quant import convert_to_custom_quant, validate_custom_quant_file
+                    from model_converter_tool.engine.custom_quant import (
+                        convert_to_custom_quant,
+                        validate_custom_quant_file,
+                    )
+
                     if model is None:
                         from transformers import AutoModel
                         from model_converter_tool.utils import load_model_with_cache
-                        model = load_model_with_cache(norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict)
+
+                        model = load_model_with_cache(
+                            norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict
+                        )
                     success, extra_info = convert_to_custom_quant(
                         model,
                         None,
@@ -321,7 +356,7 @@ class ModelConverter:
                         device,
                         quantization,
                         use_large_calibration,
-                        quantization_config
+                        quantization_config,
                     )
                     if not success:
                         result.error = f"Custom quantization failed: {extra_info}"
@@ -339,11 +374,7 @@ class ModelConverter:
                     result.error = f"Custom quantization failed: {e}"
                     return result
             if output_format == "onnx":
-                success = convert_func(
-                    model_name=model_name,
-                    output_path=output_path,
-                    device=device
-                )
+                success = convert_func(model_name=model_name, output_path=output_path, device=device)
                 if not success:
                     result.error = f"ONNX conversion failed for {model_name}"
                     return result
@@ -362,7 +393,15 @@ class ModelConverter:
                     pass
                 elif output_format in ("awq", "gptq"):
                     success, extra = convert_func(
-                        model, tokenizer, model_name, output_path, internal_model_type, device, quantization, use_large_calibration, quantization_config
+                        model,
+                        tokenizer,
+                        model_name,
+                        output_path,
+                        internal_model_type,
+                        device,
+                        quantization,
+                        use_large_calibration,
+                        quantization_config,
                     )
                 else:
                     success, extra = convert_func(
@@ -414,41 +453,61 @@ class ModelConverter:
                     retries += 1
                     if retries >= max_retries:
                         results.append(ConversionResult(success=False, error=str(e)))
-        return results 
+        return results
 
     def get_conversion_matrix(self) -> Dict[str, List[str]]:
         """Public method to get the conversion matrix, including custom_quant support."""
         matrix = self._get_conversion_matrix()
         # Add 'custom_quant' to all input types
         for k in matrix:
-            if 'custom_quant' not in matrix[k]:
-                matrix[k].append('custom_quant')
+            if "custom_quant" not in matrix[k]:
+                matrix[k].append("custom_quant")
         # Make 'hf' and 'huggingface' equivalent for all input types
         for k in list(matrix.keys()):
-            if 'huggingface' in matrix[k] and 'hf' not in matrix[k]:
-                matrix[k].append('hf')
-            if 'hf' in matrix[k] and 'huggingface' not in matrix[k]:
-                matrix[k].append('huggingface')
+            if "huggingface" in matrix[k] and "hf" not in matrix[k]:
+                matrix[k].append("hf")
+            if "hf" in matrix[k] and "huggingface" not in matrix[k]:
+                matrix[k].append("huggingface")
         return matrix
 
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         return {
             "huggingface": [
-                "huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq",
-                "mtk", "rk", "ax", "qnn"  # Newly added formats
+                "huggingface",
+                "hf",
+                "safetensors",
+                "torchscript",
+                "onnx",
+                "gguf",
+                "mlx",
+                "gptq",
+                "awq",
+                "mtk",
+                "rk",
+                "ax",
+                "qnn",  # Newly added formats
             ],
             "hf": [
-                "huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq",
-                "mtk", "rk", "ax", "qnn"  # Newly added formats
+                "huggingface",
+                "hf",
+                "safetensors",
+                "torchscript",
+                "onnx",
+                "gguf",
+                "mlx",
+                "gptq",
+                "awq",
+                "mtk",
+                "rk",
+                "ax",
+                "qnn",  # Newly added formats
             ],
-            "megatron": [
-                "hf", "megatron2hf"  # Newly added format
-            ],
+            "megatron": ["hf", "megatron2hf"],  # Newly added format
             "safetensors": ["huggingface", "hf", "safetensors"],
             "torchscript": ["torchscript"],
             "onnx": ["onnx"],
             "gguf": ["gguf"],
-            "mlx": ["mlx"]
+            "mlx": ["mlx"],
         }
 
     def get_input_formats(self) -> dict:
@@ -462,7 +521,9 @@ class ModelConverter:
         """
         Return a dict of supported output formats. Key: format name, Value: description or empty dict.
         """
-        return {fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]}
+        return {
+            fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]
+        }
 
     def _can_infer_model(self, model_path, model_format=None, **kwargs):
         """
@@ -488,6 +549,7 @@ class ModelConverter:
                 return {"can_infer": False, "error": f"Format '{fmt}' is not supported for dynamic check."}
             module_name, func_name = engine_map[fmt]
             import importlib
+
             engine = importlib.import_module(module_name)
             check_func = getattr(engine, func_name)
             # Always use the real file, do not use fake_weight for inference check
@@ -495,4 +557,5 @@ class ModelConverter:
             return {"can_infer": bool(result)}
         except Exception as e:
             import traceback
-            return {"can_infer": False, "error": str(e), "details": traceback.format_exc()} 
+
+            return {"can_infer": False, "error": str(e), "details": traceback.format_exc()}

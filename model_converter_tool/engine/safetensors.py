@@ -1,19 +1,14 @@
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from model_converter_tool.utils import auto_load_model_and_tokenizer
 import os
 
 logger = logging.getLogger(__name__)
 
+
 def convert_to_safetensors(
-    model: Any,
-    tokenizer: Any,
-    model_name: str,
-    output_path: str,
-    model_type: str,
-    device: str,
-    dtype: str = None
+    model: Any, tokenizer: Any, model_name: str, output_path: str, model_type: str, device: str, dtype: str = None
 ) -> tuple:
     """
     Save model in safetensors format, with optional precision control.
@@ -60,6 +55,7 @@ def convert_to_safetensors(
         logger.error(f"Safetensors conversion error: {e}")
         return False, str(e)
 
+
 def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
     """
     Static validation for SafeTensors files. Accepts either a file or directory path.
@@ -76,6 +72,7 @@ def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
         path = safetensors_file
     try:
         from safetensors.torch import load_file
+
         tensors = load_file(path)
         return bool(tensors)
     except ImportError:
@@ -83,6 +80,7 @@ def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
         return False
     except Exception:
         return False
+
 
 def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
     """
@@ -92,6 +90,7 @@ def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
     try:
         import os
         from transformers import AutoModel, AutoTokenizer
+
         # If path is a directory, use it directly; if file, use its parent
         if os.path.isdir(path):
             model_dir = path
@@ -103,4 +102,4 @@ def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
         _ = model(**dummy)
         return True
     except Exception:
-        return False 
+        return False

@@ -6,11 +6,13 @@ import tempfile
 import pytest
 from model_converter_tool.api import ModelConverterAPI
 
+
 def create_fake_mup_model(model_dir, fake_mup_config):
     """
     Create a minimal fake muP model and config in the given directory.
     """
     from transformers import AutoModelForCausalLM, AutoConfig, GPT2TokenizerFast
+
     config = AutoConfig.from_pretrained("gpt2")
     for k, v in fake_mup_config.items():
         setattr(config, k, v)
@@ -23,11 +25,13 @@ def create_fake_mup_model(model_dir, fake_mup_config):
     with open(os.path.join(model_dir, "config.json"), "w") as f:
         json.dump(fake_mup_config, f)
 
+
 @pytest.fixture(scope="module")
 def tmp_output_dir():
     d = tempfile.mkdtemp(prefix="mup2llama_test_")
     yield d
     shutil.rmtree(d)
+
 
 @pytest.fixture(scope="module")
 def fake_mup_config():
@@ -39,8 +43,9 @@ def fake_mup_config():
         "hidden_size": 8,
         "num_hidden_layers": 4,
         "vocab_size": 10,
-        "num_attention_heads": 2
+        "num_attention_heads": 2,
     }
+
 
 @pytest.fixture(scope="module")
 def fake_model_and_config(tmp_output_dir, fake_mup_config):
@@ -48,6 +53,7 @@ def fake_model_and_config(tmp_output_dir, fake_mup_config):
     os.makedirs(model_dir, exist_ok=True)
     create_fake_mup_model(model_dir, fake_mup_config)
     return model_dir
+
 
 def test_mup2llama_safetensors(tmp_output_dir, fake_model_and_config, fake_mup_config):
     """
@@ -57,10 +63,7 @@ def test_mup2llama_safetensors(tmp_output_dir, fake_model_and_config, fake_mup_c
     output_dir = os.path.join(tmp_output_dir, "out")
     # Run conversion with mup2llama
     result = api.convert_model(
-        model_path=fake_model_and_config,
-        output_format="safetensors",
-        output_path=output_dir,
-        mup2llama=True
+        model_path=fake_model_and_config, output_format="safetensors", output_path=output_dir, mup2llama=True
     )
     assert result.success, f"Conversion failed: {result.error}"
     # Check config.json: muP keys should be removed
@@ -77,6 +80,7 @@ def test_mup2llama_safetensors(tmp_output_dir, fake_model_and_config, fake_mup_c
     st_path = os.path.join(output_dir, "model.safetensors")
     assert os.path.exists(st_path), "model.safetensors not found in output"
     import safetensors.torch
+
     tensors = safetensors.torch.load_file(st_path)
     # The embedding weight should be all zeros (from fake model) but scaled by scale_emb (2.0)
     # So still zeros, but test shape and dtype
@@ -90,4 +94,4 @@ def test_mup2llama_safetensors(tmp_output_dir, fake_model_and_config, fake_mup_c
     assert found, f"Embedding weight not found in any of {emb_keys}"
     assert emb.shape[0] == fake_mup_config["vocab_size"]
     assert emb.shape[1] == fake_mup_config["hidden_size"]
-    assert emb.dtype == torch.float32 
+    assert emb.dtype == torch.float32

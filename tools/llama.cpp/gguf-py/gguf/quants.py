@@ -14,19 +14,25 @@ import numpy as np
 def quant_shape_to_byte_shape(shape: Sequence[int], quant_type: GGMLQuantizationType) -> tuple[int, ...]:
     block_size, type_size = GGML_QUANT_SIZES[quant_type]
     if shape[-1] % block_size != 0:
-        raise ValueError(f"Quantized tensor row size ({shape[-1]}) is not a multiple of {quant_type.name} block size ({block_size})")
+        raise ValueError(
+            f"Quantized tensor row size ({shape[-1]}) is not a multiple of {quant_type.name} block size ({block_size})"
+        )
     return (*shape[:-1], shape[-1] // block_size * type_size)
 
 
 def quant_shape_from_byte_shape(shape: Sequence[int], quant_type: GGMLQuantizationType) -> tuple[int, ...]:
     block_size, type_size = GGML_QUANT_SIZES[quant_type]
     if shape[-1] % type_size != 0:
-        raise ValueError(f"Quantized tensor bytes per row ({shape[-1]}) is not a multiple of {quant_type.name} type size ({type_size})")
+        raise ValueError(
+            f"Quantized tensor bytes per row ({shape[-1]}) is not a multiple of {quant_type.name} type size ({type_size})"
+        )
     return (*shape[:-1], shape[-1] // type_size * block_size)
 
 
 # This is faster than np.vectorize and np.apply_along_axis because it works on more than one row at a time
-def _apply_over_grouped_rows(func: Callable[[np.ndarray], np.ndarray], arr: np.ndarray, otype: DTypeLike, oshape: tuple[int, ...]) -> np.ndarray:
+def _apply_over_grouped_rows(
+    func: Callable[[np.ndarray], np.ndarray], arr: np.ndarray, otype: DTypeLike, oshape: tuple[int, ...]
+) -> np.ndarray:
     rows = arr.reshape((-1, arr.shape[-1]))
     osize = 1
     for dim in oshape:
@@ -91,13 +97,9 @@ class __Quant(ABC):
     def __init_subclass__(cls, qtype: GGMLQuantizationType) -> None:
         cls.qtype = qtype
         cls.block_size, cls.type_size = GGML_QUANT_SIZES[qtype]
-        cls.__quantize_lazy = LazyNumpyTensor._wrap_fn(
-            cls.__quantize_array,
-            meta_noop=(np.uint8, cls.__shape_to_bytes)
-        )
+        cls.__quantize_lazy = LazyNumpyTensor._wrap_fn(cls.__quantize_array, meta_noop=(np.uint8, cls.__shape_to_bytes))
         cls.__dequantize_lazy = LazyNumpyTensor._wrap_fn(
-            cls.__dequantize_array,
-            meta_noop=(np.float32, cls.__shape_from_bytes)
+            cls.__dequantize_array, meta_noop=(np.float32, cls.__shape_from_bytes)
         )
         assert qtype not in _type_traits
         _type_traits[qtype] = cls
@@ -117,7 +119,9 @@ class __Quant(ABC):
         grid = (np.where(grid > 0x40, grid + 9, grid) & 0x0F) << np.array([4, 0], dtype=np.uint8).reshape((1, 2))
         grid = grid[..., 0] | grid[..., 1]
         # unpack the grid values
-        grid = grid.reshape((-1, 1)) >> np.array([i for i in range(0, 8, 8 // elems_per_byte)], dtype=np.uint8).reshape((1, elems_per_byte))
+        grid = grid.reshape((-1, 1)) >> np.array([i for i in range(0, 8, 8 // elems_per_byte)], dtype=np.uint8).reshape(
+            (1, elems_per_byte)
+        )
         grid = (grid & ((1 << bits_per_elem) - 1)).reshape((-1, 1))
         grid_map = np.array(cls.grid_map, dtype=np.float32).reshape((1, -1))
         grid = np.take_along_axis(grid_map, grid, axis=-1)
@@ -165,12 +169,16 @@ class __Quant(ABC):
 
     @classmethod
     def __quantize_array(cls, array: np.ndarray) -> np.ndarray:
-        return _apply_over_grouped_rows(cls.quantize_rows, arr=array, otype=np.uint8, oshape=cls.__shape_to_bytes(array.shape))
+        return _apply_over_grouped_rows(
+            cls.quantize_rows, arr=array, otype=np.uint8, oshape=cls.__shape_to_bytes(array.shape)
+        )
 
     @classmethod
     def __dequantize_array(cls, array: np.ndarray) -> np.ndarray:
         cls.init_grid()
-        return _apply_over_grouped_rows(cls.dequantize_rows, arr=array, otype=np.float32, oshape=cls.__shape_from_bytes(array.shape))
+        return _apply_over_grouped_rows(
+            cls.dequantize_rows, arr=array, otype=np.float32, oshape=cls.__shape_from_bytes(array.shape)
+        )
 
     @classmethod
     def __quantize_lazy(cls, lazy_tensor: LazyNumpyTensor, /) -> Any:
@@ -207,9 +215,9 @@ class BF16(__Quant, qtype=GGMLQuantizationType.BF16):
     def quantize_blocks(cls, blocks: np.ndarray) -> np.ndarray:
         n = blocks.view(np.uint32)
         # force nan to quiet
-        n = np.where((n & 0x7fffffff) > 0x7f800000, (n & np.uint32(0xffff0000)) | np.uint32(64 << 16), n)
+        n = np.where((n & 0x7FFFFFFF) > 0x7F800000, (n & np.uint32(0xFFFF0000)) | np.uint32(64 << 16), n)
         # round to nearest even
-        n = (np.uint64(n) + (0x7fff + ((n >> 16) & 1))) >> 16
+        n = (np.uint64(n) + (0x7FFF + ((n >> 16) & 1))) >> 16
         return n.astype(np.uint16).view(np.uint8)
 
     @classmethod
@@ -229,7 +237,11 @@ class Q4_0(__Quant, qtype=GGMLQuantizationType.Q4_0):
         with np.errstate(divide="ignore"):
             id = np.where(d == 0, 0, 1 / d)
         # FIXME: Q4_0's reference rounding is cursed and depends on FMA
-        qs = np.trunc((np.float64(blocks) * np.float64(id)) + np.float64(8.5), dtype=np.float32).astype(np.uint8).clip(0, 15)
+        qs = (
+            np.trunc((np.float64(blocks) * np.float64(id)) + np.float64(8.5), dtype=np.float32)
+            .astype(np.uint8)
+            .clip(0, 15)
+        )
 
         qs = qs.reshape((n_blocks, 2, cls.block_size // 2))
         qs = qs[..., 0, :] | (qs[..., 1, :] << np.uint8(4))
@@ -246,10 +258,12 @@ class Q4_0(__Quant, qtype=GGMLQuantizationType.Q4_0):
 
         d = d.view(np.float16).astype(np.float32)
 
-        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2, 1))
+        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape(
+            (1, 1, 2, 1)
+        )
         qs = (qs & np.uint8(0x0F)).reshape((n_blocks, -1)).astype(np.int8) - np.int8(8)
 
-        return (d * qs.astype(np.float32))
+        return d * qs.astype(np.float32)
 
 
 class Q4_1(__Quant, qtype=GGMLQuantizationType.Q4_1):
@@ -283,7 +297,9 @@ class Q4_1(__Quant, qtype=GGMLQuantizationType.Q4_1):
         d = d.view(np.float16).astype(np.float32)
         m = m.view(np.float16).astype(np.float32)
 
-        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2, 1))
+        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape(
+            (1, 1, 2, 1)
+        )
         qs = (qs & np.uint8(0x0F)).reshape((n_blocks, -1)).astype(np.float32)
 
         return (d * qs) + m
@@ -301,7 +317,11 @@ class Q5_0(__Quant, qtype=GGMLQuantizationType.Q5_0):
         with np.errstate(divide="ignore"):
             id = np.where(d == 0, 0, 1 / d)
         # FIXME: Q5_0's reference rounding is cursed and depends on FMA
-        q = np.trunc((np.float64(blocks) * np.float64(id)) + np.float64(16.5), dtype=np.float32).astype(np.uint8).clip(0, 31)
+        q = (
+            np.trunc((np.float64(blocks) * np.float64(id)) + np.float64(16.5), dtype=np.float32)
+            .astype(np.uint8)
+            .clip(0, 31)
+        )
 
         qs = q.reshape((n_blocks, 2, cls.block_size // 2))
         qs = (qs[..., 0, :] & np.uint8(0x0F)) | (qs[..., 1, :] << np.uint8(4))
@@ -323,13 +343,15 @@ class Q5_0(__Quant, qtype=GGMLQuantizationType.Q5_0):
         qh = qh.view(np.uint32)
 
         qh = qh.reshape((n_blocks, 1)) >> np.array([i for i in range(32)], dtype=np.uint32).reshape((1, 32))
-        ql = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2, 1))
+        ql = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape(
+            (1, 1, 2, 1)
+        )
         qh = (qh & np.uint32(0x01)).astype(np.uint8)
         ql = (ql & np.uint8(0x0F)).reshape((n_blocks, -1))
 
         qs = (ql | (qh << np.uint8(4))).astype(np.int8) - np.int8(16)
 
-        return (d * qs.astype(np.float32))
+        return d * qs.astype(np.float32)
 
 
 class Q5_1(__Quant, qtype=GGMLQuantizationType.Q5_1):
@@ -368,7 +390,9 @@ class Q5_1(__Quant, qtype=GGMLQuantizationType.Q5_1):
         qh = qh.view(np.uint32)
 
         qh = qh.reshape((n_blocks, 1)) >> np.array([i for i in range(32)], dtype=np.uint32).reshape((1, 32))
-        ql = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2, 1))
+        ql = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape(
+            (1, 1, 2, 1)
+        )
         qh = (qh & np.uint32(0x01)).astype(np.uint8)
         ql = (ql & np.uint8(0x0F)).reshape((n_blocks, -1))
 
@@ -400,7 +424,7 @@ class Q8_0(__Quant, qtype=GGMLQuantizationType.Q8_0):
         d = d.view(np.float16).astype(np.float32)
         x = x.view(np.int8).astype(np.float32)
 
-        return (x * d)
+        return x * d
 
 
 class Q2_K(__Quant, qtype=GGMLQuantizationType.Q2_K):
@@ -467,7 +491,7 @@ class Q3_K(__Quant, qtype=GGMLQuantizationType.Q3_K):
         ql = qs.reshape((n_blocks, -1, 1, 32)) >> np.array([0, 2, 4, 6], dtype=np.uint8).reshape((1, 1, 4, 1))
         qh = hmask.reshape(n_blocks, -1, 1, 32) >> np.array([i for i in range(8)], dtype=np.uint8).reshape((1, 1, 8, 1))
         ql = ql.reshape((n_blocks, 16, QK_K // 16)) & np.uint8(3)
-        qh = (qh.reshape((n_blocks, 16, QK_K // 16)) & np.uint8(1))
+        qh = qh.reshape((n_blocks, 16, QK_K // 16)) & np.uint8(1)
         qh = qh ^ np.uint8(1)  # strangely, the offset is zero when the bitmask is 1
         q = (ql.astype(np.int8) - (qh << np.uint8(2)).astype(np.int8)).astype(np.float32)
 
@@ -585,7 +609,7 @@ class TQ1_0(__Quant, qtype=GGMLQuantizationType.TQ1_0):
         qs = np_roundf(blocks * id)
         qs = (qs.astype(np.int8) + np.int8(1)).astype(np.uint8)
 
-        qs0, qs1, qh = qs[..., :(32 * 5)], qs[..., (32 * 5):(48 * 5)], qs[..., (48 * 5):]
+        qs0, qs1, qh = qs[..., : (32 * 5)], qs[..., (32 * 5) : (48 * 5)], qs[..., (48 * 5) :]
         qs0 = qs0.reshape((n_blocks, -1, 5, 32)) * np.array([81, 27, 9, 3, 1], dtype=np.uint8).reshape((1, 1, 5, 1))
         qs0 = np.sum(qs0, axis=-2).reshape((n_blocks, -1))
         qs1 = qs1.reshape((n_blocks, -1, 5, 16)) * np.array([81, 27, 9, 3, 1], dtype=np.uint8).reshape((1, 1, 5, 1))
@@ -619,7 +643,7 @@ class TQ1_0(__Quant, qtype=GGMLQuantizationType.TQ1_0):
         qs = np.concatenate([qs0, qs1, qh], axis=-1)
         qs = ((qs.astype(np.uint16) * 3) >> 8).astype(np.int8) - np.int8(1)
 
-        return (d * qs.astype(np.float32))
+        return d * qs.astype(np.float32)
 
 
 class TQ2_0(__Quant, qtype=GGMLQuantizationType.TQ2_0):
@@ -652,7 +676,7 @@ class TQ2_0(__Quant, qtype=GGMLQuantizationType.TQ2_0):
         qs = qs.reshape((n_blocks, -1, 1, 32)) >> np.array([0, 2, 4, 6], dtype=np.uint8).reshape((1, 1, 4, 1))
         qs = (qs & 0x03).reshape((n_blocks, -1)).astype(np.int8) - np.int8(1)
 
-        return (d * qs.astype(np.float32))
+        return d * qs.astype(np.float32)
 
 
 class IQ2_XXS(__Quant, qtype=GGMLQuantizationType.IQ2_XXS):
@@ -670,7 +694,7 @@ class IQ2_XXS(__Quant, qtype=GGMLQuantizationType.IQ2_XXS):
     # iq2xxs_grid, but with each byte of the original packed in 2 bits,
     # by mapping 0x08 to 0, 0x19 to 1, and 0x2b to 2.
     grid_shape = (256, 8)
-    grid_map = (0x08, 0x19, 0x2b)
+    grid_map = (0x08, 0x19, 0x2B)
     grid_hex = (
         b"00000200050008000a00110014002000220028002a0041004400500058006100"
         b"6400800082008a00a20001010401100115014001840198010002020222028202"
@@ -708,7 +732,9 @@ class IQ2_XXS(__Quant, qtype=GGMLQuantizationType.IQ2_XXS):
         ksigns = np.frombuffer(cls.ksigns, dtype=np.uint8).reshape((1, 1, 1, 128))
         signs = (signs & np.uint32(0x7F)).reshape((n_blocks, -1, 4, 1))
         signs = np.take_along_axis(ksigns, signs, axis=-1)
-        signs = signs.reshape((n_blocks, -1, 4, 1)) >> np.array([i for i in range(8)], dtype=np.uint8).reshape((1, 1, 1, 8))
+        signs = signs.reshape((n_blocks, -1, 4, 1)) >> np.array([i for i in range(8)], dtype=np.uint8).reshape(
+            (1, 1, 1, 8)
+        )
         signs = signs & np.uint8(0x01)
         signs = np.where(signs == 0, np.float32(1), np.float32(-1))
         signs = signs.reshape((n_blocks, -1, 4, 8))
@@ -724,7 +750,7 @@ class IQ2_XS(__Quant, qtype=GGMLQuantizationType.IQ2_XS):
     # iq2xs_grid, but with each byte of the original packed in 2 bits,
     # by mapping 0x08 to 0, 0x19 to 1, and 0x2b to 2.
     grid_shape = (512, 8)
-    grid_map = (0x08, 0x19, 0x2b)
+    grid_map = (0x08, 0x19, 0x2B)
     grid_hex = (
         b"00000200050008000a0011001400160019002000220025002800410044004600"
         b"49005000520055005800610064008000820085008800910094009900a0000101"
@@ -794,7 +820,7 @@ class IQ2_S(__Quant, qtype=GGMLQuantizationType.IQ2_S):
     # iq2s_grid, but with each byte of the original packed in 2 bits,
     # by mapping 0x08 to 0, 0x19 to 1, and 0x2b to 2.
     grid_shape = (1024, 8)
-    grid_map = (0x08, 0x19, 0x2b)
+    grid_map = (0x08, 0x19, 0x2B)
     grid_hex = (
         b"00000200050008000a0011001400160019002000220025002800410044004600"
         b"490050005200550058006100640066006900800082008500880091009400a000"
@@ -896,7 +922,7 @@ class IQ2_S(__Quant, qtype=GGMLQuantizationType.IQ2_S):
 
 class IQ3_XXS(__Quant, qtype=GGMLQuantizationType.IQ3_XXS):
     grid_shape = (256, 4)
-    grid_map = (0x04, 0x0c, 0x14, 0x1c, 0x24, 0x2c, 0x34, 0x3e)
+    grid_map = (0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3E)
     grid_hex = (
         b"0000020004001100130017002000220031004200730075000101030110011201"
         b"2101250130013201410154017001000202020402110220022202310233023702"
@@ -934,7 +960,9 @@ class IQ3_XXS(__Quant, qtype=GGMLQuantizationType.IQ3_XXS):
         ksigns = np.frombuffer(IQ2_XXS.ksigns, dtype=np.uint8).reshape((1, 1, 1, 128))
         signs = (signs & np.uint32(0x7F)).reshape((n_blocks, -1, 4, 1))
         signs = np.take_along_axis(ksigns, signs, axis=-1)
-        signs = signs.reshape((n_blocks, -1, 4, 1)) >> np.array([i for i in range(8)], dtype=np.uint8).reshape((1, 1, 1, 8))
+        signs = signs.reshape((n_blocks, -1, 4, 1)) >> np.array([i for i in range(8)], dtype=np.uint8).reshape(
+            (1, 1, 1, 8)
+        )
         signs = signs & np.uint8(0x01)
         signs = np.where(signs == 0, np.float32(1), np.float32(-1))
         signs = signs.reshape((n_blocks, -1, 4, 8))
@@ -948,7 +976,7 @@ class IQ3_XXS(__Quant, qtype=GGMLQuantizationType.IQ3_XXS):
 
 class IQ3_S(__Quant, qtype=GGMLQuantizationType.IQ3_S):
     grid_shape = (512, 4)
-    grid_map = (0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f)
+    grid_map = (0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F)
     grid_hex = (
         b"0000010002000500070010001100120014001600200021002500330040004200"
         b"4500470051005300600062007100740077000001010102010401100111011501"
@@ -1197,7 +1225,9 @@ class IQ1_M(__Quant, qtype=GGMLQuantizationType.IQ1_M):
 
         # The f16 scale is packed across multiple bytes
         scales = scales.view(np.uint16)
-        d = (scales.reshape((n_blocks, 4)) & np.uint16(0xF000)) >> np.array([12, 8, 4, 0], dtype=np.uint16).reshape((1, 4))
+        d = (scales.reshape((n_blocks, 4)) & np.uint16(0xF000)) >> np.array([12, 8, 4, 0], dtype=np.uint16).reshape(
+            (1, 4)
+        )
         d = d[..., 0] | d[..., 1] | d[..., 2] | d[..., 3]
         d = d.view(np.float16).astype(np.float32).reshape((n_blocks, 1))
 
@@ -1230,14 +1260,16 @@ class IQ4_NL(__Quant, qtype=GGMLQuantizationType.IQ4_NL):
 
         d = d.view(np.float16).astype(np.float32)
 
-        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2, 1))
+        qs = qs.reshape((n_blocks, -1, 1, cls.block_size // 2)) >> np.array([0, 4], dtype=np.uint8).reshape(
+            (1, 1, 2, 1)
+        )
 
         qs = (qs & np.uint8(0x0F)).reshape((n_blocks, -1, 1))
 
         kvalues = np.array(cls.kvalues, dtype=np.int8).reshape(1, 1, 16)
         qs = np.take_along_axis(kvalues, qs, axis=-1).astype(np.float32).reshape((n_blocks, -1))
 
-        return (d * qs)
+        return d * qs
 
 
 class IQ4_XS(__Quant, qtype=GGMLQuantizationType.IQ4_XS):
@@ -1253,7 +1285,9 @@ class IQ4_XS(__Quant, qtype=GGMLQuantizationType.IQ4_XS):
         scales_h = scales_h.view(np.uint16)
 
         scales_l = scales_l.reshape((n_blocks, -1, 1)) >> np.array([0, 4], dtype=np.uint8).reshape((1, 1, 2))
-        scales_h = scales_h.reshape((n_blocks, 1, -1)) >> np.array([2 * i for i in range(QK_K // 32)], dtype=np.uint16).reshape((1, -1, 1))
+        scales_h = scales_h.reshape((n_blocks, 1, -1)) >> np.array(
+            [2 * i for i in range(QK_K // 32)], dtype=np.uint16
+        ).reshape((1, -1, 1))
         scales_l = scales_l.reshape((n_blocks, -1)) & np.uint8(0x0F)
         scales_h = scales_h.reshape((n_blocks, -1)).astype(np.uint8) & np.uint8(0x03)
 

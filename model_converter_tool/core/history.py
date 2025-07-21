@@ -1,11 +1,11 @@
 import os
 import json
-from pathlib import Path
 from typing import Dict, List, Any
 import threading
 
 HISTORY_FILE = os.path.expanduser("~/.model_converter_tool_history.json")
 HISTORY_LOCK = threading.Lock()
+
 
 def _read_history() -> List[Dict[str, Any]]:
     """
@@ -19,6 +19,7 @@ def _read_history() -> List[Dict[str, Any]]:
     except Exception:
         return []
 
+
 def append_history_record(record: Dict[str, Any]):
     """
     Append a new record to the history file.
@@ -28,6 +29,7 @@ def append_history_record(record: Dict[str, Any]):
         history.append(record)
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
+
 
 def get_history() -> Dict[str, List[Any]]:
     """
@@ -51,4 +53,4 @@ def get_history() -> Dict[str, List[Any]]:
             failed.append(summary)
         elif status == "active":
             active.append(summary)
-    return {"completed": completed, "failed": failed, "active": active} 
+    return {"completed": completed, "failed": failed, "active": active}

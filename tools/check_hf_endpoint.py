@@ -1,6 +1,5 @@
 import os
-from huggingface_hub import list_models, HfApi
-from huggingface_hub.utils import HfHubHTTPError
+from huggingface_hub import HfApi
 
 
 def main():
@@ -21,5 +20,6 @@ def main():
         print("To set a custom endpoint, set the HF_ENDPOINT environment variable. For example:")
         print("  export HF_ENDPOINT=https://huggingface.co")
 
+
 if __name__ == "__main__":
-    main() 
+    main()

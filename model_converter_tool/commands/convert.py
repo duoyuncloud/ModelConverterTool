@@ -2,17 +2,14 @@ import typer
 import os
 from model_converter_tool.core.convert import convert_model
 from model_converter_tool.utils import check_and_handle_disk_space
-from model_converter_tool.utils import ansi_safe_wrap
 import sys
 from rich import print as rprint
 import click
 import json
 import yaml
-import shutil
 from model_converter_tool.api import ModelConverterAPI
-from pathlib import Path
-import re
 from model_converter_tool.utils import auto_complete_output_path
+
 
 # Dynamically generate a beautified conversion matrix table (pure text, English comments)
 def get_conversion_matrix_table():
@@ -26,7 +23,8 @@ def get_conversion_matrix_table():
     for input_fmt, outputs in matrix.items():
         out_str = ", ".join(outputs)
         lines.append(f"{input_fmt.ljust(max_input_len)} | {out_str}")
-    return '\n'.join(lines)
+    return "\n".join(lines)
+
 
 CONVERSION_MATRIX = get_conversion_matrix_table()
 
@@ -50,17 +48,22 @@ def convert(
     output_path: str = typer.Option(None, "-o", "--output-path", help="Output file path (auto-completed if omitted)."),
     quant: str = typer.Option(None, help="Quantization type."),
     quant_config: str = typer.Option(
-        None,
-        help="""Advanced quantization config (JSON string or YAML file). See README for details."""
+        None, help="""Advanced quantization config (JSON string or YAML file). See README for details."""
     ),
     model_type: str = typer.Option("auto", help="Model type. Default: auto"),
     device: str = typer.Option("auto", help="Device (cpu/cuda). Default: auto"),
-    use_large_calibration: bool = typer.Option(False, help="Use large calibration dataset for quantization. Default: False"),
-    dtype: str = typer.Option(None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."),
-    fake_weight: bool = typer.Option(False, help="Use fake weights for the model (for testing and debugging). Default: False"),
+    use_large_calibration: bool = typer.Option(
+        False, help="Use large calibration dataset for quantization. Default: False"
+    ),
+    dtype: str = typer.Option(
+        None, help="Precision for output weights (e.g., fp16, fp32). Only used for safetensors format."
+    ),
+    fake_weight: bool = typer.Option(
+        False, help="Use fake weights for the model (for testing and debugging). Default: False"
+    ),
     fake_weight_config: str = typer.Option(
         None,
-        help="Path to a JSON or YAML file specifying custom shapes for fake weights. Example: embed_tokens.weight: [32000, 4096] (YAML) or {\"embed_tokens.weight\": [32000, 4096]} (JSON). Overrides default shapes if provided."
+        help='Path to a JSON or YAML file specifying custom shapes for fake weights. Example: embed_tokens.weight: [32000, 4096] (YAML) or {"embed_tokens.weight": [32000, 4096]} (JSON). Overrides default shapes if provided.',
     ),
     mup2llama: bool = typer.Option(False, help="Enable muP-to-LLaMA parameter scaling during conversion."),
 ):
@@ -91,13 +94,15 @@ def convert(
     # Alias mapping for output format
     output_aliases = {"hf": "huggingface"}
     output = output_aliases.get(output.lower(), output.lower())
-    if '--help' in sys.argv or '-h' in sys.argv or not input or not output:
+    if "--help" in sys.argv or "-h" in sys.argv or not input or not output:
         rprint(convert.__doc__)
         ctx = click.get_current_context()
         typer.echo(ctx.command.get_help(ctx))
         raise typer.Exit()
     if output.lower() == "fp16":
-        typer.echo("[yellow]Warning: 'fp16' format is deprecated. Use '--to safetensors --dtype fp16' instead.[/yellow]")
+        typer.echo(
+            "[yellow]Warning: 'fp16' format is deprecated. Use '--to safetensors --dtype fp16' instead.[/yellow]"
+        )
         output = "safetensors"
         if not dtype:
             dtype = "fp16"
@@ -115,8 +120,8 @@ def convert(
     quantization_config = None
     if quant_config:
         try:
-            if quant_config.strip().endswith(('.yaml', '.yml')) and os.path.exists(quant_config):
-                with open(quant_config, 'r') as f:
+            if quant_config.strip().endswith((".yaml", ".yml")) and os.path.exists(quant_config):
+                with open(quant_config, "r") as f:
                     quantization_config = yaml.safe_load(f)
             else:
                 quantization_config = json.loads(quant_config)
@@ -130,10 +135,10 @@ def convert(
         try:
             # Support both YAML and JSON
             if fake_weight_config.strip().endswith((".yaml", ".yml")) and os.path.exists(fake_weight_config):
-                with open(fake_weight_config, 'r') as f:
+                with open(fake_weight_config, "r") as f:
                     fake_weight_shape_dict = yaml.safe_load(f)
             elif fake_weight_config.strip().endswith(".json") and os.path.exists(fake_weight_config):
-                with open(fake_weight_config, 'r') as f:
+                with open(fake_weight_config, "r") as f:
                     fake_weight_shape_dict = json.load(f)
             else:
                 raise ValueError("Unsupported fake_weight_config file type. Please use .json or .yaml/.yml.")
@@ -147,7 +152,9 @@ def convert(
                     )
         except Exception as e:
             typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]")
-            typer.echo("[yellow]Example YAML:\nembed_tokens.weight: [32000, 4096]\nlayers.0.self_attn.q_proj.weight: [4096, 4096]\n\nExample JSON:\n{\"embed_tokens.weight\": [32000, 4096]}[/yellow]")
+            typer.echo(
+                '[yellow]Example YAML:\nembed_tokens.weight: [32000, 4096]\nlayers.0.self_attn.q_proj.weight: [4096, 4096]\n\nExample JSON:\n{"embed_tokens.weight": [32000, 4096]}[/yellow]'
+            )
             raise typer.Exit(1)
 
     result = convert_model(
@@ -174,6 +181,7 @@ def convert(
         # Only attempt cleanup if output_path is not None
         if result.output_path:
             from pathlib import Path
+
             output_file = Path(result.output_path)
             if output_file.exists() and output_file.is_file():
                 try:
@@ -183,4 +191,4 @@ def convert(
                     typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}")
         # Ensure CLI returns non-zero exit code on failure for CI/scripting compatibility
-        raise typer.Exit(1) 
+        raise typer.Exit(1)
