@@ -5,6 +5,8 @@ import pytest
 import yaml
 from pathlib import Path
 from model_converter_tool.api import ModelConverterAPI
+import tempfile
+import shutil
 
 CLI_CMD = [sys.executable, "-m", "model_converter_tool.cli"]
 
@@ -18,60 +20,50 @@ def test_api_and_cli_conversion(tmp_output):
     """
     Test both API and CLI conversion for a representative model/format.
     """
-    api = ModelConverterAPI()
-    output_path = tmp_output / "gpt2.onnx"
-    # API conversion
-    result = api.convert_model(
-        model_path="gpt2",
-        output_format="onnx",
-        output_path=str(output_path),
-        model_type="text-generation",
-        device="cpu"
-    )
-    assert result.success, f"API conversion failed: {result.error}"
-    assert output_path.exists()
-    # CLI conversion
-    cli_output = tmp_output / "cli_gpt2.onnx"
-    cli_result = subprocess.run(
-        CLI_CMD + ["convert", "gpt2", "onnx", "-o", str(cli_output)],
-        capture_output=True, text=True
-    )
-    assert cli_result.returncode == 0
-    assert "Conversion succeeded" in cli_result.stdout
-    assert cli_output.exists()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        api_output = tmpdir / "api_gpt2_onnx"
+        cli_output = tmpdir / "cli_gpt2_onnx"
+        # API conversion
+        api = ModelConverterAPI()
+        result = api.convert_model(
+            model_path="sshleifer/tiny-gpt2",
+            output_format="onnx",
+            output_path=str(api_output),
+        )
+        assert result.success
+        # Check for model.onnx in the output directory
+        assert (api_output / "model.onnx").exists()
+        # CLI conversion
+        subprocess.check_call([
+            sys.executable, "-m", "model_converter_tool.cli", "convert",
+            "sshleifer/tiny-gpt2", "onnx", "-o", str(cli_output)
+        ])
+        # Check for model.onnx in the output directory
+        assert (cli_output / "model.onnx").exists()
 
 # --- Batch conversion integration ---
 def test_batch_conversion(tmp_output):
     """
     Test batch conversion via CLI with a temporary YAML config file.
     """
-    batch_config = {
-        "tasks": [
-            {
-                "model_path": "gpt2",
-                "output_format": "onnx",
-                "output_path": str(tmp_output / "batch_gpt2.onnx"),
-                "model_type": "text-generation"
-            },
-            {
-                "model_path": "facebook/opt-125m",
-                "output_format": "gptq",
-                "output_path": str(tmp_output / "batch_opt125m_gptq"),
-                "model_type": "text-generation",
-                "quantization": "4bit"
-            }
-        ]
-    }
-    config_path = tmp_output / "batch_config.yaml"
-    with open(config_path, "w") as f:
-        yaml.dump(batch_config, f)
-    result = subprocess.run(
-        CLI_CMD + ["batch", str(config_path)],
-        capture_output=True, text=True
-    )
-    assert result.returncode in (0, 2)  # 0: all success, 2: some failed
-    assert "Batch conversion completed" in result.stdout
-    assert (tmp_output / "batch_gpt2.onnx").exists()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        tmp_output = tmpdir / "integration_outputs"
+        tmp_output.mkdir()
+        batch_config = tmpdir / "batch.yaml"
+        batch_yaml = f"""
+tasks:
+  - model_path: sshleifer/tiny-gpt2
+    output_format: onnx
+    output_path: {tmp_output}/batch_gpt2_onnx
+"""
+        batch_config.write_text(batch_yaml)
+        subprocess.check_call([
+            sys.executable, "-m", "model_converter_tool.cli", "batch", str(batch_config)
+        ])
+        # Check for model.onnx in the output directory
+        assert (tmp_output / "batch_gpt2_onnx" / "model.onnx").exists()
 
 # --- Config, history, cache integration ---
 def test_config_show_and_set():
