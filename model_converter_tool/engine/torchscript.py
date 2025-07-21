@@ -30,7 +30,7 @@ def convert_to_torchscript(
         # Robust model/tokenizer auto-loading
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import torch
-        torchscript_file = Path(output_path)
+        torchscript_file = Path(output_path) / "model.pt" if Path(output_path).is_dir() else Path(output_path)
         torchscript_file.parent.mkdir(parents=True, exist_ok=True)
         export_success = False
         # Step 1: Try torch.jit.script
@@ -53,7 +53,6 @@ def convert_to_torchscript(
             scripted_model.save(str(torchscript_file))
             export_success = True
             logger.info("TorchScript script export successful")
-            return True, None
         except Exception as e:
             logger.warning(f"TorchScript script export failed: {e}")
         # Step 2: Try torch.jit.trace
@@ -95,7 +94,6 @@ def convert_to_torchscript(
             traced_model.save(str(torchscript_file))
             export_success = True
             logger.info("TorchScript trace export successful")
-            return True, None
         except Exception as e:
             logger.warning(f"TorchScript trace export failed: {e}")
         # User-friendly error for unsupported models
@@ -107,8 +105,13 @@ def convert_to_torchscript(
                          f"For best results, use BERT, DistilBERT, or ResNet models.\n"
                          f"Original error: {e}")
             return False, {"error": f"TorchScript export is not fully supported for model '{model_name}'. For best results, use BERT, DistilBERT, or ResNet. See logs for details."}
-        logger.error("All TorchScript export methods failed")
-        return False, None
+        # After export, always validate the file
+        valid = validate_torchscript_file(str(torchscript_file))
+        if not valid:
+            logger.error("Static validation failed for TorchScript output.")
+            return False, {"error": "Static validation failed for TorchScript output."}
+        logger.info("TorchScript conversion successful")
+        return True, None
     except Exception as e:
         logger.error(f"TorchScript conversion error: {e}")
         return False, None

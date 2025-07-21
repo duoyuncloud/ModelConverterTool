@@ -206,15 +206,16 @@ def convert(
         if result.extra_info:
             typer.echo(f"Extra info: {result.extra_info}")
     else:
-        import os
-        from pathlib import Path
-        output_file = Path(result.output_path)
-        if output_file.exists() and output_file.is_file():
-            try:
-                output_file.unlink()
-                typer.echo(f"[Cleanup] Deleted invalid output file: {output_file}")
-            except Exception as e:
-                typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
+        # Only attempt cleanup if output_path is not None
+        if result.output_path:
+            from pathlib import Path
+            output_file = Path(result.output_path)
+            if output_file.exists() and output_file.is_file():
+                try:
+                    output_file.unlink()
+                    typer.echo(f"[Cleanup] Deleted invalid output file: {output_file}")
+                except Exception as e:
+                    typer.echo(f"[Cleanup Warning] Failed to delete invalid output file: {output_file} ({e})")
         typer.echo(f"Conversion failed: {result.error}")
         # Ensure CLI returns non-zero exit code on failure for CI/scripting compatibility
         raise typer.Exit(1) 

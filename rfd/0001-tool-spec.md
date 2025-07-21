@@ -1,9 +1,9 @@
 # RFD 0001: Model Converter Tool - Technical Specification
 
-- **Authors:** <your-name-here>
+- **Authors:** Duo Yun
 - **Status:** Draft
-- **Created:** <date>
-- **Updated:** <date>
+- **Created:** 2025/7/21
+- **Updated:** 2025/7/21
 
 ## Abstract
 This document describes the technical specification, architecture, and design rationale for the Model Converter Tool. It aims to provide a comprehensive reference for contributors and maintainers.

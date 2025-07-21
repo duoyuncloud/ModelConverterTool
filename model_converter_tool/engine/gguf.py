@@ -63,35 +63,39 @@ def convert_to_gguf(
             if not Path(gguf_file).exists() or result.returncode != 0:
                 logger.error(f"GGUF conversion failed: {result.stderr}")
                 return False, None
-            logger.info(f"GGUF conversion completed: {gguf_file}")
-            # Parse quantization config
-            bits = quantization_config.get("bits") if quantization_config else None
-            group_size = quantization_config.get("group_size") if quantization_config else None
-            sym = quantization_config.get("sym") if quantization_config else None
-            desc = quantization_config.get("desc") if quantization_config else None
-            # Try to infer from quantization string if not provided
-            if bits is None and quantization:
-                import re
-                m = re.match(r"(\d+)bit", quantization)
-                if m:
-                    bits = int(m.group(1))
-            if group_size is None and quantization:
-                import re
-                m = re.match(r".*g(\d+)", quantization)
-                if m:
-                    group_size = int(m.group(1))
-            if bits is None:
-                bits = 4
-            if group_size is None:
-                group_size = 128
-            if sym is None:
-                sym = False
-            patch_quantization_config(gguf_file.parent / "config.json", bits, group_size, sym, desc)
-            # After saving model, patch config if fake_weight
-            if 'fake_weight' in locals() and fake_weight:
-                from model_converter_tool.utils import patch_config_remove_quantization_config
-                patch_config_remove_quantization_config(output_dir)
-            return True, None
+            # Always validate the GGUF file, not the directory
+            if result.returncode == 0 and validate_gguf_file(gguf_file):
+                logger.info(f"GGUF conversion completed: {gguf_file}")
+                # Parse quantization config
+                bits = quantization_config.get("bits") if quantization_config else None
+                group_size = quantization_config.get("group_size") if quantization_config else None
+                sym = quantization_config.get("sym") if quantization_config else None
+                desc = quantization_config.get("desc") if quantization_config else None
+                # Try to infer from quantization string if not provided
+                if bits is None and quantization:
+                    import re
+                    m = re.match(r"(\d+)bit", quantization)
+                    if m:
+                        bits = int(m.group(1))
+                if group_size is None and quantization:
+                    import re
+                    m = re.match(r".*g(\d+)", quantization)
+                    if m:
+                        group_size = int(m.group(1))
+                if bits is None:
+                    bits = 4
+                if group_size is None:
+                    group_size = 128
+                if sym is None:
+                    sym = False
+                patch_quantization_config(gguf_file.parent / "config.json", bits, group_size, sym, desc)
+                # After saving model, patch config if fake_weight
+                if 'fake_weight' in locals() and fake_weight:
+                    from model_converter_tool.utils import patch_config_remove_quantization_config
+                    patch_config_remove_quantization_config(output_dir)
+                return True, None
+            logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
+            return False, None
         logger.error("GGUF conversion failed: llama.cpp/convert_hf_to_gguf.py not found. Please ensure it exists and dependencies are installed.")
         return False, None
     except Exception as e:

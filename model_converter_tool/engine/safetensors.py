@@ -45,6 +45,12 @@ def convert_to_safetensors(
             # Only save tokenizer if it exists
             if tokenizer is not None:
                 tokenizer.save_pretrained(str(output_dir))
+            # After saving, always validate the main file
+            safetensors_file = output_dir / "model.safetensors"
+            valid = validate_safetensors_file(str(safetensors_file))
+            if not valid:
+                logger.error("Static validation failed for safetensors output.")
+                return False, str("Static validation failed for safetensors output.")
             logger.info(f"Safetensors conversion completed: {output_dir} (dtype={dtype or 'default'})")
             return True, None
         except Exception as e:

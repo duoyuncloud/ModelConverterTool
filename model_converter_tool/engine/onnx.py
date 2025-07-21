@@ -24,29 +24,20 @@ def convert_to_onnx(
 ) -> Tuple[bool, Optional[dict]]:
     """
     Export a HuggingFace model to ONNX format using optimum.
-    Args:
-        model: Loaded model object (optional)
-        tokenizer: Loaded tokenizer object (optional)
-        model_name: Model name or path
-        output_path: Output ONNX file path
-        model_type: Model type string
-        task: ONNX export task
-        batch_size: Batch size for export
-        sequence_length: Sequence length for export
-        device: Device string
-    Returns:
-        (success: bool, extra_info: dict or None)
+    Always outputs to a directory, with the ONNX file named 'model.onnx'.
     """
     if model_name is None and isinstance(model, str):
         model_name = model
         model = None
+    # Always treat output_path as a directory
     if output_path:
-        onnx_file = str(Path(output_path))
-        output_dir = Path(output_path).parent
+        output_dir = Path(output_path)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        onnx_file = str(output_dir / "model.onnx")
     else:
         output_dir = Path("outputs/onnx")
+        output_dir.mkdir(parents=True, exist_ok=True)
         onnx_file = str(output_dir / "model.onnx")
-    output_dir.mkdir(parents=True, exist_ok=True)
     extra_info = {}
     # Auto-detect task type for certain models
     if task == "causal-lm" and model_name:
@@ -87,15 +78,9 @@ def convert_to_onnx(
     try:
         result = subprocess.run(command, capture_output=True, text=True)
         default_onnx = str(output_dir / "model.onnx")
-        if onnx_file != default_onnx and Path(default_onnx).exists():
-            try:
-                Path(onnx_file).unlink(missing_ok=True)
-                Path(default_onnx).rename(onnx_file)
-            except Exception as e:
-                logger.error(f"Failed to rename ONNX file: {e}")
-                return False, None
-        if result.returncode == 0 and validate_onnx_file(onnx_file):
-            logger.info(f"ONNX export and validation succeeded. Output: {onnx_file}")
+        # Always validate the ONNX file, not the directory
+        if result.returncode == 0 and validate_onnx_file(default_onnx):
+            logger.info(f"ONNX export and validation succeeded. Output: {default_onnx}")
             extra_info = {"opset": 17, "custom_onnx_configs": False}
             return True, extra_info
         else:
@@ -107,10 +92,22 @@ def convert_to_onnx(
 
 def validate_onnx_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for ONNX files. Checks if the file exists and can be loaded by onnx.
+    Static validation for ONNX files. Accepts either a file or directory path.
+    If a directory is given, looks for 'model.onnx' inside.
     Returns True if the file passes static validation, False otherwise.
+    Now prints detailed exception info on failure.
     """
+    import os
+    if os.path.isdir(path):
+        # If a directory is given, look for model.onnx inside
+        candidate = os.path.join(path, "model.onnx")
+        if os.path.exists(candidate):
+            path = candidate
+        else:
+            print(f"[validate_onnx_file] Directory given but model.onnx not found: {path}")
+            return False
     if not os.path.exists(path):
+        print(f"[validate_onnx_file] File does not exist: {path}")
         return False
     try:
         import onnx
@@ -118,9 +115,11 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
         onnx.checker.check_model(model)
         return True
     except ImportError:
-        # onnx not installed
+        print("[validate_onnx_file] onnx not installed.")
         return False
-    except Exception:
+    except Exception as e:
+        import traceback
+        print(f"[validate_onnx_file] Exception: {e}\n" + traceback.format_exc())
         return False
 
 def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
