@@ -27,7 +27,7 @@ source venv/bin/activate
 |---------|----------|
 | `modelconvert inspect <model>` | Inspect and display model format and metadata. |
 | `modelconvert convert <input_model> <output_format> [options]` | Convert a model to another format, with optional quantization. |
-| `modelconvert to-llama-format <input_model> [options]` | Convert a model to llama.cpp GGUF format for Llama-compatible inference. |
+| `modelconvert convert <input_model> gguf [options]` | Convert a model to llama.cpp GGUF format for Llama-compatible inference. |
 | `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
 | `modelconvert history` | Show conversion history. |
 | `modelconvert config show` | Show all configuration values. |
@@ -52,7 +52,7 @@ source venv/bin/activate
   - `--use-large-calibration`: Use large calibration dataset (optional)
   - `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
   - `--fake-weight`: Use fake (zero) weights for the model (for testing/debugging)
-- **to-llama-format**: Convert a model to llama.cpp GGUF format for Llama-compatible inference.
+- **gguf**: Convert a model to llama.cpp GGUF format for Llama-compatible inference.
   - `<input_model>`: Input model path or repo id (required)
   - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
   - `--quant`: Quantization type (e.g. q8_0, f16, tq1_0, etc.)
@@ -84,7 +84,7 @@ source venv/bin/activate
 modelconvert convert bert-base-uncased safetensors --fake-weight
 
 # Convert to llama.cpp GGUF format (recommended for Llama.cpp and compatible engines)
-modelconvert to-llama-format Qwen/Qwen2-0.5B -o ./outputs/qwen2-0.5b.gguf --quant q8_0
+modelconvert convert Qwen/Qwen2-0.5B gguf -o ./outputs/qwen2-0.5b.gguf --quant q8_0
 
 # Inspect a model
 modelconvert inspect meta-llama/Llama-2-7b-hf
@@ -165,6 +165,23 @@ All parameters in the quantization config will be passed to the quantizer for fi
 - GGUF: q4_k_m, q5_k_m, q8_0
 - MLX: q4_k_m, q8_0, q5_k_m
 - SafeTensors: fp16, fp32
+
+---
+
+## Supported Conversion Matrix
+
+| Input Format | Supported Output Formats |
+|--------------|-------------------------|
+| huggingface  | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
+| hf           | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
+| megatron     | hf, megatron2hf         |
+| safetensors  | huggingface, hf, safetensors |
+| torchscript  | torchscript             |
+| onnx         | onnx                    |
+| gguf         | gguf                    |
+| mlx          | mlx                     |
+
+> **Note:** Formats such as `mtk`, `rk`, `ax`, `qnn`, and `megatron2hf` are planned and will be supported in future releases. If you try to use them now, you will see a clear "NotImplementedError" message.
 
 ---
 

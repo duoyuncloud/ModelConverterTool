@@ -7,7 +7,10 @@ import importlib
 logger = logging.getLogger(__name__)
 
 # Supported format list
-SUPPORTED_FORMATS = ["onnx", "torchscript", "gguf", "awq", "gptq", "hf", "huggingface", "safetensors", "mlx"]
+SUPPORTED_FORMATS = [
+    "onnx", "torchscript", "gguf", "awq", "gptq", "hf", "huggingface", "safetensors", "mlx",
+    "mtk", "rk", "ax", "qnn", "megatron2hf"  # Newly added planned formats
+]
 
 @dataclass
 class ConversionResult:
@@ -52,6 +55,22 @@ class ModelConverter:
         elif output_format == "custom_quant":
             from .engine.custom_quant import convert_to_custom_quant, validate_custom_quant_file
             return convert_to_custom_quant, validate_custom_quant_file
+        # Register new shell converters
+        elif output_format == "mtk":
+            from .engine.mtk import convert_hf_to_mtk
+            return convert_hf_to_mtk, (lambda *a, **kw: True)
+        elif output_format == "rk":
+            from .engine.rk import convert_hf_to_rk
+            return convert_hf_to_rk, (lambda *a, **kw: True)
+        elif output_format == "ax":
+            from .engine.ax import convert_hf_to_ax
+            return convert_hf_to_ax, (lambda *a, **kw: True)
+        elif output_format == "qnn":
+            from .engine.qnn import convert_hf_to_qnn
+            return convert_hf_to_qnn, (lambda *a, **kw: True)
+        elif output_format == "megatron2hf":
+            from .engine.megatron2hf import convert_megatron_to_hf
+            return convert_megatron_to_hf, (lambda *a, **kw: True)
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
     
@@ -414,8 +433,17 @@ class ModelConverter:
 
     def _get_conversion_matrix(self) -> Dict[str, List[str]]:
         return {
-            "huggingface": ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
-            "hf": ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"],
+            "huggingface": [
+                "huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq",
+                "mtk", "rk", "ax", "qnn"  # Newly added formats
+            ],
+            "hf": [
+                "huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq",
+                "mtk", "rk", "ax", "qnn"  # Newly added formats
+            ],
+            "megatron": [
+                "hf", "megatron2hf"  # Newly added format
+            ],
             "safetensors": ["huggingface", "hf", "safetensors"],
             "torchscript": ["torchscript"],
             "onnx": ["onnx"],

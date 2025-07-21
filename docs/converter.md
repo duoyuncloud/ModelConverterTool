@@ -19,17 +19,22 @@ The conversion engine transforms machine learning models between different forma
 - TorchScript
 - HuggingFace (re-save)
 
-## to-llama-format Command
+## Supported Conversion Matrix
 
-The `to-llama-format` command provides a simple way to convert models to the GGUF format compatible with llama.cpp and similar inference engines.
+| Input Format | Supported Output Formats |
+|--------------|-------------------------|
+| huggingface  | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
+| hf           | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
+| megatron     | hf, megatron2hf         |
+| safetensors  | huggingface, hf, safetensors |
+| torchscript  | torchscript             |
+| onnx         | onnx                    |
+| gguf         | gguf                    |
+| mlx          | mlx                     |
 
-**Example:**
+> **Note:** Formats such as `mtk`, `rk`, `ax`, `qnn`, and `megatron2hf` are planned and will be supported in future releases. If you try to use them now, you will see a clear "NotImplementedError" message.
 
-```
-modelconvert to-llama-format Qwen/Qwen2-0.5B -o ./outputs/qwen2-0.5b.gguf --quant q8_0
-```
-
-This command will automatically handle model loading and conversion to GGUF, with optional quantization.
+---
 
 ## Conversion Workflow
 1. Load the input model
