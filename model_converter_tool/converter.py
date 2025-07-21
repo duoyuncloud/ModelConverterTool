@@ -58,17 +58,23 @@ class ModelConverter:
     def _detect_model_format(self, input_model: str) -> Tuple[str, str]:
         """
         Detect the format of input model.
-        
         Args:
             input_model: Model path or name
-            
         Returns:
             Tuple of (format, normalized_path)
         """
+        from pathlib import Path
         path = Path(input_model)
-        
-        # First check file extension (even if file doesn't exist)
         suffix = path.suffix.lower()
+        # If the path is a directory and contains model.onnx, treat as ONNX format
+        if path.is_dir():
+            if (path / "model.onnx").exists():
+                return "onnx", str(path / "model.onnx")
+            # (other directory format checks can go here)
+            if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or any(path.glob("*.safetensors")):
+                return "huggingface", str(path)
+            return "unknown", str(path)
+        # File extension based detection
         if suffix == ".onnx":
             return "onnx", str(path)
         elif suffix == ".gguf":
@@ -79,28 +85,15 @@ class ModelConverter:
             return "safetensors", str(path)
         elif suffix == ".npz":
             return "mlx", str(path)
-        
         # If local doesn't exist and no clear file extension, consider it Hugging Face Hub name
         if not path.exists():
-            # Check if it contains slashes (might be organization/model name format) or model name without extension
             if "/" in input_model or "\\" in input_model or (not suffix and not input_model.startswith(".")):
                 return "huggingface", input_model
             else:
                 return "unknown", str(path)
-        
-        # Check if it's a local file
+        # If it's a file but no supported extension
         if path.is_file():
-            # File exists but no supported extension
             return "unknown", str(path)
-        
-        # Check if it's a directory (likely Hugging Face format)
-        if path.is_dir():
-            # Check for Hugging Face format indicators
-            if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or any(path.glob("*.safetensors")):
-                return "huggingface", str(path)
-            else:
-                return "unknown", str(path)
-        
         # Default to unknown
         return "unknown", str(path)
     
@@ -464,10 +457,12 @@ class ModelConverter:
             if fmt not in engine_map:
                 return {"can_infer": False, "error": f"Format '{fmt}' is not supported for dynamic check."}
             module_name, func_name = engine_map[fmt]
+            import importlib
             engine = importlib.import_module(module_name)
             check_func = getattr(engine, func_name)
             # Always use the real file, do not use fake_weight for inference check
             result = check_func(model_path)
             return {"can_infer": bool(result)}
         except Exception as e:
-            return {"can_infer": False, "error": str(e)} 
+            import traceback
+            return {"can_infer": False, "error": str(e), "details": traceback.format_exc()} 

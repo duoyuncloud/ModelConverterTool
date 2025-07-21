@@ -21,12 +21,13 @@ def convert_to_gguf(
     quantization_config: dict = None
 ) -> tuple:
     """
-    Convert a model to GGUF format using llama.cpp/convert_hf_to_gguf.py as an external script.
+    Export model to GGUF format.
+
     Args:
         model: Loaded model object
         tokenizer: Loaded tokenizer object
         model_name: Source model name or path
-        output_path: Output file path or directory
+        output_path: Output directory path (GGUF will always be saved as model.gguf inside this directory)
         model_type: Model type
         device: Device
         quantization: Quantization string (optional)
@@ -39,15 +40,8 @@ def convert_to_gguf(
         # Robust model/tokenizer auto-loading
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         output_dir = Path(output_path)
-        if output_dir.exists() and output_dir.is_dir():
-            gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
-        elif str(output_path).endswith(".gguf"):
-            gguf_file = Path(output_path)
-            output_dir = gguf_file.parent
-            output_dir.mkdir(parents=True, exist_ok=True)
-        else:
-            output_dir.mkdir(parents=True, exist_ok=True)
-            gguf_file = output_dir / f"{model_name.replace('/', '_')}.gguf"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        gguf_file = output_dir / "model.gguf"
         llama_cpp_script = Path("tools/llama.cpp/convert_hf_to_gguf.py")
         if llama_cpp_script.exists():
             model_dir = model_name
@@ -102,28 +96,37 @@ def convert_to_gguf(
         logger.error(f"GGUF conversion error: {e}")
         return False, None
 
-def validate_gguf_file(path: Path, *args, **kwargs) -> bool:
+def validate_gguf_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for GGUF files. Checks if the file exists, has a valid GGUF header, and can be loaded by llama_cpp if available.
+    Static validation for GGUF files. Accepts either a file or directory path.
+    If a directory is given, looks for 'model.gguf' inside.
     Returns True if the file passes static validation, False otherwise.
+    Prints detailed exception info on failure for debugging.
     """
+    import os
+    from pathlib import Path
+    p = Path(path)
+    if p.is_dir():
+        candidate = p / "model.gguf"
+        if candidate.exists():
+            path = str(candidate)
+        else:
+            print(f"[validate_gguf_file] Directory given but model.gguf not found: {path}")
+            return False
     if not os.path.exists(path):
+        print(f"[validate_gguf_file] File does not exist: {path}")
         return False
     try:
+        # Insert actual GGUF validation logic here, e.g., open and check file header
         with open(path, 'rb') as f:
-            header = f.read(4)
-            if header != b'GGUF':
+            magic = f.read(4)
+            if magic != b'GGUF':
+                print(f"[validate_gguf_file] Invalid GGUF file magic: {magic}")
                 return False
-        try:
-            import llama_cpp
-            _ = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
-        except ImportError:
-            # llama_cpp not installed, skip deep validation
-            pass
-        except Exception:
-            return False
         return True
-    except Exception:
+    except Exception as e:
+        import traceback
+        print(f"[validate_gguf_file] Exception: {e}\n" + traceback.format_exc())
         return False
 
 def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:

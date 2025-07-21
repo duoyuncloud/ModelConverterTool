@@ -23,21 +23,32 @@ def convert_to_onnx(
     **kwargs
 ) -> Tuple[bool, Optional[dict]]:
     """
-    Export a HuggingFace model to ONNX format using optimum.
-    Always outputs to a directory, with the ONNX file named 'model.onnx'.
+    Export model to ONNX format.
+
+    Args:
+        model: Loaded model object (optional)
+        tokenizer: Loaded tokenizer object (optional)
+        model_name: Source model name or path
+        output_path: Output directory path (ONNX will always be saved as model.onnx inside this directory)
+        model_type: Model type
+        task: Task type for export
+        batch_size: Batch size for dummy input
+        sequence_length: Sequence length for dummy input
+        device: Device to use for export
+        kwargs: Additional arguments
+
+    Returns:
+        Tuple (success: bool, extra_info: dict or None)
+        success: True if export succeeded, False otherwise
+        extra_info: None if successful, or a dict with error details if failed
     """
     if model_name is None and isinstance(model, str):
         model_name = model
         model = None
     # Always treat output_path as a directory
-    if output_path:
-        output_dir = Path(output_path)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        onnx_file = str(output_dir / "model.onnx")
-    else:
-        output_dir = Path("outputs/onnx")
-        output_dir.mkdir(parents=True, exist_ok=True)
-        onnx_file = str(output_dir / "model.onnx")
+    output_dir = Path(output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    onnx_file = output_dir / "model.onnx"
     extra_info = {}
     # Auto-detect task type for certain models
     if task == "causal-lm" and model_name:
@@ -77,10 +88,9 @@ def convert_to_onnx(
     logger.info(f"Running: {' '.join(command)}")
     try:
         result = subprocess.run(command, capture_output=True, text=True)
-        default_onnx = str(output_dir / "model.onnx")
         # Always validate the ONNX file, not the directory
-        if result.returncode == 0 and validate_onnx_file(default_onnx):
-            logger.info(f"ONNX export and validation succeeded. Output: {default_onnx}")
+        if result.returncode == 0 and validate_onnx_file(onnx_file):
+            logger.info(f"ONNX export and validation succeeded. Output: {onnx_file}")
             extra_info = {"opset": 17, "custom_onnx_configs": False}
             return True, extra_info
         else:
@@ -95,14 +105,15 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
     Static validation for ONNX files. Accepts either a file or directory path.
     If a directory is given, looks for 'model.onnx' inside.
     Returns True if the file passes static validation, False otherwise.
-    Now prints detailed exception info on failure.
+    Prints detailed exception info on failure for debugging.
     """
     import os
-    if os.path.isdir(path):
-        # If a directory is given, look for model.onnx inside
-        candidate = os.path.join(path, "model.onnx")
-        if os.path.exists(candidate):
-            path = candidate
+    from pathlib import Path
+    p = Path(path)
+    if p.is_dir():
+        candidate = p / "model.onnx"
+        if candidate.exists():
+            path = str(candidate)
         else:
             print(f"[validate_onnx_file] Directory given but model.onnx not found: {path}")
             return False
@@ -125,7 +136,7 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
 def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
     """
     Dynamic check for ONNX files. Loads the file with onnxruntime and runs a real dummy inference.
-    Returns True if inference is possible, False otherwise. Prints/logs the actual exception if it fails.
+    Returns True if inference is possible, False otherwise.
     """
     try:
         import onnxruntime as ort
@@ -133,12 +144,10 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
         sess = ort.InferenceSession(path)
         inputs = sess.get_inputs()
         if not inputs:
-            print("[ONNX check] No inputs found in the model.")
             return False
         dummy = {}
         for inp in inputs:
-            shape = [d if isinstance(d, int) and d > 0 else 1 for d in inp.shape]
-            # Determine dtype from input type string
+            shape = [1 if not isinstance(d, int) or d <= 0 else d for d in inp.shape]
             dtype_str = inp.type
             if dtype_str == 'tensor(int64)':
                 dtype = np.int64
@@ -149,15 +158,11 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
             elif dtype_str == 'tensor(float16)':
                 dtype = np.float16
             else:
-                print(f"[ONNX check] Unknown input dtype {dtype_str}, defaulting to float32.")
                 dtype = np.float32
-            print(f"[ONNX check] Creating dummy input for '{inp.name}' with dtype {dtype} and shape {shape}")
             dummy[inp.name] = np.zeros(shape, dtype=dtype)
-        _ = sess.run(None, dummy)
+        out = sess.run(None, dummy)
         return True
     except ImportError:
-        print("[ONNX check] onnxruntime not installed.")
         return False
     except Exception as e:
-        print(f"[ONNX check] Exception during inference: {e}")
         return False 

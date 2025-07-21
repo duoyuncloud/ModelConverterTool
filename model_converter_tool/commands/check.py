@@ -18,8 +18,11 @@ def check(
         rprint(f"[bold green]SUCCESS:[/bold green] Model can be loaded and run a simple inference.")
     else:
         rprint(f"[bold red]FAILED:[/bold red] Model could not be loaded or failed inference.")
+        # 总是打印error/details，便于debug
         if result.get("error"):
             rprint(f"[red]Error: {result['error']}[/red]")
-        if verbose and result.get("details"):
+        if result.get("details"):
             rprint(f"[yellow]Details: {result['details']}[/yellow]")
+        if verbose:
+            rprint(f"[yellow][VERBOSE] Full result: {result}[/yellow]")
         raise typer.Exit(2) 
