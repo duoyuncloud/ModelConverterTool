@@ -11,6 +11,7 @@ from .constants import (
     TokenType,
     RopeScalingType,
     PoolingType,
+    MODEL_ARCH,
 )
 from .quants import quant_shape_from_byte_shape, quant_shape_to_byte_shape
 from .utility import fill_templated_filename, naming_convention
@@ -34,4 +35,5 @@ __all__ = [
     "fill_templated_filename",
     "naming_convention",
     "Metadata",
+    "MODEL_ARCH",
 ]

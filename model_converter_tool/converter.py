@@ -109,57 +109,42 @@ class ModelConverter:
         Returns:
             Tuple of (format, normalized_path)
         """
-        import sys
         path = Path(input_model)
         suffix = path.suffix.lower()
-        print(f"[DEBUG] _detect_model_format: input_model={input_model!r}, suffix={suffix!r}, path.exists()={path.exists()}, is_dir={path.is_dir()}, is_file={path.is_file()}", file=sys.stderr)
         # If the path is a directory and contains model.onnx or model.gguf, treat as ONNX or GGUF format
         if path.is_dir():
             if (path / "model.onnx").exists():
-                print("[DEBUG] Detected format: onnx (dir contains model.onnx)", file=sys.stderr)
                 return "onnx", str(path / "model.onnx")
             if (path / "model.gguf").exists():
-                print("[DEBUG] Detected format: gguf (dir contains model.gguf)", file=sys.stderr)
                 return "gguf", str(path / "model.gguf")
             if (
                 (path / "config.json").exists()
                 or (path / "pytorch_model.bin").exists()
                 or any(path.glob("*.safetensors"))
             ):
-                print("[DEBUG] Detected format: huggingface (dir contains config.json/pytorch_model.bin/safetensors)", file=sys.stderr)
                 return "huggingface", str(path)
-            print("[DEBUG] Detected format: unknown (dir)", file=sys.stderr)
             return "unknown", str(path)
         # File extension based detection
         if suffix == ".onnx":
-            print("[DEBUG] Detected format: onnx (suffix)", file=sys.stderr)
             return "onnx", str(path)
         elif suffix == ".gguf":
-            print("[DEBUG] Detected format: gguf (suffix)", file=sys.stderr)
             return "gguf", str(path)
         elif suffix in [".pt", ".pth"]:
-            print("[DEBUG] Detected format: torchscript (suffix)", file=sys.stderr)
             return "torchscript", str(path)
         elif suffix == ".safetensors":
-            print("[DEBUG] Detected format: safetensors (suffix)", file=sys.stderr)
             return "safetensors", str(path)
         elif suffix == ".npz":
-            print("[DEBUG] Detected format: mlx (suffix)", file=sys.stderr)
             return "mlx", str(path)
         # If local doesn't exist and no clear file extension, consider it Hugging Face Hub name
         if not path.exists():
             if "/" in input_model or "\\" in input_model or (not suffix and not input_model.startswith(".")):
-                print("[DEBUG] Detected format: huggingface (repo id)", file=sys.stderr)
                 return "huggingface", input_model
             else:
-                print("[DEBUG] Detected format: unknown (not exists)", file=sys.stderr)
                 return "unknown", str(path)
         # If it's a file but no supported extension
         if path.is_file():
-            print("[DEBUG] Detected format: unknown (file, unsupported extension)", file=sys.stderr)
             return "unknown", str(path)
         # Default to unknown
-        print("[DEBUG] Detected format: unknown (default)", file=sys.stderr)
         return "unknown", str(path)
 
     def _validate_conversion_inputs(
