@@ -22,7 +22,14 @@ def test_cli_convert_success(tmp_output):
     )
     assert result.returncode == 0, f"CLI convert failed: {result.stderr or result.stdout}"
     assert "Conversion succeeded" in result.stdout
-    assert output_path.exists()
+
+    # The output is now a directory (e.g., gpt2_onnx)
+    output_dir = tmp_output / "gpt2_onnx"
+    assert output_dir.exists() and output_dir.is_dir(), f"Output directory does not exist: {output_dir}"
+
+    # For ONNX, check for model.onnx
+    model_file = output_dir / "model.onnx"
+    assert model_file.exists(), f"ONNX model file not found: {model_file}"
 
 def test_cli_convert_help():
     """
