@@ -66,10 +66,12 @@ class ModelConverter:
         from pathlib import Path
         path = Path(input_model)
         suffix = path.suffix.lower()
-        # If the path is a directory and contains model.onnx, treat as ONNX format
+        # If the path is a directory and contains model.onnx or model.gguf, treat as ONNX or GGUF format
         if path.is_dir():
             if (path / "model.onnx").exists():
                 return "onnx", str(path / "model.onnx")
+            if (path / "model.gguf").exists():
+                return "gguf", str(path / "model.gguf")
             # (other directory format checks can go here)
             if (path / "config.json").exists() or (path / "pytorch_model.bin").exists() or any(path.glob("*.safetensors")):
                 return "huggingface", str(path)

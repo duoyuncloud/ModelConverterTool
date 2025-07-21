@@ -670,3 +670,43 @@ def patch_config_remove_quantization_config(output_dir):
                     json.dump(config_data, f, indent=2)
         except Exception as e:
             print(f"[WARNING] Failed to patch {json_file}: {e}")
+
+
+def auto_complete_output_path(input_path, output_path, to_format):
+    """
+    Generate a standardized output directory path for model conversion outputs.
+    - Uses the full base name of the input path (including .5B or similar) and appends the format.
+    - If output_path is provided and is a file, converts it to a directory with the format suffix.
+    - If output_path is a directory, uses it directly.
+    - If output_path is omitted, uses './outputs/{base}_{to_format}'.
+    """
+    import os
+    from pathlib import Path
+    output_aliases = {"hf": "huggingface"}
+    to_format = output_aliases.get(to_format.lower(), to_format.lower())
+    file_exts = {
+        'onnx': '.onnx',
+        'gguf': '.gguf',
+        'pt': '.pt',
+        'torchscript': '.pt',
+        'safetensors': '.safetensors',
+        'fp16': '.safetensors',
+    }
+    base = os.path.basename(input_path)  # Always preserve full name, including .5B, etc.
+    def to_dir_name(path, ext=None):
+        p = Path(path)
+        if ext and p.name.endswith(ext):
+            return str(p.with_suffix('')) + f'_{to_format}'
+        if p.suffix:
+            return str(p.with_suffix('')) + f'_{to_format}'
+        return str(p)
+    if not output_path:
+        return f'./outputs/{base}_{to_format}'
+    if os.path.isdir(output_path):
+        return output_path
+    for ext in file_exts.values():
+        if output_path.endswith(ext):
+            return to_dir_name(output_path, ext)
+    if not os.path.exists(output_path) and not output_path.endswith('/'):
+        return to_dir_name(output_path)
+    return output_path

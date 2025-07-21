@@ -5,44 +5,12 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any
 from model_converter_tool.core.convert import convert_model
-from model_converter_tool.utils import check_and_handle_disk_space, estimate_model_size, format_bytes
+from model_converter_tool.utils import check_and_handle_disk_space, estimate_model_size, format_bytes, auto_complete_output_path
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn, SpinnerColumn, TaskProgressColumn
 from rich.console import Console
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
-
-def auto_complete_output_path(input_path, output_path, to_format):
-    import os
-    from pathlib import Path
-    output_aliases = {"hf": "huggingface"}
-    to_format = output_aliases.get(to_format.lower(), to_format.lower())
-    file_exts = {
-        'onnx': '.onnx',
-        'gguf': '.gguf',
-        'pt': '.pt',
-        'torchscript': '.pt',
-        'safetensors': '.safetensors',
-        'fp16': '.safetensors',
-    }
-    base = os.path.splitext(os.path.basename(input_path))[0]
-    def to_dir_name(path, ext=None):
-        p = Path(path)
-        if ext and p.name.endswith(ext):
-            return str(p.with_suffix('')) + f'_{to_format}'
-        if p.suffix:
-            return str(p.with_suffix('')) + f'_{to_format}'
-        return str(p)
-    if not output_path:
-        return f'./outputs/{base}_{to_format}'
-    if os.path.isdir(output_path):
-        return output_path
-    for ext in file_exts.values():
-        if output_path.endswith(ext):
-            return to_dir_name(output_path, ext)
-    if not os.path.exists(output_path) and not output_path.endswith('/'):
-        return to_dir_name(output_path)
-    return output_path
 
 def batch(
     config_path: str = typer.Argument(..., help="Batch configuration file (YAML/JSON)"),

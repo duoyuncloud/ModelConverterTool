@@ -74,19 +74,32 @@ def convert_to_awq(
 
 def validate_awq_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for AWQ files. Checks if the file exists and can be loaded by GPTQModel.load.
-    Returns True if the file passes static validation, False otherwise.
+    Static validation for AWQ files. Accepts either a file or directory path.
+    If a directory is given, uses it directly. If a file is given, uses its parent directory.
+    Returns True if the model can be loaded, False otherwise.
+    Prints detailed exception info on failure for debugging.
     """
-    if not os.path.exists(path):
+    import os
+    from pathlib import Path
+    p = Path(path)
+    if p.is_file():
+        path = str(p.parent)
+    elif p.is_dir():
+        path = str(p)
+    else:
+        print(f"[validate_awq_file] Path does not exist: {path}")
         return False
     try:
         from gptqmodel import GPTQModel
         _ = GPTQModel.load(path)
+        print("[validate_awq_file] Loaded AWQ model successfully.")
         return True
     except ImportError:
-        # gptqmodel not installed
+        print("[validate_awq_file] gptqmodel not installed.")
         return False
-    except Exception:
+    except Exception as e:
+        import traceback
+        print(f"[validate_awq_file] Exception: {e}\n" + traceback.format_exc())
         return False
 
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:

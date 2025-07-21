@@ -12,6 +12,7 @@ import shutil
 from model_converter_tool.api import ModelConverterAPI
 from pathlib import Path
 import re
+from model_converter_tool.utils import auto_complete_output_path
 
 # Dynamically generate a beautified conversion matrix table (pure text, English comments)
 def get_conversion_matrix_table():
@@ -41,42 +42,6 @@ Supported Conversion Matrix:
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
-
-def auto_complete_output_path(input_path, output_path, to_format):
-    import re
-    output_aliases = {"hf": "huggingface"}
-    to_format = output_aliases.get(to_format.lower(), to_format.lower())
-    file_exts = {
-        'onnx': '.onnx',
-        'gguf': '.gguf',
-        'pt': '.pt',
-        'torchscript': '.pt',
-        'safetensors': '.safetensors',
-        'fp16': '.safetensors',
-    }
-    dir_formats = {'hf', 'huggingface', 'gptq', 'awq', 'mlx'}
-    base = os.path.splitext(os.path.basename(input_path))[0]
-    # 新逻辑：所有输出都落在独立子目录
-    def to_dir_name(path, ext=None):
-        p = Path(path)
-        if ext and p.name.endswith(ext):
-            return str(p.with_suffix('')) + f'_{to_format}'
-        if p.suffix:
-            return str(p.with_suffix('')) + f'_{to_format}'
-        return str(p)
-    if not output_path:
-        return f'./outputs/{base}_{to_format}'
-    # 如果是已存在的目录，直接用
-    if os.path.isdir(output_path):
-        return output_path
-    # 如果是文件名，转为同名子目录
-    for ext in file_exts.values():
-        if output_path.endswith(ext):
-            return to_dir_name(output_path, ext)
-    # 没有扩展名但不是目录，仍转为子目录
-    if not os.path.exists(output_path) and not output_path.endswith('/'):
-        return to_dir_name(output_path)
-    return output_path
 
 
 def convert(
