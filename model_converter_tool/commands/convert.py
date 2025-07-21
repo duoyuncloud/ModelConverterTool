@@ -171,8 +171,8 @@ def convert(
                         f"Invalid shape for '{k}': {v}. Each shape must be a list of positive integers, e.g. [4096, 4096]."
                     )
         except Exception as e:
-            typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]\n"
-                       "[yellow]Example YAML:\nembed_tokens.weight: [32000, 4096]\nlayers.0.self_attn.q_proj.weight: [4096, 4096]\n\nExample JSON:\n{\"embed_tokens.weight\": [32000, 4096]}[/yellow]")
+            typer.echo(f"[red]Failed to parse fake_weight_config: {e}[/red]")
+            typer.echo("[yellow]Example YAML:\nembed_tokens.weight: [32000, 4096]\nlayers.0.self_attn.q_proj.weight: [4096, 4096]\n\nExample JSON:\n{\"embed_tokens.weight\": [32000, 4096]}[/yellow]")
             raise typer.Exit(1)
 
     result = convert_model(

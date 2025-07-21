@@ -88,6 +88,8 @@ def batch(
     results = []
     successful = 0
     failed = 0
+    succeeded_outputs = []
+    failed_tasks = []
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -121,15 +123,26 @@ def batch(
                 if result.success:
                     progress.console.print(f"[green]Success! Output: {result.output_path}[/green]")
                     successful += 1
+                    succeeded_outputs.append(result.output_path)
                 else:
                     progress.console.print(f"[red]Failed: {result.error}[/red]")
                     failed += 1
+                    failed_tasks.append(task.get('name') or task.get('model_path') or f'Task {i+1}')
                 results.append(result)
             except Exception as e:
                 progress.console.print(f"[red]Exception during conversion: {e}[/red]")
                 failed += 1
+                failed_tasks.append(task.get('name') or task.get('model_path') or f'Task {i+1}')
             progress.advance(task_progress)
     console.print(f"\n[bold]Batch conversion completed: {successful} succeeded, {failed} failed.[/bold]")
+    if succeeded_outputs:
+        console.print("\n[green]Succeeded output files:[/green]")
+        for path in succeeded_outputs:
+            console.print(f"  [green]{path}[/green]")
+    if failed_tasks:
+        console.print("\n[red]Failed tasks:[/red]")
+        for name in failed_tasks:
+            console.print(f"  [red]{name}[/red]")
     if failed > 0:
         raise typer.Exit(2)
 

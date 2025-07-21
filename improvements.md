@@ -93,6 +93,5 @@ modelconvert convert openbmb/MiniCPM-2B-sft-bf16 huggingface --mup2llama
 -y test_integration+ci 2. 实现一个高coverage的集成测试，用于版本更新前跑
 -o3. 加入更精细的量化配置支持（比如desc, group_size, sym等等）
 -o try-run-->check*4. 支持更多小功能（to-llama-foramt、try-run、fake-weight等等），从modelconvert变为modeltool
-
 *5. 接入更多实际业务使用的转换（Megatron2hf, hf2mtk, hf2rk, hf2ax, hf2qnn），大多是闭源的
 *6. 干点别的，比如基于模型的cli自动补全工具
