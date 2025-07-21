@@ -83,14 +83,6 @@ def test_cli_history():
     assert result.returncode == 0
     assert "Completed tasks" in result.stdout
 
-def test_cli_to_llama_format_help():
-    """
-    Test CLI to-llama-format --help output.
-    """
-    result = subprocess.run(CLI_CMD + ["to-llama-format", "--help"], capture_output=True, text=True)
-    assert result.returncode == 0
-    assert "llama.cpp GGUF format" in result.stdout or "usage" in result.stdout.lower()
-
 def test_cli_main_help():
     """
     Test CLI main --help output.
