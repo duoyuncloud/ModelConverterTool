@@ -6,6 +6,7 @@ from pathlib import Path
 import logging
 from typing import Any, Optional, Tuple
 from model_converter_tool.utils import auto_load_model_and_tokenizer
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +178,7 @@ def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
             else:
                 dtype = np.float32
             dummy[inp.name] = np.zeros(shape, dtype=dtype)
-        out = sess.run(None, dummy)
+        sess.run(None, dummy)
         return True
     except ImportError:
         return False

@@ -1,4 +1,5 @@
 import typer
+from model_converter_tool.commands import inspect, convert, history, config, batch, check
 
 EXAMPLES = """
 [bold cyan]Examples:[/bold cyan]
@@ -44,8 +45,6 @@ def main(
 
 
 # Subcommand registration
-from model_converter_tool.commands import inspect, convert, history, config, batch, check
-
 app.command()(inspect.inspect)
 app.command()(convert.convert)
 app.command()(batch.batch)

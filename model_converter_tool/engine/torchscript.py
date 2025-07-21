@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 from model_converter_tool.utils import auto_load_model_and_tokenizer
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +31,10 @@ def convert_to_torchscript(
         # Robust model/tokenizer auto-loading
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import torch
-        from pathlib import Path
 
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
         torchscript_file = output_dir / "model.pt"
-        export_success = False
         # Step 1: Try torch.jit.script
         try:
             logger.info("Attempting torch.jit.script...")
@@ -59,7 +59,6 @@ def convert_to_torchscript(
             else:
                 scripted_model = torch.jit.script(model)
             scripted_model.save(str(torchscript_file))
-            export_success = True
             logger.info("TorchScript script export successful")
         except Exception as e:
             last_error = e
@@ -120,7 +119,6 @@ def convert_to_torchscript(
                     dummy_input = (dummy_input, dummy_mask)
                 traced_model = torch.jit.trace(model, dummy_input, strict=False)
             traced_model.save(str(torchscript_file))
-            export_success = True
             logger.info("TorchScript trace export successful")
         except Exception as e:
             last_error = e

@@ -136,8 +136,8 @@ class Llama(nn.Module):
         mask = mask.astype(self.tok_embeddings.weight.dtype)
 
         x = self.tok_embeddings(x)
-        for l in self.layers:
-            x, _ = l(x, mask)
+        for layer in self.layers:
+            x, _ = layer(x, mask)
         x = self.norm(x)
         return self.output(x)
 
@@ -157,8 +157,8 @@ class Llama(nn.Module):
         # First we process the prompt x the same was as in __call__ but
         # save the caches in cache
         x = self.tok_embeddings(x)
-        for l in self.layers:
-            x, c = l(x, mask=mask)
+        for layer in self.layers:
+            x, c = layer(x, mask=mask)
             # We store the per layer cache in a simple python list
             cache.append(c)
         x = self.norm(x)
@@ -208,16 +208,14 @@ def generate(args):
     print(args.prompt)
     x = mx.array([[tokenizer.bos_id()] + tokenizer.encode(args.prompt)])
     skip = 0
-    prompt_processing = None
-    tokens = []
     start = tic()
+    tokens = []
     for token in model.generate(x, args.temp):
         tokens.append(token)
 
         if len(tokens) == 1:
             # Actually perform the computation to measure the prompt processing time
             mx.eval(token)
-            prompt_processing = toc("Prompt processing", start)
 
         if len(tokens) >= args.max_tokens:
             break
@@ -230,12 +228,10 @@ def generate(args):
             skip = len(s)
 
     mx.eval(tokens)
-    full_gen = toc("Full generation", start)
+    print(toc("Full generation", start))
     s = tokenizer.decode([t.item() for t in tokens])
     print(s[skip:], flush=True)
     print("------")
-    print(prompt_processing)
-    print(full_gen)
 
 
 def few_shot_generate(args):
@@ -251,7 +247,6 @@ def few_shot_generate(args):
     def generate(question):
         x = mx.array([[tokenizer.bos_id()] + tokenizer.encode(question)])
         skip = 0
-        prompt_processing = None
         tokens = []
         start = tic()
         for token in model.generate(x, args.temp):
@@ -260,7 +255,6 @@ def few_shot_generate(args):
             if len(tokens) == 1:
                 # Actually perform the computation to measure the prompt processing time
                 mx.eval(token)
-                prompt_processing = toc("Prompt processing", start)
 
             if len(tokens) >= args.max_tokens:
                 break
@@ -282,7 +276,7 @@ def few_shot_generate(args):
                 break
 
         mx.eval(tokens)
-        full_gen = toc("Full generation", start)
+        print(toc("Full generation", start))
         s = tokenizer.decode([t.item() for t in tokens])
         print(s[skip:], end="", flush=True)
 

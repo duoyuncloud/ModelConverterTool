@@ -2,7 +2,9 @@ import logging
 from pathlib import Path
 from typing import Any
 import subprocess
+import sys
 import os
+import tempfile
 import shutil
 
 logger = logging.getLogger(__name__)
@@ -64,11 +66,6 @@ def convert_to_mlx(
     Uses a unique temporary output path to avoid path conflicts, then moves the result to the user-specified output directory.
     The output is always a directory (never a .npz file).
     """
-    import subprocess
-    import os
-    import tempfile
-    import shutil
-
     try:
         # Use a unique temporary directory for mlx-lm output
         with tempfile.TemporaryDirectory() as tmpdir:
