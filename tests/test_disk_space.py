@@ -31,7 +31,7 @@ def test_get_disk_usage():
 def test_check_disk_space_safety():
     """Test disk space safety checking"""
     # Mock disk usage to return known values
-    with patch("model_converter_tool.utils.get_disk_usage") as mock_disk_usage:
+    with patch("model_converter_tool.disk_space.get_disk_usage") as mock_disk_usage:
         # Test case: plenty of space
         mock_disk_usage.return_value = (100 * 1024**3, 50 * 1024**3, 50 * 1024**3)  # 100GB total, 50GB free
         has_enough, info = check_disk_space_safety(1 * 1024**3, 5.0)  # 1GB required, 5GB safety margin
