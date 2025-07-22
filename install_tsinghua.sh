@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Tsinghua PyPI mirror URL (set once at the top)
+PIP_MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"
+
 # Check if running inside a virtual environment
 if [ ! -z "$VIRTUAL_ENV" ]; then
   echo "Error: Please deactivate any active Python virtual environment before running this script."
@@ -46,21 +49,35 @@ if [[ $VENV_PY != 3.11* ]]; then
   exit 1
 fi
 
+# ----------------------
+# Check Tsinghua PyPI mirror accessibility
+# ----------------------
+echo ""
+echo "Checking Tsinghua PyPI mirror accessibility..."
+status_code=$(curl -s -o /dev/null -w "%{http_code}" $PIP_MIRROR)
+if [[ $status_code =~ ^(2|3) ]]; then
+  echo "✅ Mirror is reachable with status code $status_code. Using: $PIP_MIRROR"
+  PIP_INDEX="-i $PIP_MIRROR"
+else
+  echo "⚠️  Warning: Cannot reach $PIP_MIRROR (status code $status_code). Falling back to default PyPI."
+  PIP_INDEX=""
+fi
+
 # Activate virtual environment
 source venv/bin/activate
 
 # Upgrade pip, setuptools and wheel first
-pip install --upgrade pip setuptools wheel
+pip install --upgrade pip setuptools wheel $PIP_INDEX
 
 # Install PyTorch first
-pip install torch torchvision torchaudio
+pip install torch torchvision torchaudio $PIP_INDEX
 
 # Install/upgrade other dependencies
-pip install -U -r requirements.txt
+pip install -U -r requirements.txt $PIP_INDEX
 
 # Optionally install extra requirements for submodules
 if [ -f "llama.cpp/requirements.txt" ]; then
-  pip install --no-cache-dir -r llama.cpp/requirements.txt
+  pip install --no-cache-dir -r llama.cpp/requirements.txt $PIP_INDEX
 fi
 
 # Check and install Xcode Command Line Tools (macOS only)
@@ -82,7 +99,7 @@ if ! command -v cmake &>/dev/null; then
 fi
 
 # Install the local package as an editable CLI tool
-pip install -e .
+pip install -e . $PIP_INDEX
 
 echo ""
 echo "=== Installation complete! ==="

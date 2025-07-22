@@ -15,7 +15,8 @@ Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (fp16/fp32), Huggi
 ```sh
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-./install.sh
+chmod +x install.sh (or chmod +x install_tsinghua.sh)
+./install.sh (or ./install_tsinghua.sh)
 source venv/bin/activate
 ```
 

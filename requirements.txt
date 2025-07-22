@@ -22,7 +22,7 @@ safetensors
 pyyaml>=6.0
 rich>=13.0.0
 tqdm>=4.65.0
-typer
+typer>=0.16.0
 
 # Optional: For better performance
 sentencepiece>=0.1.99
