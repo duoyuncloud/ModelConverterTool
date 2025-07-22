@@ -1,7 +1,7 @@
 import typer
 import os
 from model_converter_tool.core.convert import convert_model
-from model_converter_tool.utils import check_and_handle_disk_space
+from model_converter_tool.disk_space import check_and_handle_disk_space
 import sys
 from rich import print as rprint
 import click

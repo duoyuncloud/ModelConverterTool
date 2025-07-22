@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from model_converter_tool.utils import (
+from model_converter_tool.disk_space import (
     get_disk_usage,
     format_bytes,
     check_disk_space_safety,

@@ -18,6 +18,7 @@ from rich.progress import (
     TaskProgressColumn,
 )
 from rich.console import Console
+from model_converter_tool.disk_space import check_disk_space_safety, prompt_user_confirmation_low_space
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
@@ -166,8 +167,6 @@ def check_and_handle_disk_space_batch(total_required_bytes: int, console: Consol
     Check disk space for batch operations.
     Returns True if operation should proceed, False if aborted.
     """
-    from model_converter_tool.utils import check_disk_space_safety, prompt_user_confirmation_low_space
-
     has_enough_space, space_info = check_disk_space_safety(total_required_bytes, safety_margin_gib=5.0, path="/")
     if has_enough_space:
         formatted = space_info["formatted"]
