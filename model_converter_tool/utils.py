@@ -18,43 +18,6 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-def get_file_size(file_path: str) -> Optional[int]:
-    """Get file size in bytes"""
-    try:
-        return Path(file_path).stat().st_size
-    except Exception:
-        return None
-
-
-def format_file_size(size_bytes: int) -> str:
-    """Format file size in human readable format"""
-    if size_bytes == 0:
-        return "0B"
-
-    size_names = ["B", "KB", "MB", "GB", "TB"]
-    i = 0
-    while size_bytes >= 1024 and i < len(size_names) - 1:
-        size_bytes = size_bytes / 1024.0
-        i += 1
-
-    return f"{size_bytes:.1f}{size_names[i]}"
-
-
-def get_directory_size(directory: str) -> int:
-    """Get total size of directory in bytes"""
-    total_size = 0
-    try:
-        for dirpath, dirnames, filenames in os.walk(directory):
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                if os.path.exists(file_path):
-                    total_size += os.path.getsize(file_path)
-    except Exception as e:
-        logger.warning(f"Could not calculate directory size: {e}")
-
-    return total_size
-
-
 def ensure_output_directory(output_path: str) -> str:
     """Ensure output directory exists and return the path"""
     output_dir = Path(output_path).parent
@@ -184,42 +147,6 @@ def load_tokenizer_with_cache(model_name: str, **kwargs):
     except Exception:
         logger.warning(f"Local cache incomplete, attempting to load tokenizer from network: {model_name}")
         return AutoTokenizer.from_pretrained(model_name, **kwargs)
-
-
-def ansi_safe_wrap(text: str, width: int) -> str:
-    """
-    Wrap text to a given width, preserving ANSI color codes and word boundaries.
-    Args:
-        text: The input string (may contain ANSI codes)
-        width: The max line width
-    Returns:
-        Wrapped string
-    """
-    # Regex to match ANSI escape sequences
-    ansi_escape = re.compile(r"(\x1b\[[0-9;]*[a-zA-Z])")
-    # Split text into ANSI and non-ANSI parts
-    parts = ansi_escape.split(text)
-    clean = ""
-    ansi_stack = []
-    lines = []
-    for part in parts:
-        if ansi_escape.match(part):
-            ansi_stack.append(part)
-            clean += part
-        else:
-            # Wrap the non-ANSI part
-            wrapped = textwrap.wrap(part, width=width, replace_whitespace=False, drop_whitespace=False)
-            for i, line in enumerate(wrapped):
-                if i > 0:
-                    # Reset ANSI codes at the start of each new line
-                    lines.append("".join(ansi_stack) + line)
-                else:
-                    clean += line
-            if wrapped:
-                clean = ""
-    if clean:
-        lines.append(clean)
-    return "\n".join(lines)
 
 
 def auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type):

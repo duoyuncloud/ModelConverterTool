@@ -3,11 +3,8 @@ import yaml
 import json
 from pathlib import Path
 from model_converter_tool.core.convert import convert_model
-from model_converter_tool.utils import (
-    estimate_model_size,
-    format_bytes,
-    auto_complete_output_path,
-)
+from model_converter_tool.utils import auto_complete_output_path
+from model_converter_tool.disk_space import estimate_model_size, format_bytes, prompt_user_confirmation_low_space
 from rich.progress import (
     Progress,
     BarColumn,
@@ -18,7 +15,7 @@ from rich.progress import (
     TaskProgressColumn,
 )
 from rich.console import Console
-from model_converter_tool.disk_space import check_disk_space_safety, prompt_user_confirmation_low_space
+from model_converter_tool.disk_space import check_disk_space_safety
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"

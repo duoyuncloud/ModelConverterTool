@@ -72,8 +72,8 @@ def test_estimate_model_size():
     assert size_fp16 < size_onnx
 
 
-@patch("model_converter_tool.utils.check_disk_space_safety")
-@patch("model_converter_tool.utils.estimate_model_size")
+@patch("model_converter_tool.disk_space.estimate_model_size")
+@patch("model_converter_tool.disk_space.check_disk_space_safety")
 def test_check_and_handle_disk_space(mock_estimate, mock_check):
     """Test the main disk space checking function"""
     # Mock successful case
