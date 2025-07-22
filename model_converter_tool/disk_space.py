@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 console = Console()
 
+
 def get_disk_usage(path: str = "/") -> Tuple[int, int, int]:
     """
     Get disk usage information for a path.
@@ -28,6 +29,7 @@ def get_disk_usage(path: str = "/") -> Tuple[int, int, int]:
         logger.warning(f"Could not get disk usage for {path}: {e}")
         return 0, 0, 0
 
+
 def format_bytes(bytes_value: int) -> str:
     """Format bytes in human readable format with GiB/MiB units"""
     if bytes_value == 0:
@@ -38,6 +40,7 @@ def format_bytes(bytes_value: int) -> str:
         bytes_value = bytes_value / 1024.0
         i += 1
     return f"{bytes_value:.1f}{size_names[i]}"
+
 
 def check_disk_space_safety(
     required_bytes: int, safety_margin_gib: float = 5.0, path: str = "/"
@@ -75,6 +78,7 @@ def check_disk_space_safety(
         },
     }
     return has_enough_for_operation and has_safety_margin, info
+
 
 def estimate_model_size(model_path: str, output_format: str, quantization: Optional[str] = None) -> int:
     """
@@ -146,6 +150,7 @@ def estimate_model_size(model_path: str, output_format: str, quantization: Optio
         logger.warning(f"Could not estimate model size: {e}")
         return 2 * 1024**3
 
+
 def prompt_user_confirmation_low_space(space_info: Dict[str, Any]) -> bool:
     """
     Prompt user for confirmation when disk space is low.
@@ -176,6 +181,7 @@ def prompt_user_confirmation_low_space(space_info: Dict[str, Any]) -> bool:
     except (KeyboardInterrupt, EOFError):
         console.print("\n[yellow]Operation cancelled by user.[/yellow]")
         return False
+
 
 def check_and_handle_disk_space(
     model_path: str,
@@ -217,4 +223,4 @@ def check_and_handle_disk_space(
     error_text.append("Please free up disk space and try again.", style="yellow")
     panel = Panel(error_text, title="[bold red]Disk Space Error[/bold red]", border_style="red")
     console.print(panel)
-    return False 
+    return False

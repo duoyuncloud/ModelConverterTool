@@ -8,11 +8,14 @@ from model_converter_tool.disk_space import (
     check_and_handle_disk_space,
 )
 
+
 def format_gib(gib: float) -> str:
     return f"{gib:.1f}GiB"
 
-def make_mock_space_info(free_gib: float, required_gib: float, margin_gib: float, has_enough: bool,
-                         has_margin: bool = True) -> tuple:
+
+def make_mock_space_info(
+    free_gib: float, required_gib: float, margin_gib: float, has_enough: bool, has_margin: bool = True
+) -> tuple:
     return (
         has_enough,
         {
@@ -23,10 +26,11 @@ def make_mock_space_info(free_gib: float, required_gib: float, margin_gib: float
                 "free": format_gib(free_gib),
                 "required": format_gib(required_gib),
                 "safety_margin": format_gib(margin_gib),
-                "remaining_after": format_gib(free_gib - required_gib)
-            }
-        }
+                "remaining_after": format_gib(free_gib - required_gib),
+            },
+        },
     )
+
 
 def test_format_bytes():
     """Test byte formatting function"""
@@ -37,6 +41,7 @@ def test_format_bytes():
     assert format_bytes(1024**4) == "1.0TiB"
     assert format_bytes(1500) == "1.5KiB"
 
+
 def test_get_disk_usage():
     """Test disk usage function"""
     total, used, free = get_disk_usage("/")
@@ -44,6 +49,7 @@ def test_get_disk_usage():
     assert used >= 0
     assert free >= 0
     assert total >= used + free
+
 
 def test_check_disk_space_safety():
     """Test disk space safety checking"""
@@ -69,6 +75,7 @@ def test_check_disk_space_safety():
         assert info["has_enough_for_operation"] is False
         assert info["has_safety_margin"] is False
 
+
 def test_estimate_model_size():
     """Test model size estimation"""
     assert estimate_model_size("bert-base-uncased", "onnx") > 0
@@ -82,6 +89,7 @@ def test_estimate_model_size():
     size_onnx = estimate_model_size("gpt2", "onnx")
     size_fp16 = estimate_model_size("gpt2", "safetensors", "fp16")
     assert size_fp16 < size_onnx
+
 
 @patch("model_converter_tool.disk_space.estimate_model_size")
 @patch("model_converter_tool.disk_space.check_disk_space_safety")
@@ -97,6 +105,7 @@ def test_check_and_handle_disk_space(mock_check, mock_estimate):
     mock_check.return_value = make_mock_space_info(0.5, 1, 5, False, has_margin=False)
     assert check_and_handle_disk_space("gpt2", "onnx") is False
 
+
 def test_estimate_model_size_with_local_file(tmp_path):
     """Test model size estimation with local file"""
     model_file = tmp_path / "test_model.bin"
@@ -104,6 +113,7 @@ def test_estimate_model_size_with_local_file(tmp_path):
 
     size = estimate_model_size(str(model_file), "onnx")
     assert size > 100 * 1024**2  # buffer added
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
