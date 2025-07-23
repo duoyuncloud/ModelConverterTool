@@ -77,7 +77,7 @@ def test_quantization_config_applied(api, output_dir):
     import json
     import os
 
-    quant_config = {"bits": 3, "group_size": 64, "sym": True, "desc": "test-desc"}
+    quant_config = {"bits": 3, "group_size": 64, "sym": True, "desc_act": True}
     output_path = str(output_dir / "opt_125m_gptq_custom")
     result = api.convert_model(
         model_path="facebook/opt-125m",

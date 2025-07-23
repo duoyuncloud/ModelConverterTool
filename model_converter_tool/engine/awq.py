@@ -35,13 +35,13 @@ def convert_to_awq(
         bits = 4
         group_size = 128
         sym = False
-        desc = None
+        desc_act = None
 
         if quantization_config:
             bits = quantization_config.get("bits", bits)
             group_size = quantization_config.get("group_size", group_size)
             sym = quantization_config.get("sym", sym)
-            desc = quantization_config.get("desc", desc)
+            desc_act = quantization_config.get("desc_act", desc_act)
             allowed_keys = {
                 "bits",
                 "dynamic",
@@ -82,7 +82,7 @@ def convert_to_awq(
         model.quantize(calibration_dataset)
         model.save_pretrained(str(output_dir))
 
-        patch_quantization_config_file(output_dir / "config.json", bits, group_size, sym, desc)
+        patch_quantization_config_file(output_dir / "config.json", bits, group_size, sym, desc_act)
 
         logger.info(f"AWQ quantization completed: {output_dir}")
         return True, None
