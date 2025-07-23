@@ -1,7 +1,11 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset
+from model_converter_tool.utils import (
+    auto_load_model_and_tokenizer,
+    get_calibration_dataset,
+    patch_quantization_config_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,21 +23,8 @@ def convert_to_awq(
 ) -> tuple:
     """
     Export model to AWQ quantization format.
-    Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
-        model_name: Source model name or path
-        output_path: Output directory path
-        model_type: Model type
-        device: Device string
-        quantization: Optional quantization string parameters
-        use_large_calibration: Flag for using large calibration dataset
-        quantization_config: Optional dict with quantization config
-    Returns:
-        Tuple(success: bool, extra_info: dict or None)
     """
     try:
-        # Auto-load model and tokenizer if not provided
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
@@ -41,7 +32,6 @@ def convert_to_awq(
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Set default quantization parameters
         bits = 4
         group_size = 128
         sym = False
@@ -52,7 +42,6 @@ def convert_to_awq(
             group_size = quantization_config.get("group_size", group_size)
             sym = quantization_config.get("sym", sym)
             desc = quantization_config.get("desc", desc)
-            # Filter allowed keys for QuantizeConfig
             allowed_keys = {
                 "bits",
                 "dynamic",
@@ -88,14 +77,13 @@ def convert_to_awq(
 
         calibration_dataset = get_calibration_dataset(use_large_calibration, tag="AWQ")
         model = GPTQModel.from_pretrained(
-            model_name,
-            quantize_config,
-            device=(device if device in ["cuda", "mps"] else "cpu"),
+            model_name, quantize_config, device=(device if device in ["cuda", "mps"] else "cpu")
         )
         model.quantize(calibration_dataset)
         model.save_pretrained(str(output_dir))
 
-        # Removed patch_quantization_config call, rely on QuantizeConfig for config
+        patch_quantization_config_file(output_dir / "config.json", bits, group_size, sym, desc)
+
         logger.info(f"AWQ quantization completed: {output_dir}")
         return True, None
     except Exception as e:
@@ -105,9 +93,7 @@ def convert_to_awq(
 
 def validate_awq_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for AWQ files.
-    Accepts a file or directory path, loads model to verify.
-    Returns True if loading succeeds, else False.
+    Validate AWQ files by attempting to load the model.
     """
     from pathlib import Path
 
@@ -137,9 +123,7 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
 
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic inference check for AWQ files.
-    Loads model, attempts dummy inference.
-    Returns True if inference succeeds, else False.
+    Perform dummy inference to test AWQ model usability.
     """
     import traceback
 
@@ -185,37 +169,27 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
 
         prompt = "Hello world!"
         try:
-            if arch is not None:
+            if arch:
                 arch_l = arch.lower()
-                if "opt" in arch_l:
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        input_ids = input_ids.to(model_device)
-                        output = model.generate(input_ids)[0]
-                        _ = tokenizer.decode(output)
-                    else:
-                        output = model.generate(prompt)[0]
-                elif "llama" in arch_l or "mistral" in arch_l or "mixtral" in arch_l:
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        input_ids = input_ids.to(model_device)
+                if any(x in arch_l for x in ["opt", "llama", "mistral", "mixtral"]):
+                    if tokenizer:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(model_device)
                         output = model.generate(input_ids)[0]
                         _ = tokenizer.decode(output)
                     else:
                         output = model.generate(prompt)[0]
                 else:
                     output = model.generate(prompt)[0]
-                    if tokenizer is not None:
+                    if tokenizer:
                         _ = tokenizer.decode(output)
             else:
                 try:
                     output = model.generate(prompt)[0]
-                    if tokenizer is not None:
+                    if tokenizer:
                         _ = tokenizer.decode(output)
                 except Exception:
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        input_ids = input_ids.to(model_device)
+                    if tokenizer:
+                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(model_device)
                         output = model.generate(input_ids)[0]
                         _ = tokenizer.decode(output)
             return True

@@ -29,29 +29,22 @@ def get_local_cache_path(model_name: str) -> str:
     Returns:
         Local cache path, if not exists return original model name
     """
-    from pathlib import Path
-
-    # Build cache directory path
     cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
     model_cache_dir = cache_dir / f"models--{model_name.replace('/', '--')}"
 
     if not model_cache_dir.exists():
         return model_name
 
-    # Find the latest snapshot
     snapshots_dir = model_cache_dir / "snapshots"
     if not snapshots_dir.exists():
         return model_name
 
-    # Get the latest snapshot directory
     snapshot_dirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
     if not snapshot_dirs:
         return model_name
 
-    # Sort by modification time, take the latest
     latest_snapshot = max(snapshot_dirs, key=lambda x: x.stat().st_mtime)
 
-    # Check if snapshot directory contains necessary files
     required_files = ["config.json", "model.safetensors", "tokenizer.json"]
     if all((latest_snapshot / f).exists() for f in required_files):
         logger.info(f"Found local cache: {latest_snapshot}")
@@ -65,50 +58,36 @@ def load_model_with_cache(
 ):
     """
     Load a model from cache or disk. If fake_weight is True, generate a model with the correct architecture and all weights set to zero or custom shapes.
-    fake_weight_shape_dict: Optional dict specifying custom shapes for each weight tensor.
     """
     if fake_weight:
         from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
 
         config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-        # Remove quantization_config if present to avoid loading errors with fake weights
         if hasattr(config, "quantization_config"):
             delattr(config, "quantization_config")
         if hasattr(config, "to_dict") and "quantization_config" in config.to_dict():
-            # Some configs may keep it in the dict representation
             config_dict = config.to_dict()
             config_dict.pop("quantization_config", None)
-            # Rebuild config from dict to ensure it's clean
             config = type(config).from_dict(config_dict)
         if model_class is None:
             model_type = getattr(config, "model_type", None)
-            if model_type is not None and ("qwen" in model_type):
-                model_class = AutoModelForCausalLM
-            else:
-                model_class = AutoModel
-        # Generate the model with all weights set to zero (default shapes)
+            model_class = AutoModelForCausalLM if model_type and ("qwen" in model_type) else AutoModel
         model = generate_fake_model(config, model_class, fake_weight_shape_dict)
         return model
-    # Detect Qwen model type and use correct class
+
     if model_class is None:
         from transformers import AutoConfig, AutoModel, AutoModelForCausalLM
 
         try:
             config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
             model_type = getattr(config, "model_type", None)
-            if model_type is not None and ("qwen" in model_type):
-                model_class = AutoModelForCausalLM
-            else:
-                model_class = AutoModel
+            model_class = AutoModelForCausalLM if model_type and ("qwen" in model_type) else AutoModel
         except Exception:
             model_class = AutoModel
-    # Always set trust_remote_code=True unless explicitly set
-    if "trust_remote_code" not in kwargs:
-        kwargs["trust_remote_code"] = True
-    # Try to get local cache path
+
+    kwargs.setdefault("trust_remote_code", True)
     local_path = get_local_cache_path(model_name)
     try:
-        # Prioritize using local cache
         logger.info(f"Attempting to load model from local cache: {local_path}")
         return model_class.from_pretrained(local_path, local_files_only=True, **kwargs)
     except Exception:
@@ -119,23 +98,12 @@ def load_model_with_cache(
 def load_tokenizer_with_cache(model_name: str, **kwargs):
     """
     Unified tokenizer loading function, prioritize local cache, allow network download if cache is incomplete
-
-    Args:
-        model_name: Model name or path
-        **kwargs: Other parameters passed to from_pretrained
-
-    Returns:
-        Loaded tokenizer object
     """
     from transformers import AutoTokenizer
 
-    # Always set trust_remote_code=True unless explicitly set
-    if "trust_remote_code" not in kwargs:
-        kwargs["trust_remote_code"] = True
-    # Try to get local cache path
+    kwargs.setdefault("trust_remote_code", True)
     local_path = get_local_cache_path(model_name)
     try:
-        # Prioritize using local cache
         logger.info(f"Attempting to load tokenizer from local cache: {local_path}")
         return AutoTokenizer.from_pretrained(local_path, local_files_only=True, **kwargs)
     except Exception:
@@ -146,35 +114,26 @@ def load_tokenizer_with_cache(model_name: str, **kwargs):
 def auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type):
     """
     Robustly load model and tokenizer if not provided. Returns (model, tokenizer).
-    Uses AutoModelForCausalLM for text-generation/causal/lm/generation types, else AutoModel.
-    If the specified model_type is not supported, fallback to 'auto'.
     """
     from transformers import AutoModel, AutoModelForCausalLM
-    from model_converter_tool.utils import load_model_with_cache, load_tokenizer_with_cache
 
     def _load(model_type_to_use):
-        if model is None:
-            if model_type_to_use and any(
-                x in model_type_to_use for x in ("causal", "lm", "generation", "text-generation")
-            ):
-                loaded_model = load_model_with_cache(model_name, AutoModelForCausalLM)
-            else:
-                loaded_model = load_model_with_cache(model_name, AutoModel)
-        else:
-            loaded_model = model
+        loaded_model = model or (
+            load_model_with_cache(model_name, AutoModelForCausalLM)
+            if model_type_to_use
+            and any(x in model_type_to_use for x in ("causal", "lm", "generation", "text-generation"))
+            else load_model_with_cache(model_name, AutoModel)
+        )
         loaded_tokenizer = tokenizer or load_tokenizer_with_cache(model_name)
         return loaded_model, loaded_tokenizer
 
     try:
-        # Try with user-specified model_type first
         return _load(model_type)
     except Exception as e:
-        # If model_type is not 'auto', fallback to 'auto' on failure
         if model_type != "auto":
             try:
                 return _load("auto")
             except Exception:
-                # Raise the original error if fallback also fails
                 raise e
         else:
             raise
@@ -182,12 +141,8 @@ def auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type):
 
 def get_calibration_dataset(use_large_calibration, tag="AWQ"):
     """
-    Returns a calibration dataset (list of strings) for quantization. If use_large_calibration is True, attempts to load openwebtext, else uses built-in samples.
-    Tag is used for logging (e.g., 'AWQ', 'GPTQ').
+    Returns a calibration dataset (list of strings) for quantization.
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
     if use_large_calibration:
         try:
             from datasets import load_dataset
@@ -222,13 +177,6 @@ def get_calibration_dataset(use_large_calibration, tag="AWQ"):
 def generate_fake_model(config, model_class, fake_weight_shape_dict: dict = None):
     """
     Generate a model instance with the given config and fill all weights with zeros.
-    If fake_weight_shape_dict is provided, use it to set custom shapes for weights.
-    Args:
-        config: Model config object
-        model_class: Model class (e.g., AutoModel, AutoModelForCausalLM)
-        fake_weight_shape_dict: Optional dict of {param_name: shape}
-    Returns:
-        Model instance with all weights set to zero (default or custom shapes)
     """
     import torch
 
@@ -255,10 +203,8 @@ def generate_fake_model(config, model_class, fake_weight_shape_dict: dict = None
 def create_dummy_model(output_dir: str, **kwargs):
     """
     Generate a simple test dummy model for testing purposes only.
-    Note: This function is for testing only, please use real models in production.
     """
     os.makedirs(output_dir, exist_ok=True)
-    # Simplified config.json
     config = {
         "architectures": ["LlamaForCausalLM"],
         "model_type": "llama",
@@ -276,7 +222,7 @@ def create_dummy_model(output_dir: str, **kwargs):
     }
     with open(os.path.join(output_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
-    # Simplified tokenizer files
+
     tokenizer_config = {
         "tokenizer_class": "PreTrainedTokenizerFast",
         "bos_token": "<s>",
@@ -287,11 +233,13 @@ def create_dummy_model(output_dir: str, **kwargs):
     }
     with open(os.path.join(output_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
         json.dump(tokenizer_config, f, indent=2)
+
     vocab = {"<pad>": 0, "<s>": 1, "</s>": 2, "<unk>": 3}
     for i in range(4, 100):
         vocab[f"token{i}"] = i
     with open(os.path.join(output_dir, "vocab.json"), "w", encoding="utf-8") as f:
         json.dump(vocab, f, indent=2)
+
     logger.info(f"✅ Simple dummy model config generated at {output_dir}")
     logger.warning("⚠️  This is a test-only dummy model. Use real models in production.")
 
@@ -299,11 +247,7 @@ def create_dummy_model(output_dir: str, **kwargs):
 def patch_config_remove_quantization_config(output_dir):
     """
     Remove quantization_config field from all .json files in the given directory.
-    This is used to ensure fake-weight outputs are always loadable by transformers.
     """
-    import json
-    from pathlib import Path
-
     output_dir = Path(output_dir)
     for json_file in output_dir.glob("*.json"):
         try:
@@ -320,16 +264,8 @@ def patch_config_remove_quantization_config(output_dir):
 def auto_complete_output_path(input_path, output_path, to_format):
     """
     Generate a standardized output directory path for model conversion outputs.
-    - Uses the full base name of the input path (including .5B or similar) and appends the format.
-    - If output_path is provided and is a file, converts it to a directory with the format suffix.
-    - If output_path is a directory, uses it directly.
-    - If output_path is omitted, uses './outputs/{base}_{to_format}'.
     """
-    import os
-    from pathlib import Path
-
-    output_aliases = {"hf": "huggingface"}
-    to_format = output_aliases.get(to_format.lower(), to_format.lower())
+    to_format = {"hf": "huggingface"}.get(to_format.lower(), to_format.lower())
     file_exts = {
         "onnx": ".onnx",
         "gguf": ".gguf",
@@ -338,7 +274,7 @@ def auto_complete_output_path(input_path, output_path, to_format):
         "safetensors": ".safetensors",
         "fp16": ".safetensors",
     }
-    base = os.path.basename(input_path)  # Always preserve full name, including .5B, etc.
+    base = os.path.basename(input_path)
 
     def to_dir_name(path, ext=None):
         p = Path(path)
@@ -358,3 +294,28 @@ def auto_complete_output_path(input_path, output_path, to_format):
     if not os.path.exists(output_path) and not output_path.endswith("/"):
         return to_dir_name(output_path)
     return output_path
+
+
+def patch_quantization_config_file(config_path: Path, bits: int, group_size: int, sym: bool, desc: str = None):
+    """
+    Patch quantization-related fields in a config.json file.
+    """
+    if not config_path.exists():
+        logger.warning(f"Config file not found for patching: {config_path}")
+        return
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        config["quantization_bits"] = bits
+        config["quantization_group_size"] = group_size
+        config["quantization_symmetric"] = sym
+        if desc is not None:
+            config["quantization_desc"] = desc
+
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+        logger.info(f"Patched quantization config in {config_path}")
+    except Exception as e:
+        logger.error(f"Failed to patch quantization config: {e}")

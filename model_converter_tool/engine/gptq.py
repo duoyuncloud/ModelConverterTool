@@ -1,7 +1,11 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset
+from model_converter_tool.utils import (
+    auto_load_model_and_tokenizer,
+    get_calibration_dataset,
+    patch_quantization_config_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,27 +22,38 @@ def convert_to_gptq(
     quantization_config: dict = None,
 ) -> tuple:
     """
-    Export model to GPTQ quantization format.
+    Export a model to the GPTQ quantization format.
     """
     try:
+        # Auto-load model and tokenizer if not already provided
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
+
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
 
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build quantize config
+        # Default quantization parameters
         bits = 4
         group_size = 128
+        sym = False
+        desc_act = None  # Use activation-aware quantization if True
+
         if quantization_config:
+            bits = quantization_config.get("bits", bits)
+            group_size = quantization_config.get("group_size", group_size)
+            sym = quantization_config.get("sym", sym)
+            desc_act = quantization_config.get("desc_act", desc_act)
+
+            # Only allow supported QuantizeConfig parameters
             allowed_keys = {
                 "bits",
                 "dynamic",
                 "group_size",
                 "damp_percent",
                 "damp_auto_increment",
-                "desc_act",
+                "desc_act",  # Updated key
                 "static_groups",
                 "sym",
                 "true_sequential",
@@ -53,11 +68,11 @@ def convert_to_gptq(
                 "adapter",
                 "rotation",
                 "is_marlin_format",
-                "desc",
             }
             filtered_config = {k: v for k, v in quantization_config.items() if k in allowed_keys}
             quantize_config = QuantizeConfig(**filtered_config)
         elif quantization:
+            # Parse quantization string, e.g. "4bit-128g"
             m = re.match(r"(\d+)bit-(\d+)g", quantization)
             if m:
                 bits = int(m.group(1))
@@ -66,16 +81,28 @@ def convert_to_gptq(
         else:
             quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
 
-        # Calibration + quantization
+        # Load calibration dataset
         calibration_dataset = get_calibration_dataset(use_large_calibration, tag="GPTQ")
+
+        # Load the model with quantization config
         model = GPTQModel.from_pretrained(
-            model_name, quantize_config, device=(device if device in ["cuda", "mps"] else "cpu")
+            model_name,
+            quantize_config,
+            device=(device if device in ["cuda", "mps"] else "cpu"),
         )
+
+        # Run quantization
         model.quantize(calibration_dataset)
+
+        # Save quantized model
         model.save_pretrained(str(output_dir))
+
+        # Patch quantization config for compatibility
+        patch_quantization_config_file(output_dir / "config.json", bits, group_size, sym, desc_act)
 
         logger.info(f"GPTQ quantization completed: {output_dir}")
         return True, None
+
     except Exception as e:
         logger.error(f"GPTQ conversion error: {e}")
         return False, None
@@ -83,13 +110,8 @@ def convert_to_gptq(
 
 def validate_gptq_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for GPTQ files. Accepts either a file or directory path.
-    If a directory is given, uses it directly. If a file is given, uses its parent directory.
-    Returns True if the model can be loaded, False otherwise.
-    Prints detailed exception info on failure for debugging.
+    Check if a GPTQ file or directory is valid and loadable.
     """
-    from pathlib import Path
-
     p = Path(path)
     if p.is_file():
         path = str(p.parent)
@@ -116,9 +138,7 @@ def validate_gptq_file(path: str, *args, **kwargs) -> bool:
 
 def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic check for GPTQ files.
-    Load the model and run a dummy inference to verify usability.
-    Returns True if inference succeeds, False otherwise.
+    Load a GPTQ model and test dummy inference.
     """
     import traceback
 
@@ -126,7 +146,6 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
         from gptqmodel import GPTQModel
         import torch
 
-        # 1. Load model
         try:
             model = GPTQModel.load(path)
             logger.info(f"[GPTQ] Model loaded from {path}")
@@ -134,14 +153,12 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
             logger.error(f"[GPTQ] Failed to load model: {e}\n{traceback.format_exc()}")
             return False
 
-        # 2. Detect architecture
         arch = getattr(model, "arch", None)
         if arch is None and hasattr(model, "config"):
             arch_list = getattr(model.config, "architectures", [])
             arch = arch_list[0] if arch_list else None
         logger.info(f"[GPTQ] Detected architecture: {arch}")
 
-        # 3. Get tokenizer if available
         tokenizer = getattr(model, "tokenizer", None)
         if tokenizer is None and hasattr(model, "get_tokenizer"):
             try:
@@ -151,7 +168,6 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
                 logger.warning(f"[GPTQ] Failed to get tokenizer: {e}")
                 tokenizer = None
 
-        # 4. Determine device of model parameters (default to cpu)
         model_device = None
         try:
             for p in model.parameters():
@@ -170,10 +186,8 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
             model_device = torch.device("cpu")
         logger.info(f"[GPTQ] Using device: {model_device}")
 
-        # 5. Prepare prompt
         prompt = "Hello world!"
 
-        # 6. Define inference helper
         def generate_output(input_data):
             if isinstance(input_data, str):
                 return model.generate(input_data)[0]
@@ -181,22 +195,17 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
                 input_ids = input_data.to(model_device)
                 return model.generate(input_ids)[0]
 
-        # 7. Run inference with fallback logic
         try:
             if tokenizer:
-                # Try tokenized input first
                 input_ids = tokenizer(prompt, return_tensors="pt").input_ids
                 output = generate_output(input_ids)
                 _ = tokenizer.decode(output)
             else:
-                # No tokenizer, try string input directly
                 output = generate_output(prompt)
             logger.info("[GPTQ] Inference test succeeded.")
             return True
         except Exception as e:
             logger.warning(f"[GPTQ] Inference with tokenizer or string input failed: {e}")
-
-            # If tokenizer present, try string input fallback
             if tokenizer:
                 try:
                     output = generate_output(prompt)

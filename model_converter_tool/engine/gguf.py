@@ -4,9 +4,8 @@ from typing import Any
 import subprocess
 import sys
 import tempfile
-import json
-from model_converter_tool.utils import auto_load_model_and_tokenizer
 import os
+from model_converter_tool.utils import auto_load_model_and_tokenizer, patch_quantization_config_file
 
 logger = logging.getLogger(__name__)
 
@@ -74,48 +73,30 @@ def convert_to_gguf(
         logger.info(f"GGUF conversion completed: {gguf_file}")
 
         # Parse quantization config or infer defaults
-        bits = quantization_config.get("bits") if quantization_config else None
-        group_size = quantization_config.get("group_size") if quantization_config else None
-        sym = quantization_config.get("sym") if quantization_config else None
         desc = quantization_config.get("desc") if quantization_config else None
+        act = quantization_config.get("act") if quantization_config else None
+        sym = quantization_config.get("sym") if quantization_config else None
 
-        if bits is None and quantization:
+        if desc is None and quantization:
             import re
 
             m = re.match(r"(\d+)bit", quantization)
             if m:
-                bits = int(m.group(1))
+                desc = int(m.group(1))
 
-        if group_size is None and quantization:
+        if act is None and quantization:
             import re
 
             m = re.match(r".*g(\d+)", quantization)
             if m:
-                group_size = int(m.group(1))
+                act = int(m.group(1))
 
-        bits = bits if bits is not None else 4
-        group_size = group_size if group_size is not None else 128
+        desc = desc if desc is not None else 4
+        act = act if act is not None else 128
         sym = sym if sym is not None else False
 
-        # Directly update config.json with quantization parameters
-        config_path = gguf_file.parent / "config.json"
-        if config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    config = json.load(f)
-                config.update(
-                    {
-                        "bits": bits,
-                        "group_size": group_size,
-                        "sym": sym,
-                        "desc": desc,
-                    }
-                )
-                with open(config_path, "w", encoding="utf-8") as f:
-                    json.dump(config, f, indent=2)
-                logger.info(f"Quantization config patched into {config_path}")
-            except Exception as e:
-                logger.warning(f"Failed to patch quantization config: {e}")
+        # Patch config.json using the shared util function
+        patch_quantization_config_file(gguf_file.parent / "config.json", desc, act, sym)
 
         return True, None
 
@@ -125,12 +106,6 @@ def convert_to_gguf(
 
 
 def validate_gguf_file(path: str, *args, **kwargs) -> bool:
-    """
-    Static validation for GGUF files. Accepts either a file or directory path.
-    If a directory is given, looks for 'model.gguf' inside.
-    Returns True if the file passes static validation, False otherwise.
-    Prints detailed exception info on failure for debugging.
-    """
     from pathlib import Path
 
     p = Path(path)
@@ -160,19 +135,13 @@ def validate_gguf_file(path: str, *args, **kwargs) -> bool:
 
 
 def can_infer_gguf_file(path: Path, *args, **kwargs) -> bool:
-    """
-    Dynamic check for GGUF files. Loads the file with llama_cpp and runs a real dummy inference.
-    Returns True if inference is possible, False otherwise.
-    """
     try:
         import llama_cpp
 
         llm = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
-        # Run a real dummy inference
         _ = llm("Hello", max_tokens=1)
         return True
     except ImportError:
-        # llama_cpp not installed
         return False
     except Exception:
         return False
