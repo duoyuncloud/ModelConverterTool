@@ -49,7 +49,13 @@ DEMO_TASKS = [
 ]
 
 
-@pytest.mark.parametrize("task", DEMO_TASKS, ids=[f"{t['input_model']}_to_{t['output_format']}" for t in DEMO_TASKS])
+@pytest.mark.parametrize(
+    "task",
+    DEMO_TASKS,
+    ids=[
+        f"{t['input_model']}_to_{t['output_format']}{'_fp16' if t.get('dtype') == 'fp16' else ''}" for t in DEMO_TASKS
+    ],
+)
 def test_basic_conversion(api, output_dir, task):
     # If it's an MLX task and not Apple Silicon, automatically skip
     if task["output_format"] == "mlx" and (platform.system() != "Darwin" or platform.machine() != "arm64"):
