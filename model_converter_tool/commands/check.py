@@ -23,6 +23,12 @@ def check(
         # 总是打印error/details，便于debug
         if result.get("error"):
             rprint(f"[red]Error: {result['error']}[/red]")
+            # Enhanced: Show user-friendly message for common compatibility errors
+            error_str = result["error"].lower()
+            if "past_key_values" in error_str or "cache class" in error_str or "trust_remote_code" in error_str:
+                rprint(
+                    "[yellow]This error is likely due to model/Transformers version incompatibility, not a conversion failure. Check if the model requires a specific Transformers version or custom code.[/yellow]"
+                )
         if result.get("details"):
             rprint(f"[yellow]Details: {result['details']}[/yellow]")
         if verbose:

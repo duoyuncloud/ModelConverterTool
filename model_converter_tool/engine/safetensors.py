@@ -82,10 +82,10 @@ def validate_safetensors_file(path: str, *args, **kwargs) -> bool:
         return False
 
 
-def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
+def can_infer_safetensors_file(path: str, *args, **kwargs):
     """
     Dynamic check for SafeTensors files. Loads the model and tokenizer and runs a real dummy inference.
-    Returns True if inference is possible, False otherwise.
+    Returns (True, None) if inference is possible, (False, error_message) otherwise.
     """
     try:
         import os
@@ -100,6 +100,6 @@ def can_infer_safetensors_file(path: str, *args, **kwargs) -> bool:
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
         dummy = tokenizer("Hello world!", return_tensors="pt")
         _ = model(**dummy)
-        return True
-    except Exception:
-        return False
+        return True, None
+    except Exception as e:
+        return False, str(e)

@@ -150,37 +150,19 @@ def validate_onnx_file(path: str, *args, **kwargs) -> bool:
         return False
 
 
-def can_infer_onnx_file(path: str, *args, **kwargs) -> bool:
+def can_infer_onnx_file(path: str, *args, **kwargs):
     """
-    Dynamic check for ONNX files. Loads the file with onnxruntime and runs a real dummy inference.
-    Returns True if inference is possible, False otherwise.
+    Dynamic check for ONNX files. Loads the model and runs a real dummy inference.
+    Returns (True, None) if inference is possible, (False, error_message) otherwise.
     """
     try:
         import onnxruntime as ort
         import numpy as np
 
         sess = ort.InferenceSession(path)
-        inputs = sess.get_inputs()
-        if not inputs:
-            return False
-        dummy = {}
-        for inp in inputs:
-            shape = [1 if not isinstance(d, int) or d <= 0 else d for d in inp.shape]
-            dtype_str = inp.type
-            if dtype_str == "tensor(int64)":
-                dtype = np.int64
-            elif dtype_str == "tensor(float)" or dtype_str == "tensor(float32)":
-                dtype = np.float32
-            elif dtype_str == "tensor(int32)":
-                dtype = np.int32
-            elif dtype_str == "tensor(float16)":
-                dtype = np.float16
-            else:
-                dtype = np.float32
-            dummy[inp.name] = np.zeros(shape, dtype=dtype)
-        sess.run(None, dummy)
-        return True
-    except ImportError:
-        return False
-    except Exception:
-        return False
+        input_name = sess.get_inputs()[0].name
+        dummy_input = np.zeros(sess.get_inputs()[0].shape, dtype=np.float32)
+        _ = sess.run(None, {input_name: dummy_input})
+        return True, None
+    except Exception as e:
+        return False, str(e)

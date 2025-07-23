@@ -61,10 +61,10 @@ def validate_hf_file(path: str, *args, **kwargs) -> bool:
         return False
 
 
-def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
+def can_infer_hf_file(path: str, *args, **kwargs):
     """
     Dynamic check for HuggingFace model directories. Loads the model and tokenizer and runs a real dummy inference.
-    Returns True if inference is possible, False otherwise.
+    Returns (True, None) if inference is possible, (False, error_message) otherwise.
     """
     try:
         from transformers import AutoModel, AutoTokenizer
@@ -73,9 +73,8 @@ def can_infer_hf_file(path: str, *args, **kwargs) -> bool:
         tokenizer = AutoTokenizer.from_pretrained(path)
         dummy = tokenizer("Hello world!", return_tensors="pt")
         _ = model(**dummy)
-        return True
+        return True, None
     except ImportError:
-        # transformers not installed
-        return False
-    except Exception:
-        return False
+        return False, "transformers not installed"
+    except Exception as e:
+        return False, str(e)

@@ -95,12 +95,16 @@ def validate_gguf_file(path: str) -> bool:
         return False
 
 
-def can_infer_gguf_file(path: Path) -> bool:
+def can_infer_gguf_file(path: str, *args, **kwargs):
+    """
+    Dynamic check for GGUF files. Loads the model and runs a real dummy inference.
+    Returns (True, None) if inference is possible, (False, error_message) otherwise.
+    """
     try:
         import llama_cpp
 
-        llm = llama_cpp.Llama(model_path=str(path), n_ctx=8, n_batch=8)
-        _ = llm("Hello", max_tokens=1)
-        return True
-    except Exception:
-        return False
+        model = llama_cpp.Llama(model_path=path)
+        _ = model("Hello world!")
+        return True, None
+    except Exception as e:
+        return False, str(e)

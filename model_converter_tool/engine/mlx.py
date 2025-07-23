@@ -107,7 +107,7 @@ def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
         _ = generate(model, tokenizer, prompt="Hello world", verbose=False, max_tokens=1)
         return True
     except Exception as e:
-        logger.error(f"MLX dynamic check failed: {e}")
+        print(f"[MLX] dynamic check failed: {e}")
         return False
 
 

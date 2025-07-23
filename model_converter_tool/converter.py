@@ -553,7 +553,11 @@ class ModelConverter:
             check_func = getattr(engine, func_name)
             # Always use the real file, do not use fake_weight for inference check
             result = check_func(model_path)
-            return {"can_infer": bool(result)}
+            if isinstance(result, tuple):
+                can_infer, error = result
+                return {"can_infer": bool(can_infer), "error": error}
+            else:
+                return {"can_infer": bool(result)}
         except Exception as e:
             import traceback
 

@@ -124,6 +124,7 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     """
     Perform dummy inference to test AWQ model usability.
+    Returns True if inference is possible, False otherwise.
     """
     import traceback
 
@@ -200,5 +201,7 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         logger.error("[AWQ] gptqmodel not installed.")
         return False
     except Exception as e:
-        logger.error(f"[AWQ] Unexpected error: {e}\n{traceback.format_exc()}")
+        import traceback
+
+        print(f"[AWQ] Unexpected error: {e}\n{traceback.format_exc()}")
         return False

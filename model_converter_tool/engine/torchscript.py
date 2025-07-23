@@ -324,5 +324,5 @@ def can_infer_torchscript_file(path: str, *args, **kwargs) -> bool:
             )
         return False
     except Exception as e:
-        logging.warning(f"TorchScript dynamic check error: {e}")
+        print(f"[TorchScript] Dynamic check error: {e}")
         return False

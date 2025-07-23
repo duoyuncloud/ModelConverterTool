@@ -139,6 +139,7 @@ def validate_gptq_file(path: str, *args, **kwargs) -> bool:
 def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
     """
     Load a GPTQ model and test dummy inference.
+    Returns True if inference is possible, False otherwise.
     """
     import traceback
 
@@ -222,5 +223,7 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
         logger.error("[GPTQ] gptqmodel not installed.")
         return False
     except Exception as e:
-        logger.error(f"[GPTQ] Unexpected error: {e}\n{traceback.format_exc()}")
+        import traceback
+
+        print(f"[GPTQ] Unexpected error: {e}\n{traceback.format_exc()}")
         return False
