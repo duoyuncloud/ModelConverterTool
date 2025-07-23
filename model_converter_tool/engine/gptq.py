@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset, patch_quantization_config
+from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -19,37 +19,19 @@ def convert_to_gptq(
 ) -> tuple:
     """
     Export model to GPTQ quantization format.
-    Args:
-        model: Loaded model object
-        tokenizer: Loaded tokenizer object
-        model_name: Source model name or path
-        output_path: Output file path
-        model_type: Model type
-        device: Device
-        quantization: Quantization parameters (optional)
-        use_large_calibration: Whether to use a large calibration set
-    Returns:
-        (success: bool, extra_info: dict or None)
     """
     try:
-        # Robust model/tokenizer auto-loading
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
 
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
-        # Parse quantization config
+
+        # Build quantize config
         bits = 4
         group_size = 128
-        sym = False
-        desc = None
         if quantization_config:
-            bits = quantization_config.get("bits", bits)
-            group_size = quantization_config.get("group_size", group_size)
-            sym = quantization_config.get("sym", sym)
-            desc = quantization_config.get("desc", desc)
-            # Only pass supported keys to QuantizeConfig
             allowed_keys = {
                 "bits",
                 "dynamic",
@@ -71,6 +53,7 @@ def convert_to_gptq(
                 "adapter",
                 "rotation",
                 "is_marlin_format",
+                "desc",
             }
             filtered_config = {k: v for k, v in quantization_config.items() if k in allowed_keys}
             quantize_config = QuantizeConfig(**filtered_config)
@@ -82,14 +65,15 @@ def convert_to_gptq(
             quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
         else:
             quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
+
+        # Calibration + quantization
         calibration_dataset = get_calibration_dataset(use_large_calibration, tag="GPTQ")
         model = GPTQModel.from_pretrained(
             model_name, quantize_config, device=(device if device in ["cuda", "mps"] else "cpu")
         )
         model.quantize(calibration_dataset)
         model.save_pretrained(str(output_dir))
-        # Patch quantization config for test compatibility
-        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
+
         logger.info(f"GPTQ quantization completed: {output_dir}")
         return True, None
     except Exception as e:
@@ -132,9 +116,9 @@ def validate_gptq_file(path: str, *args, **kwargs) -> bool:
 
 def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic check for GPTQ files. Loads the model with GPTQModel and runs a real dummy inference.
-    Adapts logic for OPT, Llama, Mistral, and other architectures. Ensures device compatibility for inference.
-    Returns True if inference is possible, False otherwise.
+    Dynamic check for GPTQ files.
+    Load the model and run a dummy inference to verify usability.
+    Returns True if inference succeeds, False otherwise.
     """
     import traceback
 
@@ -142,88 +126,89 @@ def can_infer_gptq_file(path: str, *args, **kwargs) -> bool:
         from gptqmodel import GPTQModel
         import torch
 
+        # 1. Load model
         try:
             model = GPTQModel.load(path)
+            logger.info(f"[GPTQ] Model loaded from {path}")
         except Exception as e:
             logger.error(f"[GPTQ] Failed to load model: {e}\n{traceback.format_exc()}")
             return False
-        # Try to detect architecture
+
+        # 2. Detect architecture
         arch = getattr(model, "arch", None)
         if arch is None and hasattr(model, "config"):
-            arch = getattr(model.config, "architectures", [None])[0]
+            arch_list = getattr(model.config, "architectures", [])
+            arch = arch_list[0] if arch_list else None
         logger.info(f"[GPTQ] Detected architecture: {arch}")
-        # Try to get tokenizer
+
+        # 3. Get tokenizer if available
         tokenizer = getattr(model, "tokenizer", None)
         if tokenizer is None and hasattr(model, "get_tokenizer"):
             try:
                 tokenizer = model.get_tokenizer()
-            except Exception:
+                logger.info("[GPTQ] Tokenizer loaded via get_tokenizer()")
+            except Exception as e:
+                logger.warning(f"[GPTQ] Failed to get tokenizer: {e}")
                 tokenizer = None
-        # Detect model device (cpu, cuda, mps, etc)
+
+        # 4. Determine device of model parameters (default to cpu)
         model_device = None
         try:
-            # Try to get device from model parameters
-            for param in model.parameters():
-                model_device = param.device
+            for p in model.parameters():
+                model_device = p.device
                 break
         except Exception:
-            pass
+            model_device = None
         if model_device is None:
-            # Fallback: try to get from model.model (for HuggingFace)
             try:
-                for param in getattr(model, "model", model).parameters():
-                    model_device = param.device
+                for p in getattr(model, "model", model).parameters():
+                    model_device = p.device
                     break
             except Exception:
-                pass
+                model_device = None
         if model_device is None:
-            # Default to cpu
             model_device = torch.device("cpu")
         logger.info(f"[GPTQ] Using device: {model_device}")
+
+        # 5. Prepare prompt
         prompt = "Hello world!"
-        try:
-            if arch is not None:
-                arch_l = arch.lower()
-                if "opt" in arch_l:
-                    # OPT models: use default prompt and tokenizer
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        # Move input_ids to model device
-                        input_ids = input_ids.to(model_device)
-                        output = model.generate(input_ids)[0]
-                        _ = tokenizer.decode(output)
-                    else:
-                        output = model.generate(prompt)[0]
-                elif "llama" in arch_l or "mistral" in arch_l or "mixtral" in arch_l:
-                    # Llama/Mistral: try both string and token input
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        input_ids = input_ids.to(model_device)
-                        output = model.generate(input_ids)[0]
-                        _ = tokenizer.decode(output)
-                    else:
-                        output = model.generate(prompt)[0]
-                else:
-                    # Fallback: try string prompt
-                    output = model.generate(prompt)[0]
-                    if tokenizer is not None:
-                        _ = tokenizer.decode(output)
+
+        # 6. Define inference helper
+        def generate_output(input_data):
+            if isinstance(input_data, str):
+                return model.generate(input_data)[0]
             else:
-                # Unknown arch: try both string and token input
-                try:
-                    output = model.generate(prompt)[0]
-                    if tokenizer is not None:
-                        _ = tokenizer.decode(output)
-                except Exception:
-                    if tokenizer is not None:
-                        input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-                        input_ids = input_ids.to(model_device)
-                        output = model.generate(input_ids)[0]
-                        _ = tokenizer.decode(output)
+                input_ids = input_data.to(model_device)
+                return model.generate(input_ids)[0]
+
+        # 7. Run inference with fallback logic
+        try:
+            if tokenizer:
+                # Try tokenized input first
+                input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+                output = generate_output(input_ids)
+                _ = tokenizer.decode(output)
+            else:
+                # No tokenizer, try string input directly
+                output = generate_output(prompt)
+            logger.info("[GPTQ] Inference test succeeded.")
             return True
         except Exception as e:
-            logger.error(f"[GPTQ] Inference failed: {e}\n{traceback.format_exc()}")
-            return False
+            logger.warning(f"[GPTQ] Inference with tokenizer or string input failed: {e}")
+
+            # If tokenizer present, try string input fallback
+            if tokenizer:
+                try:
+                    output = generate_output(prompt)
+                    _ = tokenizer.decode(output)
+                    logger.info("[GPTQ] Inference fallback with string input succeeded.")
+                    return True
+                except Exception as e2:
+                    logger.error(f"[GPTQ] Inference fallback also failed: {e2}\n{traceback.format_exc()}")
+                    return False
+            else:
+                return False
+
     except ImportError:
         logger.error("[GPTQ] gptqmodel not installed.")
         return False

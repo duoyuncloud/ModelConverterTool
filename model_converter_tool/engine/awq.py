@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Optional
-from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset, patch_quantization_config
+from model_converter_tool.utils import auto_load_model_and_tokenizer, get_calibration_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -23,33 +23,36 @@ def convert_to_awq(
         model: Loaded model object
         tokenizer: Loaded tokenizer object
         model_name: Source model name or path
-        output_path: Output file path
+        output_path: Output directory path
         model_type: Model type
-        device: Device
-        quantization: Quantization parameters (optional)
-        use_large_calibration: Whether to use a large calibration set
+        device: Device string
+        quantization: Optional quantization string parameters
+        use_large_calibration: Flag for using large calibration dataset
+        quantization_config: Optional dict with quantization config
     Returns:
-        (success: bool, extra_info: dict or None)
+        Tuple(success: bool, extra_info: dict or None)
     """
     try:
-        # Robust model/tokenizer auto-loading
+        # Auto-load model and tokenizer if not provided
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
         import re
         from gptqmodel import GPTQModel, QuantizeConfig
 
         output_dir = Path(output_path)
         output_dir.mkdir(parents=True, exist_ok=True)
-        # Parse quantization config
+
+        # Set default quantization parameters
         bits = 4
         group_size = 128
         sym = False
         desc = None
+
         if quantization_config:
             bits = quantization_config.get("bits", bits)
             group_size = quantization_config.get("group_size", group_size)
             sym = quantization_config.get("sym", sym)
             desc = quantization_config.get("desc", desc)
-            # Only pass supported keys to QuantizeConfig
+            # Filter allowed keys for QuantizeConfig
             allowed_keys = {
                 "bits",
                 "dynamic",
@@ -82,12 +85,17 @@ def convert_to_awq(
             quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
         else:
             quantize_config = QuantizeConfig(bits=bits, group_size=group_size)
+
         calibration_dataset = get_calibration_dataset(use_large_calibration, tag="AWQ")
-        model = GPTQModel.from_pretrained(model_name, quantize_config, device="cuda" if device == "cuda" else "cpu")
+        model = GPTQModel.from_pretrained(
+            model_name,
+            quantize_config,
+            device=(device if device in ["cuda", "mps"] else "cpu"),
+        )
         model.quantize(calibration_dataset)
         model.save_pretrained(str(output_dir))
-        # Patch quantization config for test compatibility
-        patch_quantization_config(output_dir / "config.json", bits, group_size, sym, desc)
+
+        # Removed patch_quantization_config call, rely on QuantizeConfig for config
         logger.info(f"AWQ quantization completed: {output_dir}")
         return True, None
     except Exception as e:
@@ -97,10 +105,9 @@ def convert_to_awq(
 
 def validate_awq_file(path: str, *args, **kwargs) -> bool:
     """
-    Static validation for AWQ files. Accepts either a file or directory path.
-    If a directory is given, uses it directly. If a file is given, uses its parent directory.
-    Returns True if the model can be loaded, False otherwise.
-    Prints detailed exception info on failure for debugging.
+    Static validation for AWQ files.
+    Accepts a file or directory path, loads model to verify.
+    Returns True if loading succeeds, else False.
     """
     from pathlib import Path
 
@@ -130,9 +137,9 @@ def validate_awq_file(path: str, *args, **kwargs) -> bool:
 
 def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic check for AWQ files. Loads the model with GPTQModel and runs a real dummy inference.
-    Adapts logic for OPT, Llama, Mistral, and other architectures. Ensures device compatibility for inference.
-    Returns True if inference is possible, False otherwise.
+    Dynamic inference check for AWQ files.
+    Loads model, attempts dummy inference.
+    Returns True if inference succeeds, else False.
     """
     import traceback
 
@@ -145,19 +152,19 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         except Exception as e:
             logger.error(f"[AWQ] Failed to load model: {e}\n{traceback.format_exc()}")
             return False
-        # Try to detect architecture
+
         arch = getattr(model, "arch", None)
         if arch is None and hasattr(model, "config"):
             arch = getattr(model.config, "architectures", [None])[0]
         logger.info(f"[AWQ] Detected architecture: {arch}")
-        # Try to get tokenizer
+
         tokenizer = getattr(model, "tokenizer", None)
         if tokenizer is None and hasattr(model, "get_tokenizer"):
             try:
                 tokenizer = model.get_tokenizer()
             except Exception:
                 tokenizer = None
-        # Detect model device (cpu, cuda, mps, etc)
+
         model_device = None
         try:
             for param in model.parameters():
@@ -175,6 +182,7 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         if model_device is None:
             model_device = torch.device("cpu")
         logger.info(f"[AWQ] Using device: {model_device}")
+
         prompt = "Hello world!"
         try:
             if arch is not None:

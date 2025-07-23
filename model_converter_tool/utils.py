@@ -219,29 +219,6 @@ def get_calibration_dataset(use_large_calibration, tag="AWQ"):
         ]
 
 
-def patch_quantization_config(config_path, bits, group_size, sym, desc):
-    """
-    Patch or create a config.json file with quantization_config for test compatibility.
-    """
-    import json
-    from pathlib import Path
-
-    config_path = Path(config_path)
-    if config_path.exists():
-        with open(config_path, "r") as f:
-            config = json.load(f)
-    else:
-        config = {}
-    config["quantization_config"] = {
-        "bits": bits,
-        "group_size": group_size,
-        "sym": sym,
-        "desc": desc,
-    }
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-
-
 def generate_fake_model(config, model_class, fake_weight_shape_dict: dict = None):
     """
     Generate a model instance with the given config and fill all weights with zeros.
