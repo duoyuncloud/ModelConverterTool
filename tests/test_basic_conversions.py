@@ -6,7 +6,7 @@ Basic model format conversion tests
 import os
 import platform
 import pytest
-from tests.conftest import is_hf_model_available
+from conftest import is_hf_model_available
 
 MODEL_NAME = "HuggingFaceM4/tiny-random-LlamaForCausalLM"
 
