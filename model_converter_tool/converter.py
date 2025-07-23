@@ -291,12 +291,11 @@ class ModelConverter:
                     )
 
                     if model is None:
-                        from transformers import AutoModel
-                        from model_converter_tool.utils import load_model_with_cache
+                        from model_converter_tool.utils import load_model_and_tokenizer
 
-                        model = load_model_with_cache(
-                            norm_path,
-                            AutoModel,
+                        model, _ = load_model_and_tokenizer(
+                            model_name=norm_path,
+                            model_type=internal_model_type,
                             fake_weight=fake_weight,
                             fake_weight_shape_dict=fake_weight_shape_dict,
                             trust_remote_code=True,
@@ -344,11 +343,14 @@ class ModelConverter:
                     )
 
                     if model is None:
-                        from transformers import AutoModel
-                        from model_converter_tool.utils import load_model_with_cache
+                        from model_converter_tool.utils import load_model_and_tokenizer
 
-                        model = load_model_with_cache(
-                            norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict
+                        model, _ = load_model_and_tokenizer(
+                            model_name=norm_path,
+                            model_type=internal_model_type,
+                            fake_weight=fake_weight,
+                            fake_weight_shape_dict=fake_weight_shape_dict,
+                            trust_remote_code=True,
                         )
                     success, extra_info = convert_to_custom_quant(
                         model,
