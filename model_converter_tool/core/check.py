@@ -7,7 +7,6 @@ def check_model(model_path: str, model_format: str = None, **kwargs):
     """
     api = ModelConverterAPI()
     result = api.check_model(model_path, model_format, **kwargs)
-    # 新增：如果有error，直接print出来
     if result.get("error"):
         print(f"[CHECK DEBUG] Error: {result['error']}")
     if result.get("details"):

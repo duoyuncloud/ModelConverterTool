@@ -1,4 +1,4 @@
-# Only include model_converter_tool package
+# Include all Python, config, and metadata files from the main package
 include model_converter_tool/**/*.py
 include model_converter_tool/**/*.txt
 include model_converter_tool/**/*.md
@@ -6,13 +6,13 @@ include model_converter_tool/**/*.json
 include model_converter_tool/**/*.yaml
 include model_converter_tool/**/*.yml
 
-# Include important files from project root directory
+# Include project-level metadata and config
 include README.md
 include pyproject.toml
 include LICENSE
 include requirements*.txt
 
-# Explicitly exclude all directories that may cause issues
+# Exclude development, test, and output directories
 exclude mlx-examples/**/*
 exclude llama.cpp/**/*
 exclude tests/**/*

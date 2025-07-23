@@ -4,8 +4,7 @@ muP-to-LLaMA example: Convert a muP-initialized model to LLaMA format with scali
 
 import os
 
-# Example command: convert a muP model to safetensors with muP scaling
-# Replace 'path/to/mup_model' with your muP-initialized model directory
+# Convert a muP model to safetensors with muP scaling
 os.system(
     "python -m model_converter_tool.cli convert path/to/mup_model --to safetensors --output path/to/output_model --mup2llama"
 )

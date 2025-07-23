@@ -1,223 +1,219 @@
-# ModelConverterTool
+# Model Converter Tool
 
-A professional, **API-first and CLI-native** tool for machine learning model conversion and management.
-Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors (fp16/fp32), HuggingFace, and more.
+A professional, API-first tool for machine learning model conversion and management.
+Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors, HuggingFace, and more.
 
----
+## Features
 
-## muP-to-LLaMA Support
-- The `--mup2llama` option is now available for all formats. It rescales muP-initialized models for LLaMA compatibility when used.
-
----
+- **Multi-format support**: Convert between ONNX, GGUF, MLX, GPTQ, AWQ, SafeTensors, and more
+- **Advanced quantization**: Fine-grained control with GPTQ/AWQ configuration
+- **muP-to-LLaMA scaling**: Automatic parameter rescaling for LLaMA compatibility
+- **Fake weights**: Generate test models without downloading large parameters
+- **Batch processing**: Convert multiple models using YAML/JSON configuration
+- **API-first design**: Use via CLI or integrate into Python workflows
 
 ## Installation
 
-```sh
+```bash
 git clone https://github.com/duoyuncloud/ModelConverterTool.git
 cd ModelConverterTool
-chmod +x install.sh (or chmod +x install_tsinghua.sh)
-./install.sh (or ./install_tsinghua.sh)
+chmod +x install.sh
+./install.sh
 source venv/bin/activate
 ```
 
----
+## Quick Start
 
-## CLI Commands
+```bash
+# Convert a single model
+modelconvert convert gpt2 onnx
 
-| Command | Function |
-|---------|----------|
-| `modelconvert inspect <model>` | Inspect and display model format and metadata. |
-| `modelconvert convert <input_model> <output_format> [options]` | Convert a model to another format, with optional quantization. |
-| `modelconvert convert <input_model> gguf [options]` | Convert a model to llama.cpp GGUF format for Llama-compatible inference. |
-| `modelconvert batch <config.yaml> [options]` | Batch convert multiple models using a YAML/JSON config file. |
-| `modelconvert history` | Show conversion history. |
-| `modelconvert config show` | Show all configuration values. |
-| `modelconvert config get <key>` | Get a configuration value by key. |
-| `modelconvert config set <key> <value>` | Set a configuration value. |
-| `modelconvert config list-presets` | List all available configuration presets. |
-| `modelconvert check <model_path> [--format <format>]` | Check if a model file is usable (can be loaded and run a simple inference). |
+# Convert with quantization
+modelconvert convert facebook/opt-125m gptq --quant 4bit
 
----
+# Convert muP model to LLaMA format
+modelconvert convert path/to/mup_model safetensors --mup2llama
 
-## Command Details
+# Generate fake weights for testing
+modelconvert convert gpt2 safetensors --fake-weight
 
-- **inspect**: Inspect a model file or repo and display its format, metadata, and convertible targets.
-- **convert**: Convert a model to another format.
-  - `<input_model>`: Input model path or repo id (required)
-  - `<output_format>`: Output format (required, e.g. onnx, gguf, mlx, gptq, etc.)
-  - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
-  - `--quant`: Quantization type (optional)
-  - `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
-  - `--model-type`: Model type (optional, default: auto)
-  - `--device`: Device (optional, default: auto)
-  - `--use-large-calibration`: Use large calibration dataset (optional)
-  - `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
-  - `--fake-weight`: Use fake (zero) weights for the model (for testing/debugging)
-- **gguf**: Convert a model to llama.cpp GGUF format for Llama-compatible inference.
-  - `<input_model>`: Input model path or repo id (required)
-  - `-o`, `--output-path`: Output file path (optional, auto-completed if omitted)
-  - `--quant`: Quantization type (e.g. q8_0, f16, tq1_0, etc.)
-  - `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
-  - `--model-type`: Model type (optional, default: auto)
-  - `--device`: Device (optional, default: auto)
-- **batch**: Batch convert models using a config file.
-  - `<config.yaml>`: Path to YAML/JSON config file describing conversion tasks
-  - `--max-workers`: Number of concurrent workers (default: 1)
-  - `--max-retries`: Max retries per task (default: 1)
-  - `--skip-disk-check`: Skip disk space check (not recommended)
-- **history**: Show all completed, failed, and active conversion tasks.
-- **config**: Manage tool configuration.
-  - `show`: Show all configuration values.
-  - `get <key>`: Get a configuration value by key.
-  - `set <key> <value>`: Set a configuration value.
-  - `list-presets`: List all available configuration presets.
-- **check**: Check if a model file is usable (can be loaded and run a simple inference).
-  - `<model_path>`: Path to the model file or directory (required)
-  - `--format`, `-f`: Model format (optional, auto-detected if omitted)
-  - `--verbose`, `-v`: Show detailed error information (optional)
+# Batch convert multiple models
+modelconvert batch configs/batch_config.yaml
 
----
+# Inspect model details
+modelconvert inspect gpt2
 
-## Examples
+# Check model usability
+modelconvert check outputs/model.onnx
 
-```sh
-# Convert a model using fake weights (for fast testing, no real parameters)
-modelconvert convert bert-base-uncased safetensors --fake-weight
-
-# Convert to llama.cpp GGUF format (recommended for Llama.cpp and compatible engines)
-modelconvert convert Qwen/Qwen2-0.5B gguf -o ./outputs/qwen2-0.5b.gguf --quant q8_0
-
-# Inspect a model
-modelconvert inspect meta-llama/Llama-2-7b-hf
-
-# Convert to ONNX (output path auto-completed)
-modelconvert convert bert-base-uncased onnx
-
-# Convert to GGUF with quantization
-modelconvert convert Qwen/Qwen2-0.5B gguf --quant q4_k_m --model-type qwen
-
-# Batch conversion
-modelconvert batch configs/batch_template.yaml --max-workers 2
-
-# Show conversion history
+# View conversion history
 modelconvert history
-
-# Config management
-modelconvert config show
-modelconvert config set cache_dir ./mycache
-modelconvert config get cache_dir
-modelconvert config list-presets
-
-# Check if a model is usable (can be loaded and run inference)
-modelconvert check ./outputs/llama-2-7b.gguf
-modelconvert check ./outputs/model.onnx
-modelconvert check ./outputs/model-gptq --format gptq
 ```
 
----
+## Commands
 
-## Fine-grained Quantization Config (GPTQ/AWQ)
+### convert
+Convert a model to a different format.
 
-You can now use advanced quantization configuration for GPTQ and AWQ engines, supporting options like `bits`, `group_size`, `sym`, `desc_act`, and more. This allows precise control over quantization behavior.
+**Usage:** `modelconvert convert <input_model> <output_format> [options]`
 
-### Supported quantization_config parameters
+**Options:**
+- `-o, --output-path` - Output file/directory path
+- `--quant` - Quantization type (4bit, q4_k_m, etc.)
+- `--quant-config` - Advanced quantization config (JSON/YAML)
+- `--mup2llama` - Enable muP-to-LLaMA scaling
+- `--fake-weight` - Use zero weights for testing
+- `--dtype` - Output precision (fp16, fp32)
 
-| Parameter         | Type    | Description                                                                 |
-|-------------------|---------|-----------------------------------------------------------------------------|
-| bits              | int     | Number of quantization bits (e.g., 4, 8)                                    |
-| group_size        | int     | Group size for quantization (e.g., 128)                                     |
-| sym               | bool    | Whether to use symmetric quantization                                       |
-| desc_act          | bool    | Enable descriptive quantization mechanism (improves accuracy for some models)|
-| dynamic           | dict    | Per-layer/module override for quantization params (see advanced usage)      |
-| damp_percent      | float   | Damping percent for quantization                                            |
-| damp_auto_increment | float | Auto increment for damping                                                  |
-| static_groups     | bool    | Use static groups for quantization                                          |
-| true_sequential   | bool    | Use true sequential quantization                                            |
-| lm_head           | bool    | Quantize the LM head                                                        |
-| quant_method      | str     | Quantization method (e.g., 'gptq')                                          |
-| format            | str     | Output format (e.g., 'gptq')                                                |
-| mse               | float   | MSE loss threshold for quantization                                         |
-| parallel_packing  | bool    | Enable parallel packing                                                     |
-| meta              | dict    | Extra metadata                                                              |
-| device            | str     | Device for quantization ('cpu', 'cuda', etc.)                               |
-| pack_dtype        | str     | Data type for packing                                                       |
-| adapter           | dict    | Adapter config (for LoRA/EoRA, etc.)                                        |
-| rotation          | str     | Rotation type                                                               |
-| is_marlin_format  | bool    | Use Marlin kernel format                                                    |
+### batch
+Batch convert models using a configuration file.
 
-All parameters in the quantization config will be passed to the quantizer for fine-grained control (unsupported keys will be ignored).
+**Usage:** `modelconvert batch <config_path> [options]`
 
----
+**Options:**
+- `--max-workers` - Concurrent workers (default: 1)
+- `--max-retries` - Max retries per task (default: 1)
 
-## Supported Formats & Quantization
+### inspect
+Display detailed model information.
 
-|               | HuggingFace | SafeTensors | TorchScript | ONNX | GGUF | MLX |
-|---------------|:-----------:|:-----------:|:-----------:|:----:|:----:|:---:|
-| HuggingFace   |      ✓      |      ✓      |      ✓      |  ✓   |  ✓   |  ✓  |
-| SafeTensors   |      ✓      |      ✓      |             |      |      |     |
-| TorchScript   |             |             |      ✓      |      |      |     |
-| ONNX          |             |             |             |  ✓   |      |     |
-| GGUF          |             |             |             |      |  ✓   |     |
-| MLX           |             |             |             |      |      |  ✓  |
+**Usage:** `modelconvert inspect <model>`
 
-**Quantization options:**
-- GPTQ: 4bit, 8bit
-- AWQ: 4bit, 8bit
-- GGUF: q4_k_m, q5_k_m, q8_0
-- MLX: q4_k_m, q8_0, q5_k_m
-- SafeTensors: fp16, fp32
+### check
+Test if a model can be loaded and run inference.
 
----
+**Usage:** `modelconvert check <model_path> [--format <format>] [--verbose]`
 
-## Supported Conversion Matrix
+### history
+Show conversion history.
 
-| Input Format | Supported Output Formats |
-|--------------|-------------------------|
-| huggingface  | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
-| hf           | huggingface, hf, safetensors, torchscript, onnx, gguf, mlx, gptq, awq, mtk, rk, ax, qnn |
-| megatron     | hf, megatron2hf         |
-| safetensors  | huggingface, hf, safetensors |
-| torchscript  | torchscript             |
-| onnx         | onnx                    |
-| gguf         | gguf                    |
-| mlx          | mlx                     |
+**Usage:** `modelconvert history`
 
-> **Note:** Formats such as `mtk`, `rk`, `ax`, `qnn`, and `megatron2hf` are planned and will be supported in future releases. If you try to use them now, you will see a clear "NotImplementedError" message.
+### config
+Manage configuration settings.
 
----
+**Usage:** `modelconvert config <show|get|set|list-presets> [args]`
 
-## API Example
+## Advanced Features
+
+### Quantization Configuration
+Fine-grained control for GPTQ and AWQ engines:
+
+```bash
+# Using config file
+modelconvert convert model gptq --quant-config config.yaml
+
+# Inline JSON
+modelconvert convert model gptq --quant-config '{"bits": 4, "group_size": 128}'
+```
+
+**Supported Parameters:**
+- `bits` - Quantization bits (4, 8)
+- `group_size` - Group size (128, 256)
+- `sym` - Symmetric quantization (bool)
+- `desc_act` - Descriptive activation (bool)
+- `damp_percent` - Damping percentage
+- And more...
+
+### muP-to-LLaMA Scaling
+Automatically convert muP-initialized models:
+
+```bash
+modelconvert convert mup_model safetensors --mup2llama
+```
+
+### Fake Weights
+Generate models with zero weights for testing:
+
+```bash
+# Zero weights
+modelconvert convert gpt2 safetensors --fake-weight
+
+# Custom shapes
+modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.yaml
+```
+
+## Supported Formats
+
+### Conversion Matrix
+
+| Input Format | Output Formats |
+|--------------|----------------|
+| HuggingFace  | All formats |
+| SafeTensors  | HuggingFace, SafeTensors |
+| TorchScript  | TorchScript |
+| ONNX         | ONNX |
+| GGUF         | GGUF |
+| MLX          | MLX |
+
+### Quantization Support
+
+| Format | Quantization Types |
+|--------|--------------------|
+| GPTQ   | 4bit, 8bit |
+| AWQ    | 4bit, 8bit |
+| GGUF   | q4_k_m, q5_k_m, q8_0 |
+| MLX    | q4_k_m, q8_0, q5_k_m |
+| SafeTensors | fp16, fp32 |
+
+## API Usage
 
 ```python
 from model_converter_tool.api import ModelConverterAPI
+
 api = ModelConverterAPI()
-# Use fake_weight=True for a model with fake (zero) weights
-result = api.converter.convert(model_name="gpt2", output_format="onnx", output_path="./gpt2.onnx", fake_weight=True)
+
+# Convert with fake weights for testing
+result = api.convert_model(
+    model_name="gpt2",
+    output_format="onnx",
+    output_path="./gpt2.onnx",
+    fake_weight=True
+)
 ```
 
----
+## Configuration Files
 
-## Documentation & Help
+Create YAML/JSON files for batch processing:
 
-- Run `modelconvert --help` or `modelconvert <command> --help` for details.
-- See the `docs/` directory for more.
-
----
+```yaml
+models:
+  - model_path: gpt2
+    output_path: outputs/gpt2_onnx
+    output_format: onnx
+  
+  - model_path: facebook/opt-125m
+    output_path: outputs/opt_gptq
+    output_format: gptq
+    quantization: 4bit
+```
 
 ## Testing
 
-The `tests/` directory contains all automated tests:
-- Unit and CLI tests run on every commit (see CI).
-- A high-coverage integration test (`test_integration.py`) covers the full workflow and should be run before releases.
+Run the test suite:
 
-To run all tests:
-```sh
+```bash
+# All tests
 pytest
-```
 
-For release validation, ensure `test_integration.py` passes:
-```sh
+# Integration tests
 pytest tests/test_integration.py
+
+# Specific test
+pytest tests/test_cli.py
 ```
 
-See `tests/README.md` for details on each test file.
+## Documentation
+
+- **[CLI Reference](docs/cli.md)** - Complete command documentation
+- **[Configuration](docs/config.md)** - Batch processing and advanced options
+- **[Converter Engine](docs/converter.md)** - Technical details and architecture
+- **[Examples](examples/)** - Sample scripts and workflows
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+Licensed under the Apache 2.0 License.

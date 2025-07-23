@@ -3,21 +3,7 @@ import json
 import shutil
 import tempfile
 import pytest
-from pathlib import Path
 from transformers import AutoModel, GPT2Config
-from model_converter_tool.api import ModelConverterAPI
-
-
-@pytest.fixture(scope="module")
-def api():
-    return ModelConverterAPI()
-
-
-@pytest.fixture(scope="module")
-def output_dir():
-    d = Path("test_outputs/fake_weight")
-    d.mkdir(parents=True, exist_ok=True)
-    return d
 
 
 @pytest.mark.parametrize("model_id", ["gpt2"])
@@ -104,7 +90,6 @@ def test_fake_weight_custom_config(api, output_dir):
     custom_shape = [16, 4]  # Must match config n_embd
     fake_weight_shape_dict = {emb_param_name: custom_shape}
     output_path = str(output_dir / "custom_fake_weight")
-    # tokenizer = AutoTokenizer.from_pretrained(tmp_model_dir, trust_remote_code=True)
     result = api.convert_model(
         model_path=tmp_model_dir,
         output_format="safetensors",

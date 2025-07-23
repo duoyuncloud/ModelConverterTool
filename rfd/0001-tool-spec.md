@@ -6,11 +6,11 @@
 - **Updated:** 2025/7/21
 
 ## Abstract
-This document describes the technical specification, architecture, and design rationale for the Model Converter Tool. It aims to provide a comprehensive reference for contributors and maintainers.
+Technical specification, architecture, and design rationale for the Model Converter Tool.
 
 ## Motivation
-- Need for a unified tool to convert, quantize, and manage machine learning models across diverse formats and frameworks.
-- Simplify deployment and interoperability for research and production.
+- Unified tool for converting, quantizing, and managing ML models across formats.
+- Simplifies deployment and interoperability.
 
 ## Technical Design
 ### Architecture Overview
@@ -19,33 +19,33 @@ This document describes the technical specification, architecture, and design ra
 - Batch processing and configuration support
 
 ### Core Components
-- `ModelConverterAPI`: Main entry point for programmatic usage
+- `ModelConverterAPI`: Main programmatic entry point
 - Conversion engines: GGUF, ONNX, FP16, AWQ, MLX, etc.
-- CLI: Command-line interface for end users
-- Configuration: YAML/JSON batch job definitions
+- CLI: Command-line interface
+- Configuration: YAML/JSON batch jobs
 - History and logging modules
 
 ### Data Flow
 1. User invokes CLI or API
 2. Input model and parameters are validated
-3. Appropriate conversion engine is selected
+3. Appropriate engine is selected
 4. Model is loaded, processed, and converted
 5. Output is saved and history is recorded
 
 ### Extensibility
-- New engines can be added via the `engine/` module
-- Configurable via external YAML/JSON files
+- Add new engines via the `engine/` module
+- Configurable via YAML/JSON files
 
 ## Alternatives
 - Manual conversion scripts for each format
 - Existing tools (e.g., HuggingFace Transformers, ONNX converters)
 
 ## Security Considerations
-- Input validation to prevent malicious model files
+- Input validation to prevent malicious files
 - Safe handling of file paths and permissions
 
 ## Drawbacks
-- Maintenance overhead for supporting many formats
+- Maintenance overhead for many formats
 - Dependency management for various backends
 
 ## References

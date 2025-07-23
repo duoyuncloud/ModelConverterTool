@@ -1,3 +1,4 @@
+# Model presets for common, LLM, and vision models
 common_models:
   bert-base-uncased:
     default_format: onnx

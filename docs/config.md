@@ -1,73 +1,141 @@
-# Configuration File Reference
+# Configuration Reference
 
-This document explains how to use configuration files with the Model Converter Tool for batch conversions and advanced workflows.
+Configuration files enable batch processing and advanced workflows using YAML or JSON format.
 
 ## Overview
-Configuration files allow you to define multiple model conversion tasks and advanced options in a single YAML or JSON file.
 
-## Configuration Structure
-A configuration file typically contains a list of conversion jobs, each specifying input, output, format, and optional parameters.
+Configuration files define multiple model conversion tasks with input, output, format, and optional parameters in a single file.
 
-## Example Config (YAML)
+## Basic Structure
+
+```yaml
+models:
+  - model_path: input/model/path
+    output_path: output/model/path
+    output_format: target_format
+    # optional parameters...
+```
+
+## Supported Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `model_path` | string | Path to input model file or HuggingFace repo ID |
+| `output_path` | string | Path for output model file/directory |
+| `output_format` | string | Target format (onnx, gguf, safetensors, gptq, awq, mlx, etc.) |
+| `quantization` | string | Quantization type (e.g., '4bit', 'q4_k_m') |
+| `quantization_config` | dict | Advanced quantization configuration |
+| `model_type` | string | Model type (default: auto) |
+| `device` | string | Device to use (default: auto) |
+| `dtype` | string | Output precision (fp16, fp32; safetensors only) |
+| `mup2llama` | boolean | Enable muP-to-LLaMA scaling |
+| `fake_weight` | boolean | Use zero weights |
+| `fake_weight_shape_dict` | dict | Custom fake weight shapes |
+| `use_large_calibration` | boolean | Use large calibration dataset |
+
+## Examples
+
+### Basic Conversion
+```yaml
+models:
+  - model_path: gpt2
+    output_path: outputs/gpt2_onnx
+    output_format: onnx
+  
+  - model_path: facebook/opt-125m
+    output_path: outputs/opt_safetensors
+    output_format: safetensors
+    dtype: fp16
+```
+
+### Quantization
+```yaml
+models:
+  - model_path: microsoft/DialoGPT-medium
+    output_path: outputs/dialogpt_gptq
+    output_format: gptq
+    quantization: 4bit
+  
+  - model_path: facebook/opt-1.3b
+    output_path: outputs/opt_awq_custom
+    output_format: awq
+    quantization_config:
+      bits: 4
+      group_size: 128
+      sym: true
+      desc_act: true
+```
+
+### muP-to-LLaMA Conversion
 ```yaml
 models:
   - model_path: path/to/mup_model
-    output_path: path/to/llama_model
+    output_path: outputs/llama_model
     output_format: safetensors
     mup2llama: true
-  - model_path: path/to/model
-    output_path: path/to/fake
+```
+
+### Fake Weights for Testing
+```yaml
+models:
+  - model_path: gpt2
+    output_path: outputs/fake_model
+    output_format: safetensors
+    fake_weight: true
+  
+  - model_path: gpt2
+    output_path: outputs/custom_fake
     output_format: safetensors
     fake_weight: true
     fake_weight_shape_dict:
       embed_tokens.weight: [32000, 4096]
+      lm_head.weight: [32000, 4096]
 ```
 
-## Supported Fields
-- `model_path`: Path to the input model file
-- `output_path`: Path to the output model file
-- `output_format`: Target output format (e.g., gguf, onnx, fp16, etc.)
-- `quantization`: Quantization type (optional)
-- `quantization_config`: Advanced quantization config (optional, dict). Supports keys like `bits`, `group_size`, `sym`, `desc`.
-- `mup2llama`: Enable muP-to-LLaMA scaling (bool, optional)
-- `fake_weight`: Use fake weights (bool, optional)
-- `fake_weight_shape_dict`: Custom fake weight shapes (dict, optional)
-- `model_type`: Model type (optional)
-- `device`: Device to use (optional)
-- `use_large_calibration`: Use large calibration dataset (optional)
+## Advanced Quantization
 
-## Tips
-- Use descriptive output paths to avoid overwriting files
-- Validate your config file before running batch conversions
-
-## Advanced Quantization Config Example
-
+### GPTQ Configuration
 ```yaml
 models:
-  - model_path: path/to/model1.bin
-    output_path: path/to/model1.gptq
+  - model_path: huggyllama/llama-7b
+    output_path: outputs/llama_gptq
     output_format: gptq
     quantization_config:
       bits: 4
       group_size: 128
       sym: true
-      desc: my custom quant
+      desc_act: true
+      damp_percent: 0.1
+      true_sequential: true
 ```
 
-## Fine-grained Quantization Config (GPTQ/AWQ)
-
-You can use advanced quantization configuration for GPTQ and AWQ engines, supporting options like `bits`, `group_size`, `sym`, `desc_act`, and more. All parameters in the quantization config will be passed to the quantizer for fine-grained control (unsupported keys will be ignored).
-
-- `desc_act` (bool): Enable or disable the descriptive quantization mechanism for improved accuracy in some models. Default is `True`.
-
-**Example:**
-
+### AWQ Configuration
 ```yaml
-quantization_config:
-  bits: 4
-  group_size: 128
-  sym: true
-  desc_act: true
+models:
+  - model_path: microsoft/DialoGPT-large
+    output_path: outputs/dialogpt_awq
+    output_format: awq
+    quantization_config:
+      bits: 4
+      group_size: 128
+      sym: false
+      rotation: true
 ```
 
-This enables precise control over quantization behavior for your models. 
+## Best Practices
+
+- Use descriptive output paths to avoid overwriting files
+- Test configurations with small models first
+- Validate YAML/JSON syntax before running batch jobs
+- Use `fake_weight: true` for testing workflows without downloading large models
+- Enable `use_large_calibration: true` for better quantization quality (slower)
+
+## Running Batch Jobs
+
+```bash
+# Run batch conversion
+modelconvert batch config.yaml
+
+# With custom settings
+modelconvert batch config.yaml --max-workers 2 --max-retries 3
+``` 

@@ -7,10 +7,10 @@
 Draft
 
 ## Abstract
-A short summary of the proposal.
+Brief summary of the proposal.
 
 ## Motivation
-Why is this change necessary?
+Why is this change needed?
 
 ## Proposal
 Describe the technical details and design.

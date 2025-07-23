@@ -6,31 +6,13 @@ All tests use facebook/opt-125m for faster testing
 
 import os
 import sys
-from pathlib import Path
 import platform
-
 import pytest
-
-from model_converter_tool.api import ModelConverterAPI
 
 # Skip macOS quantization tests in CI environment
 is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
 if sys.platform == "darwin" and is_ci:
     pytest.skip("Skip quantization tests on macOS CI due to known ABI/runner issues", allow_module_level=True)
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-
-@pytest.fixture(scope="module")
-def api():
-    return ModelConverterAPI()
-
-
-@pytest.fixture(scope="module")
-def output_dir():
-    d = Path("test_outputs/quantization")
-    d.mkdir(parents=True, exist_ok=True)
-    return d
 
 
 @pytest.mark.parametrize(

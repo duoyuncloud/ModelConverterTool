@@ -295,7 +295,11 @@ class ModelConverter:
                         from model_converter_tool.utils import load_model_with_cache
 
                         model = load_model_with_cache(
-                            norm_path, AutoModel, fake_weight=fake_weight, fake_weight_shape_dict=fake_weight_shape_dict
+                            norm_path,
+                            AutoModel,
+                            fake_weight=fake_weight,
+                            fake_weight_shape_dict=fake_weight_shape_dict,
+                            trust_remote_code=True,
                         )
                     success, extra_info = convert_to_safetensors(
                         model, tokenizer, model_name, output_path, internal_model_type, device, dtype

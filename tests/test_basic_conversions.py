@@ -4,34 +4,15 @@ Basic model format conversion tests
 """
 
 import os
-from pathlib import Path
-import sys
 import platform
-import requests
 import pytest
-
-from model_converter_tool.api import ModelConverterAPI
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from tests.conftest import is_hf_model_available
 
 MODEL_NAME = "HuggingFaceM4/tiny-random-LlamaForCausalLM"
 
 skip_mlx = pytest.mark.skipif(
     platform.system() != "Darwin" or platform.machine() != "arm64", reason="MLX only supported on Apple Silicon macOS"
 )
-
-
-@pytest.fixture(scope="module")
-def api():
-    return ModelConverterAPI()
-
-
-@pytest.fixture(scope="module")
-def output_dir():
-    d = Path("test_outputs/basic_conversions")
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
 
 # Use dict to drive all README demos
 DEMO_TASKS = [
@@ -66,15 +47,6 @@ DEMO_TASKS = [
     },
     {"input_model": "gpt2", "output_format": "hf", "output_file": "gpt2_hf", "model_type": "text-generation"},
 ]
-
-
-def is_hf_model_available(model_id):
-    url = f"https://huggingface.co/{model_id}/resolve/main/config.json"
-    try:
-        r = requests.head(url, timeout=5, allow_redirects=True)
-        return r.status_code == 200
-    except Exception:
-        return False
 
 
 @pytest.mark.parametrize("task", DEMO_TASKS, ids=[f"{t['input_model']}_to_{t['output_format']}" for t in DEMO_TASKS])

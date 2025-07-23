@@ -1,22 +1,22 @@
-# Ignore model cache and HuggingFace related files
+# Model and cache directories
 .cache/
 models/
 model_cache/
 huggingface/
 transformers_cache/
 
-# Ignore output files
+# Output and upload directories
 outputs/
 test_outputs/
 uploads/
 
-# Ignore database and temporary files
-*.db
-*.sqlite
+# Temporary and database files
 temp/
 tmp/
+*.db
+*.sqlite
 
-# Ignore Python compiled files
+# Python build and cache
 __pycache__/
 *.py[cod]
 *$py.class
@@ -39,7 +39,7 @@ wheels/
 *.egg
 MANIFEST
 
-# Other common ignores
+# System and environment files
 .DS_Store
 .env
 .venv

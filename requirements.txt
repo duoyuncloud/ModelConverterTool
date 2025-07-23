@@ -4,12 +4,12 @@ transformers>=4.30.0
 tokenizers>=0.13.0
 accelerate>=0.20.0
 
-# Model conversion libraries
+# Model conversion
 onnx>=1.14.0
 onnxruntime>=1.15.0
 optimum>=1.8.0
 
-# Quantization libraries (install after torch, optional)
+# Quantization (install after torch)
 gptqmodel
 logbar
 tokenicer
@@ -24,26 +24,22 @@ rich>=13.0.0
 tqdm>=4.65.0
 typer>=0.16.0
 
-# Optional: For better performance
+# Optional: Performance and dataset support
 sentencepiece>=0.1.99
 protobuf>=3.20.0
-datasets>=2.0.0  # Required for quantization libraries
+datasets>=2.0.0
 
-# Development dependencies
+# Development and testing
 pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
 
-# Optional/advanced quantization dependencies
+# Optional/advanced quantization
 peft
-# triton  # OpenAI Triton, only needed for some Linux+Python3.8~3.10 environments
 lm-eval
 evalplus
-# intel-extension-for-pytorch  # Only needed for Linux+Intel XPU/CPU optimization environments
-# bitblas  # Only needed for some advanced quantization/inference developers, can be ignored by regular users
-
 random_word>=1.0.8
 numpy
-llama-cpp-python  # Required for GGUF inference and dynamic usability checks 
-mlx-lm  # Required for robust MLX conversion and inference 
+llama-cpp-python  # GGUF inference and checks
+mlx-lm  # MLX conversion and inference
 tiktoken 

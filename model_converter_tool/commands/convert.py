@@ -1,6 +1,5 @@
 import typer
 import os
-from model_converter_tool.core.convert import convert_model
 from model_converter_tool.disk_space import check_and_handle_disk_space
 import sys
 from rich import print as rprint
@@ -129,18 +128,19 @@ def convert(
             )
             raise typer.Exit(1)
 
-    result = convert_model(
-        input,
-        output_path,
-        output,
-        quant,
-        model_type,
-        device,
-        use_large_calibration,
-        dtype=dtype,
+    api = ModelConverterAPI()
+    result = api.convert_model(
+        model_path=input,
+        output_format=output,
+        output_path=output_path,
+        model_type=model_type,
+        device=device,
+        quantization=quant,
         quantization_config=quantization_config,
+        use_large_calibration=use_large_calibration,
+        dtype=dtype,
         fake_weight=fake_weight,
-        fake_weight_shape_dict=fake_weight_shape_dict,  # Pass the parsed config to the core logic
+        fake_weight_shape_dict=fake_weight_shape_dict,
         mup2llama=mup2llama,
     )
     if result.success:

@@ -1,80 +1,140 @@
 # CLI Reference
 
-This document describes the command-line interface (CLI) for the Model Converter Tool, including available commands, options, and usage examples.
+Complete command-line interface documentation for the Model Converter Tool.
 
 ## Overview
-The CLI allows users to convert, quantize, inspect, and manage machine learning models directly from the terminal.
+
+The CLI provides commands to convert, quantize, inspect, and manage machine learning models directly from the terminal.
 
 ## Commands
-- `convert <input_model> <output_format> [options]`: Convert a model to a different format.
-- `batch <config_path> [options]`: Batch convert models using a YAML/JSON config file.
-- `inspect <model>`: Inspect and display detailed model information.
-- `history`: Show conversion history.
-- `config show`: Show all configuration values.
-- `config get <key>`: Get a configuration value by key.
-- `config set <key> <value>`: Set a configuration value.
-- `config list-presets`: List all available configuration presets.
-- `check <model_path> [--format <format>] [--verbose]`: Check if a model file is usable (can be loaded and run a simple inference).
 
-## convert options
-- `<input_model>`: Path to the input model file or repo id (required, positional argument)
-- `<output_format>`: Target output format (e.g., gguf, onnx, safetensors, etc.) (required, positional argument)
-- `-o`, `--output-path`: Path to the output model file or directory (optional, auto-completed if omitted)
-- `--quant`: Quantization type (optional, e.g. '4bit', 'q4_k_m', etc.)
-- `--quant-config`: Advanced quantization config (optional, JSON string or YAML file)
-- `--mup2llama`: Enable muP-to-LLaMA parameter scaling and config adaptation (optional)
-- `--fake-weight`: Use zero weights for all parameters (for testing/debugging, optional)
-- `--fake-weight-config`: Path to a JSON/YAML file specifying custom shapes for fake weights (optional)
-- `--model-type`: Model type (optional, default: auto)
-- `--device`: Device to use (optional, default: auto)
-- `--use-large-calibration`: Use large calibration dataset for quantization (optional)
-- `--dtype`: Precision for output weights (e.g., fp16, fp32; only for safetensors)
-- `--help`: Show help message and exit
+### convert
+Convert a model to a different format.
 
-## Examples
+**Usage:** `modelconvert convert <input_model> <output_format> [options]`
+
+**Arguments:**
+- `<input_model>` - Path to input model file or HuggingFace repo ID
+- `<output_format>` - Target format (onnx, gguf, safetensors, gptq, awq, mlx, etc.)
+
+**Options:**
+- `-o, --output-path` - Output file/directory path (auto-generated if omitted)
+- `--quant` - Quantization type (e.g., '4bit', 'q4_k_m')
+- `--quant-config` - Advanced quantization config (JSON string or YAML file)
+- `--model-type` - Model type (default: auto)
+- `--device` - Device to use (default: auto)
+- `--dtype` - Precision for output weights (fp16, fp32; for safetensors only)
+- `--mup2llama` - Enable muP-to-LLaMA parameter scaling
+- `--fake-weight` - Use zero weights for all parameters
+- `--fake-weight-config` - Custom shapes for fake weights (JSON/YAML file)
+- `--use-large-calibration` - Use large calibration dataset for quantization
+
+**Examples:**
 ```bash
-python -m model_converter_tool.cli convert gpt2 --to gguf --output outputs/gpt2.gguf
-python -m model_converter_tool.cli convert path/to/mup_model --to safetensors --output outputs/mup2llama --mup2llama
-python -m model_converter_tool.cli convert gpt2 --to safetensors --output outputs/fake --fake-weight
-python -m model_converter_tool.cli convert gpt2 --to safetensors --output outputs/fake_custom --fake-weight --fake-weight-config configs/fake_weight.yaml
+# Basic conversion
+modelconvert convert gpt2 onnx
+
+# With quantization
+modelconvert convert facebook/opt-125m gptq --quant 4bit
+
+# muP to LLaMA conversion
+modelconvert convert path/to/mup_model safetensors --mup2llama
+
+# Fake weights for testing
+modelconvert convert gpt2 safetensors --fake-weight
+
+# Custom output path
+modelconvert convert gpt2 onnx -o models/gpt2_onnx
 ```
 
-## batch options
-- `<config_path>`: Path to the batch configuration file (YAML/JSON)
-- `--max-workers`: Maximum number of concurrent workers
-- `--max-retries`: Maximum number of retries per task
-- `--skip-disk-check`: Skip disk space checking (not recommended)
+### batch
+Batch convert models using a configuration file.
 
-## inspect options
-- `<model>`: Model path or repo id (required)
+**Usage:** `modelconvert batch <config_path> [options]`
 
-## history options
-- (No arguments)
+**Arguments:**
+- `<config_path>` - Path to batch configuration file (YAML/JSON)
 
-## config options
-Subcommands:
-- `show`: Show all configuration values.
-- `get <key>`: Get a configuration value by key.
-- `set <key> <value>`: Set a configuration value.
-- `list-presets`: List all available configuration presets.
+**Options:**
+- `--max-workers` - Maximum concurrent workers (default: 1)
+- `--max-retries` - Maximum retries per task (default: 1)
+- `--skip-disk-check` - Skip disk space checking (not recommended)
 
-## check options
-- `<model_path>`: Path to the model file or directory (required)
-- `--format`, `-f`: Model format (optional, auto-detected if omitted)
-- `--verbose`, `-v`: Show detailed error information (optional)
-- `--help`: Show help message and exit
+### inspect
+Display detailed model information.
 
-Checks if a model file is usable (i.e., can be loaded and run a simple inference). This is more than just format validation: it attempts to load the model and run a minimal inference to ensure usability. Supports all major formats (GGUF, ONNX, MLX, GPTQ, AWQ, SafeTensors, TorchScript, HuggingFace, etc.).
+**Usage:** `modelconvert inspect <model>`
 
-## Fine-grained Quantization Config (GPTQ/AWQ)
+**Arguments:**
+- `<model>` - Model path or HuggingFace repo ID
 
-Advanced quantization configuration is fully supported for GPTQ and AWQ engines. You can specify options like `bits`, `group_size`, `sym`, `desc_act`, and more for precise quantization control.
+### check
+Test if a model can be loaded and run inference.
 
-## Advanced Usage
-- Combine options for custom workflows (e.g., quantization + muP scaling + fake weight)
-- Use different devices (CPU, GPU, Apple Silicon)
-- Integrate with shell scripts for automation
+**Usage:** `modelconvert check <model_path> [options]`
+
+**Arguments:**
+- `<model_path>` - Path to model file or directory
+
+**Options:**
+- `-f, --format` - Model format (auto-detected if omitted)
+- `-v, --verbose` - Show detailed error information
+
+### history
+Show conversion history.
+
+**Usage:** `modelconvert history`
+
+### config
+Manage configuration settings.
+
+**Usage:** `modelconvert config <subcommand> [args]`
+
+**Subcommands:**
+- `show` - Display all configuration values
+- `get <key>` - Get specific configuration value
+- `set <key> <value>` - Set configuration value
+- `list-presets` - List available configuration presets
+
+## Advanced Features
+
+### Quantization Configuration
+For GPTQ and AWQ engines, use advanced quantization options:
+
+```bash
+# Using quantization config file
+modelconvert convert model gptq --quant-config quant_config.yaml
+
+# Inline JSON config
+modelconvert convert model gptq --quant-config '{"bits": 4, "group_size": 128, "sym": true}'
+```
+
+### muP-to-LLaMA Scaling
+Automatically convert muP-initialized models to LLaMA-compatible format:
+
+```bash
+modelconvert convert mup_model safetensors --mup2llama
+```
+
+### Fake Weights
+Generate models with zero or custom-shaped weights for testing:
+
+```bash
+# Zero weights
+modelconvert convert gpt2 safetensors --fake-weight
+
+# Custom shapes
+modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.yaml
+```
+
+## Supported Formats
+
+**Input:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX
+**Output:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, GPTQ, AWQ
 
 ## Troubleshooting
-- Common errors and solutions
-- How to report issues 
+
+- Use `--verbose` with the `check` command for detailed error information
+- Check conversion history with `modelconvert history` to review past operations
+- Ensure sufficient disk space before large conversions
+- For format-specific issues, refer to the engine documentation 

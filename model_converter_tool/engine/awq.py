@@ -22,7 +22,8 @@ def convert_to_awq(
     quantization_config: dict = None,
 ) -> tuple:
     """
-    Export model to AWQ quantization format.
+    Convert a model to AWQ quantization format.
+    Returns (success: bool, extra_info: dict or None)
     """
     try:
         model, tokenizer = auto_load_model_and_tokenizer(model, tokenizer, model_name, model_type)
@@ -94,9 +95,8 @@ def convert_to_awq(
 def validate_awq_file(path: str, *args, **kwargs) -> bool:
     """
     Validate AWQ files by attempting to load the model.
+    Returns True if valid, False otherwise.
     """
-    from pathlib import Path
-
     p = Path(path)
     if p.is_file():
         path = str(p.parent)
@@ -137,19 +137,16 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         except Exception as e:
             logger.error(f"[AWQ] Failed to load model: {e}\n{traceback.format_exc()}")
             return False
-
         arch = getattr(model, "arch", None)
         if arch is None and hasattr(model, "config"):
             arch = getattr(model.config, "architectures", [None])[0]
         logger.info(f"[AWQ] Detected architecture: {arch}")
-
         tokenizer = getattr(model, "tokenizer", None)
         if tokenizer is None and hasattr(model, "get_tokenizer"):
             try:
                 tokenizer = model.get_tokenizer()
             except Exception:
                 tokenizer = None
-
         model_device = None
         try:
             for param in model.parameters():
@@ -167,7 +164,6 @@ def can_infer_awq_file(path: str, *args, **kwargs) -> bool:
         if model_device is None:
             model_device = torch.device("cpu")
         logger.info(f"[AWQ] Using device: {model_device}")
-
         prompt = "Hello world!"
         try:
             if arch:

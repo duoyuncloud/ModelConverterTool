@@ -1,67 +1,77 @@
 # Model Converter Tool Documentation
 
-Welcome to the documentation for the Model Converter Tool. This guide provides an overview of the tool, installation instructions, usage examples, and technical references for developers and users.
+A flexible, extensible tool for converting, quantizing, and managing machine learning models across multiple formats and frameworks.
 
-## Overview
-A flexible and extensible tool for converting, quantizing, and managing machine learning models across multiple formats and frameworks.
+## Features
 
-- Supports GGUF, ONNX, HuggingFace, Safetensors, TorchScript, MLX, GPTQ, AWQ, and more.
-- muP-to-LLaMA: Automatically detect and rescale muP-initialized models for LLaMA compatibility (`--mup2llama`).
-- Fake weight: Generate models with zero or custom-shaped weights for testing (`--fake-weight`, `--fake-weight-config`).
-- Fine-grained quantization: Use `--quant` and `--quant-config` for advanced quantization control.
+- **Multi-format support**: GGUF, ONNX, HuggingFace, Safetensors, TorchScript, MLX, GPTQ, AWQ, and more
+- **muP-to-LLaMA scaling**: Automatically detect and rescale muP-initialized models for LLaMA compatibility
+- **Fake weights**: Generate models with zero or custom-shaped weights for testing and debugging
+- **Advanced quantization**: Fine-grained control with custom quantization configurations
+- **Batch processing**: Convert multiple models using YAML/JSON configuration files
+- **API-first design**: Use via CLI, Python API, or integrate into your workflows
 
-## Installation
-Instructions for installing system dependencies and Python packages.
+## Quick Start
 
-- Run `./install.sh --system-deps` to install system dependencies (macOS, Linux supported).
-- Run `./install.sh` to install Python dependencies.
-- For Apple Silicon users, add `--enable-mlx` for optimized MLX support.
-
-## Usage
-Basic usage examples for converting models:
-
+### Installation
 ```bash
-python -m model_converter_tool.cli convert gpt2 gguf -o outputs/gpt2.gguf
-python -m model_converter_tool.cli convert path/to/mup_model --to safetensors --output path/to/out --mup2llama
-python -m model_converter_tool.cli convert gpt2 --to safetensors --output path/to/fake --fake-weight
-python -m model_converter_tool.cli batch path/to/batch_config.yaml
-python -m model_converter_tool.cli inspect path/to/input_model
-python -m model_converter_tool.cli history
-python -m model_converter_tool.cli config --action show
+# Install system dependencies (macOS/Linux)
+./install.sh --system-deps
+
+# Install Python dependencies
+./install.sh
+
+# For Apple Silicon users (enable MLX support)
+./install.sh --enable-mlx
 ```
 
-## CLI Reference
-See [cli.md](./cli.md) for all commands and options.
+### Basic Usage
+```bash
+# Convert a single model
+modelconvert convert gpt2 onnx -o outputs/gpt2_onnx
 
-## Configuration
-How to use and customize configuration files (YAML/JSON) for batch conversions and advanced workflows. See [config.md](./config.md).
+# Convert with quantization
+modelconvert convert facebook/opt-125m gptq --quant 4bit -o outputs/opt_gptq
 
-## Conversion Engines
-Supported model formats and conversion engines:
+# Convert muP model to LLaMA format
+modelconvert convert path/to/mup_model safetensors --mup2llama -o outputs/llama_model
 
-- GGUF
-- ONNX
-- AWQ
-- MLX
-- GPTQ
-- Safetensors
-- TorchScript
-- HuggingFace (re-save)
+# Generate fake weight model for testing
+modelconvert convert gpt2 safetensors --fake-weight -o outputs/fake_model
+
+# Batch convert multiple models
+modelconvert batch configs/batch_config.yaml
+
+# Inspect model details
+modelconvert inspect gpt2
+
+# Check model usability
+modelconvert check outputs/model.onnx
+
+# View conversion history
+modelconvert history
+```
+
+## Documentation
+
+- **[CLI Reference](./cli.md)** - Complete command-line interface documentation
+- **[Configuration](./config.md)** - Batch processing and advanced configuration options
+- **[Converter Engine](./converter.md)** - Technical details and supported formats
 
 ## Examples
-Links to example scripts and workflows:
 
-- [Basic conversion example](../examples/example_basic.py)
-- [Batch conversion example](../examples/example_batch.py)
-- [Quantization example](../examples/example_quantization.py)
-- [API usage example](../examples/example_api.py)
-- [muP-to-LLaMA example](../examples/example_mup2llama.py)
-- [Fake weight example](../examples/example_fake_weight.py)
+Explore example scripts in the `examples/` directory:
+- [Basic conversion](../examples/example_basic.py)
+- [Batch processing](../examples/example_batch.py)
+- [Quantization](../examples/example_quantization.py)
+- [API usage](../examples/example_api.py)
+- [muP-to-LLaMA](../examples/example_mup2llama.py)
+- [Fake weights](../examples/example_fake_weight.py)
 
-## Contribution
-Guidelines for contributing, reporting issues, and submitting pull requests.
+## Contributing
 
-- Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
 
 ## License
-This project is licensed under the Apache 2.0 License. 
+
+Licensed under the Apache 2.0 License. 

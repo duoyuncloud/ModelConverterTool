@@ -2,7 +2,6 @@ import typer
 import yaml
 import json
 from pathlib import Path
-from model_converter_tool.core.convert import convert_model
 from model_converter_tool.utils import auto_complete_output_path
 from model_converter_tool.disk_space import estimate_model_size, format_bytes, prompt_user_confirmation_low_space
 from rich.progress import (
@@ -16,6 +15,7 @@ from rich.progress import (
 )
 from rich.console import Console
 from model_converter_tool.disk_space import check_disk_space_safety
+from model_converter_tool.api import ModelConverterAPI
 
 ARG_REQUIRED = "[bold red][required][/bold red]"
 ARG_OPTIONAL = "[dim][optional][/dim]"
@@ -94,6 +94,8 @@ def batch(
 
     console.print(f"\n[bold]Starting batch conversion with {max_workers} worker(s)...[/bold]")
 
+    api = ModelConverterAPI()
+
     results = []
     successful = 0
     failed = 0
@@ -120,16 +122,16 @@ def batch(
                     str(task.get("output_path")) if task.get("output_path") is not None else None,
                     task.get("output_format"),
                 )
-                result = convert_model(
-                    input_path=str(task.get("model_path")) if task.get("model_path") is not None else None,
+                result = api.convert_model(
+                    model_path=str(task.get("model_path")) if task.get("model_path") is not None else None,
+                    output_format=task.get("output_format"),
                     output_path=task_output_path,
-                    to=task.get("output_format"),
-                    quant=task.get("quantization"),
                     model_type=task.get("model_type", "auto"),
                     device=task.get("device", "auto"),
+                    quantization=task.get("quantization"),
+                    quantization_config=task.get("quantization_config"),
                     use_large_calibration=task.get("use_large_calibration", False),
                     dtype=task.get("dtype"),
-                    quantization_config=task.get("quantization_config"),
                     fake_weight=task.get("fake_weight", False),
                 )
                 if result.success:

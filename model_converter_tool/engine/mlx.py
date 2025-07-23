@@ -11,24 +11,19 @@ logger = logging.getLogger(__name__)
 
 MLX_EXAMPLES_REPO = "https://github.com/ml-explore/mlx-examples.git"
 MLX_EXAMPLES_DIR = "tools/mlx-examples"
-REQUIRED_SCRIPTS = ["llms/llama/convert.py"]  # Only keep what is actually needed
+REQUIRED_SCRIPTS = ["llms/llama/convert.py"]
 
 
 def ensure_mlx_examples_available():
     """
-    Ensure that the required MLX conversion scripts are available locally.
-    If missing, auto-clone the official mlx-examples repo into examples/mlx.
-    Only error if clone fails or scripts are still missing.
+    Ensure required MLX conversion scripts are available locally. Auto-clone if missing.
     """
     repo_dir = Path(MLX_EXAMPLES_DIR)
     missing = [s for s in REQUIRED_SCRIPTS if not (repo_dir / s).exists()]
     if not repo_dir.exists() or missing:
         logger.warning(
-            f"[MLX] Required MLX conversion scripts not found in {MLX_EXAMPLES_DIR}.\n"
-            f"Missing: {', '.join(missing) if missing else 'all scripts'}\n"
-            f"Attempting to auto-clone the official mlx-examples repo..."
+            f"[MLX] Required MLX conversion scripts not found in {MLX_EXAMPLES_DIR}. Missing: {', '.join(missing) if missing else 'all scripts'}\nAttempting to auto-clone the official mlx-examples repo..."
         )
-        # Remove old dir if exists (to avoid partial/corrupt state)
         if repo_dir.exists():
             shutil.rmtree(repo_dir)
         try:
@@ -36,12 +31,10 @@ def ensure_mlx_examples_available():
         except Exception as e:
             logger.error(f"[MLX] Auto-clone failed: {e}")
             raise RuntimeError("MLX conversion cannot proceed without required scripts.")
-        # Re-check after clone
         missing = [s for s in REQUIRED_SCRIPTS if not (repo_dir / s).exists()]
         if missing:
             logger.error(
-                f"[MLX] Even after auto-clone, missing scripts: {', '.join(missing)}.\n"
-                f"Please check the official repo or copy the required scripts manually."
+                f"[MLX] Even after auto-clone, missing scripts: {', '.join(missing)}. Please check the official repo or copy the required scripts manually."
             )
             raise RuntimeError("MLX conversion cannot proceed without required scripts.")
         else:
@@ -63,27 +56,21 @@ def convert_to_mlx(
 ) -> tuple:
     """
     Convert a HuggingFace model to MLX format using the official mlx-lm conversion script.
-    Uses a unique temporary output path to avoid path conflicts, then moves the result to the user-specified output directory.
-    The output is always a directory (never a .npz file).
+    The output is always a directory.
+    Returns (success: bool, extra_info: dict or None)
     """
     try:
-        # Use a unique temporary directory for mlx-lm output
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_output = os.path.join(tmpdir, "mlx-out")
             cmd = [sys.executable, "-m", "mlx_lm.convert", "--hf-path", model_name, "--mlx-path", tmp_output]
             if quantization:
                 cmd += ["-q", quantization]
             subprocess.check_call(cmd)
-            # Print the contents of the temp directory for debugging
-            print("[DEBUG] Contents of tempdir after mlx-lm.convert:", os.listdir(tmpdir))
-            # Move/rename the output directory to user-specified output_path
             if os.path.isdir(tmp_output):
-                # Remove existing output_path if it exists
                 if os.path.exists(output_path):
                     shutil.rmtree(output_path)
                 shutil.move(tmp_output, output_path)
                 return True, None
-            # If not, fail
             raise FileNotFoundError(f"No output directory found at {tmp_output}")
     except Exception as e:
         logger.error(f"MLX conversion failed: {e}")
@@ -92,15 +79,11 @@ def convert_to_mlx(
 
 def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
     """
-    Dynamic check for MLX files. Loads the model and tokenizer with mlx_lm and runs a real dummy inference.
-    Expects path to be a directory containing MLX weights/config.
-    Returns True if inference is possible, False otherwise.
+    Perform dummy inference to test MLX model usability. Returns True if inference is possible, False otherwise.
     """
     try:
-        import os
         from mlx_lm import load, generate
 
-        # path should be a directory containing MLX weights/config
         if not os.path.isdir(path):
             raise ValueError(f"MLX check expects a directory, got: {path}")
         model, tokenizer = load(path)
@@ -112,7 +95,9 @@ def can_infer_mlx_file(path: str, *args, **kwargs) -> bool:
 
 
 def validate_mlx_file(path: str, *args, **kwargs) -> bool:
-
+    """
+    Validate MLX files by checking for config and weights. Returns True if valid, False otherwise.
+    """
     if not os.path.isdir(path):
         return False
     files = os.listdir(path)
