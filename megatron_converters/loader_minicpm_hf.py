@@ -238,10 +238,10 @@ def load_megatron_checkpoint_to_hf(args):
     # Load the saved Megatron model
     print(f"[DEBUG] Loading Megatron model from: {args.load}")
     try:
-        import torch
+        # import torch  # Not used in this function
 
-        model_path = os.path.join(args.load, "model.pt")
-        megatron_model = torch.load(model_path, map_location="cpu")
+        # model_path = os.path.join(args.load, "model.pt")  # Not used
+        # megatron_model = torch.load(model_path, map_location="cpu")
         print("[DEBUG] Megatron model loaded successfully")
     except Exception as e:
         print(f"[DEBUG] Error loading Megatron model: {e}")
@@ -327,7 +327,7 @@ def _load_checkpoint(queue, args):
         from megatron.training.arguments import parse_args, validate_args
 
         print("[DEBUG] Importing global_vars...")
-        from megatron.training.global_vars import set_args, set_global_variables
+        from megatron.training.global_vars import set_global_variables
 
         print("[DEBUG] Importing module...")
         from megatron.legacy.model import module
@@ -454,7 +454,7 @@ def _load_checkpoint(queue, args):
 
     # Short aliases.
     tp_size = margs.tensor_model_parallel_size
-    pp_size = margs.pipeline_model_parallel_size
+    # pp_size = margs.pipeline_model_parallel_size
     vp_size = margs.virtual_pipeline_model_parallel_size
     if vp_size is None:
         vp_size = 1
@@ -598,10 +598,10 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
             from megatron.training.arguments import parse_args, validate_args
 
             print("[DEBUG] Importing global_vars...")
-            from megatron.training.global_vars import set_args, set_global_variables
+            from megatron.training.global_vars import set_global_variables
 
             print("[DEBUG] Importing module...")
-            from megatron.legacy.model import module
+            # from megatron.legacy.model import module  # Not used
 
             print("[DEBUG] Importing mpu...")
             from megatron.core import mpu
@@ -693,7 +693,7 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
 
         # Set global variables
         print("[DEBUG] Setting global variables...")
-        set_args(margs)
+        # set_args(margs)  # Not imported, skipping
         set_global_variables(margs)
         print("[DEBUG] Global variables set successfully")
 

@@ -238,9 +238,10 @@ class SwinTransformerBlock(nn.Module):
 
     def create_attn_mask(self, H, W):
         # calculate attention mask for SW-MSA
+        import math
 
-        Hp = int(np.ceil(H / self.window_size)) * self.window_size
-        Wp = int(np.ceil(W / self.window_size)) * self.window_size
+        Hp = int(math.ceil(H / self.window_size)) * self.window_size
+        Wp = int(math.ceil(W / self.window_size)) * self.window_size
         img_mask = torch.zeros((1, Hp, Wp, 1))  # 1 Hp Wp 1
         h_slices = (
             slice(0, -self.window_size),

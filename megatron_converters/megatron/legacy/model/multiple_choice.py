@@ -33,7 +33,7 @@ class MultipleChoice(MegatronModule):
         # Multi-choice head.
         if self.post_process:
             self.multichoice_dropout = torch.nn.Dropout(args.hidden_dropout)
-            self.multichoice_head = get_linear_layer(args.hidden_size, 1, init_method)
+            self.multichoice_head = get_linear_layer(args.hidden_size, 1, self.init_method)
             self._multichoice_head_key = "multichoice_head"
 
     def set_input_tensor(self, input_tensor):

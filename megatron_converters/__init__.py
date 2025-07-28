@@ -15,8 +15,9 @@ You can extend this interface to support more loaders or directions as needed.
 """
 
 from .loader_llama2 import load_checkpoint as llama2_load_checkpoint
-from .loader_llama2_hf import load_checkpoint as llama2_hf_load_checkpoint
-from .loader_llama_mistral import load_checkpoint as llama_mistral_load_checkpoint
+
+# from .loader_llama2_hf import load_checkpoint as llama2_hf_load_checkpoint
+# from .loader_llama_mistral import load_checkpoint as llama_mistral_load_checkpoint
 from .loader_minicpm_hf import load_checkpoint as minicpm_load_checkpoint
 import queue as py_queue
 

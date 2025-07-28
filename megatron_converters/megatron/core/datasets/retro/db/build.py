@@ -134,7 +134,7 @@ def build_partial_db(
                     n_procs,
                 )
             )
-        except:
+        except Exception:
             pass
 
         # Remove EOD token.
@@ -275,9 +275,9 @@ def save_block_db(
     """
     log_retro_rank_0(" > saving individual db.")
     with h5py.File(block["path"], "w") as f:
-        dset = f.create_dataset("chunks_valid", data=chunk_db_valid)
-        dset = f.create_dataset("chunks_invalid", data=chunk_db_invalid)
-        dset = f.create_dataset("doc_offsets", data=doc_offsets)
+        f.create_dataset("chunks_valid", data=chunk_db_valid)
+        f.create_dataset("chunks_invalid", data=chunk_db_invalid)
+        f.create_dataset("doc_offsets", data=doc_offsets)
 
 
 def build_individual_db(

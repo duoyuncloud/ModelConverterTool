@@ -22,12 +22,8 @@ def load(args):
     # Skip fused kernels loading for conversion scripts
     print("[DEBUG] Skipping fused kernels loading (not needed for conversion)")
     return
-    if int(bare_metal_major) >= 11:
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_80,code=sm_80")
-        if int(bare_metal_minor) >= 8:
-            cc_flag.append("-gencode")
-            cc_flag.append("arch=compute_90,code=sm_90")
+    # For conversion purposes, we skip the actual CUDA compilation
+    # bare_metal_major and bare_metal_minor are not defined in conversion context
 
     # Build path
     srcpath = pathlib.Path(__file__).parent.absolute()

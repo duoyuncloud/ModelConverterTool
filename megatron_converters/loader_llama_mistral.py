@@ -488,7 +488,7 @@ def _load_checkpoint(queue, args):
 
     try:
         from megatron.training.arguments import parse_args, validate_args
-        from megatron.training.global_vars import set_args, set_global_variables
+        from megatron.training.global_vars import set_global_variables
         from megatron.legacy.model import module
         from megatron.core import mpu
         from megatron.core.enums import ModelType
@@ -578,7 +578,7 @@ def _load_checkpoint(queue, args):
 
     # Short aliases.
     tp_size = margs.tensor_model_parallel_size
-    pp_size = margs.pipeline_model_parallel_size
+    # pp_size = margs.pipeline_model_parallel_size
     vp_size = margs.virtual_pipeline_model_parallel_size
     if vp_size is None:
         vp_size = 1

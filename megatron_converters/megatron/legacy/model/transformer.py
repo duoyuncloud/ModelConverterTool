@@ -1714,13 +1714,14 @@ class ParallelTransformer(MegatronModule):
         with rng_context:
             # The fp8_autocast context manager is a no-op when enabled=True
             # The if...else serves to short circuit name resolution for fp8_autocast
-            with (
-                transformer_engine.pytorch.fp8_autocast(
+            if self.use_fp8:
+                context_manager = transformer_engine.pytorch.fp8_autocast(
                     enabled=self.use_fp8, fp8_recipe=self.fp8_recipe, fp8_group=self.fp8_group
                 )
-                if self.use_fp8
-                else nullcontext()
-            ):
+            else:
+                context_manager = nullcontext()
+
+            with context_manager:
                 # Determine if the current iteration is first microbatch
                 if self.num_microbatches_in_previous_step != get_num_microbatches():
                     self.microbatch_count = 0  # Reset count on new batch size rampup interval

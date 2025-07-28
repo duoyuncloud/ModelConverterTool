@@ -166,13 +166,13 @@ def get_blocks(
 
             try:
                 f = h5py.File(path, "r")
-            except:
+            except Exception:
                 os.remove(path)
                 continue
 
             try:
                 validate(f)
-            except:
+            except Exception:
                 os.remove(path)
             finally:
                 f.close()
