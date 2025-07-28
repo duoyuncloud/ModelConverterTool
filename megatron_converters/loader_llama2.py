@@ -413,6 +413,10 @@ def _load_checkpoint(queue, args):
     # Llama-2 requires HF transformers >=4.31.0.
     verify_transformers_version()
 
+    # Add current directory to path to find local megatron module
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, current_dir)
+
     # Search in directory above this.
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir)))
     if args.megatron_path is not None:

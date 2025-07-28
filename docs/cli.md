@@ -21,7 +21,7 @@ Convert a model to a different format.
 - `-o, --output-path` - Output file/directory path (auto-generated if omitted)
 - `--quant` - Quantization type (e.g., '4bit', 'q4_k_m')
 - `--quant-config` - Advanced quantization config (JSON string or YAML file)
-- `--model-type` - Model type (default: auto)
+- `--model-type` - Model type for Megatron conversions (minicpm, llama) or auto-detection
 - `--device` - Device to use (default: auto)
 - `--dtype` - Precision for output weights (fp16, fp32; for safetensors only)
 - `--mup2llama` - Enable muP-to-LLaMA parameter scaling
@@ -39,6 +39,12 @@ modelconvert convert facebook/opt-125m gptq --quant 4bit
 
 # muP to LLaMA conversion
 modelconvert convert path/to/mup_model safetensors --mup2llama
+
+# HuggingFace to Megatron-LM conversion
+modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
+
+# Megatron-LM to HuggingFace conversion
+modelconvert convert models/megatron_model hf --model-type minicpm
 
 # Fake weights for testing
 modelconvert convert gpt2 safetensors --fake-weight
@@ -116,6 +122,26 @@ Automatically convert muP-initialized models to LLaMA-compatible format:
 modelconvert convert mup_model safetensors --mup2llama
 ```
 
+### Megatron-LM Integration
+Bidirectional conversion between HuggingFace and Megatron-LM formats:
+
+```bash
+# HuggingFace to Megatron-LM
+modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
+
+# Megatron-LM to HuggingFace
+modelconvert convert models/megatron_model hf --model-type minicpm
+
+# Llama models
+modelconvert convert meta-llama/Llama-2-7b hf2megatron --model-type llama
+```
+
+**Features:**
+- **Automatic format detection**: Detects Megatron-LM format by `model.pt` + `metadata.json`
+- **Model structure mapping**: Handles architecture differences between formats
+- **Weight reordering**: Properly reorders attention and MLP weights
+- **Configuration preservation**: Maintains model metadata across conversions
+
 ### Fake Weights
 Generate models with zero or custom-shaped weights for testing:
 
@@ -129,8 +155,27 @@ modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.
 
 ## Supported Formats
 
-**Input:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX
-**Output:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, GPTQ, AWQ
+**Input:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, **Megatron-LM**
+**Output:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, GPTQ, AWQ, **Megatron-LM**
+
+### Megatron-LM Support
+
+**Conversion Directions:**
+- **HF → Megatron-LM**: `hf2megatron` format
+- **Megatron-LM → HF**: `hf` or `huggingface` format
+
+**Supported Models:**
+- **MiniCPM**: `--model-type minicpm`
+- **Llama/Llama2/Mistral**: `--model-type llama`
+
+**Examples:**
+```bash
+# HF to Megatron-LM
+modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
+
+# Megatron-LM to HF
+modelconvert convert models/megatron_model hf --model-type minicpm
+```
 
 ## Troubleshooting
 

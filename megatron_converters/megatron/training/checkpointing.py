@@ -695,7 +695,7 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
     load_kwargs = {}
     is_dist_ckpt = False
     if args.auto_detect_ckpt_format or args.use_dist_ckpt:
-        state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=True, exit_on_missing_checkpoint=args.exit_on_missing_checkpoint, checkpoint_step=args.ckpt_step)
+        state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=True, exit_on_missing_checkpoint=args.exit_on_missing_checkpoint)
         is_dist_ckpt = dist_checkpointing.check_is_distributed_checkpoint(checkpoint_name)
         if is_dist_ckpt:
             ckpt_tp_pp = (state_dict['args'].tensor_model_parallel_size, state_dict['args'].pipeline_model_parallel_size)
@@ -718,10 +718,10 @@ def load_checkpoint(model, optimizer, opt_param_scheduler, load_arg='load', stri
                                                     if getattr(state_dict['args'], 'ckpt_fully_parallel_save', False)
                                                     else 'dp_zero_gather_scatter')
             load_kwargs['sharded_state_dict'] = generate_state_dict(args, model, optimizer, opt_param_scheduler,
-                                                                    rng_state, True, optim_sd_kwargs=optim_sd_kwargs)
+                                                                    rng_state, args.use_dist_ckpt, optim_sd_kwargs=optim_sd_kwargs)
             load_kwargs['exit_on_missing_checkpoint'] = args.exit_on_missing_checkpoint
 
-    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False, checkpoint_step=args.ckpt_step, **load_kwargs)
+    state_dict, checkpoint_name, release = _load_base_checkpoint(load_dir, rank0=False, **load_kwargs)
 
     # Checkpoint not loaded.
     if state_dict is None:

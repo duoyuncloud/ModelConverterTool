@@ -44,7 +44,10 @@ class ModelConverter:
         print(f"[DEBUG] _get_converter_functions: output_format={output_format}")
         """Lazy import converter functions"""
         if output_format in ("hf", "huggingface"):
+            # Check if we need to use megatron2hf converter based on input format
+            # This will be determined in the convert method
             from .engine.hf import convert_to_hf, validate_hf_file
+            from .engine.megatron2hf import convert_megatron_to_hf
 
             return convert_to_hf, validate_hf_file
         if output_format == "onnx":
@@ -129,6 +132,13 @@ class ModelConverter:
                 or any(path.glob("*.safetensors"))
             ):
                 return "huggingface", str(path)
+            # Check for Megatron format (contains layer_*.pt files or our custom format with model.pt + metadata.json)
+            if (
+                any(path.glob("layer_*.pt"))
+                or any(path.glob("mp_rank_*"))
+                or ((path / "model.pt").exists() and (path / "metadata.json").exists())
+            ):
+                return "megatron", str(path)
             return "unknown", str(path)
         # File extension based detection
         if suffix == ".onnx":
@@ -400,7 +410,9 @@ class ModelConverter:
                     result.error = f"Custom quantization failed: {e}"
                     return result
             # Special handling for megatron2hf and hf2megatron (must come BEFORE SUPPORTED_FORMATS block)
-            if output_format in ("megatron2hf", "hf2megatron"):
+            if output_format in ("megatron2hf", "hf2megatron") or (
+                input_format == "megatron" and output_format in ("hf", "huggingface")
+            ):
                 import sys
 
                 print(
@@ -408,9 +420,19 @@ class ModelConverter:
                     file=sys.stderr,
                     flush=True,
                 )
-                if output_format == "hf2megatron":
+
+                # Use the appropriate converter function based on input/output format
+                if input_format == "megatron" and output_format in ("hf", "huggingface"):
+                    # Use megatron2hf converter for megatron->hf conversion
+                    from .engine.megatron2hf import convert_megatron_to_hf
+
+                    conversion_result = convert_megatron_to_hf(
+                        model_type=model_type, checkpoint_path=norm_path, output_path=output_path
+                    )
+                elif output_format == "hf2megatron":
                     conversion_result = convert_func(model_type=model_type, hf_path=norm_path, output_path=output_path)
                 else:
+                    # For megatron2hf conversion
                     conversion_result = convert_func(
                         model_type=model_type, checkpoint_path=norm_path, output_path=output_path
                     )

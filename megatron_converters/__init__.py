@@ -30,7 +30,9 @@ def convert_llama(args, direction="megatron2hf"):
     """
     # You can add logic here to select different loaders based on args or direction
     # For now, use llama2 loader as default
-    return llama2_load_checkpoint(args)
+    # The loader expects (queue, args), so we provide a dummy queue
+    dummy_queue = py_queue.Queue()
+    return llama2_load_checkpoint(dummy_queue, args)
 
 
 def convert_minicpm(args, direction="megatron2hf"):
@@ -40,6 +42,6 @@ def convert_minicpm(args, direction="megatron2hf"):
         args: Argument object for the loader.
         direction: 'megatron2hf' or 'hf2megatron'.
     """
-    # The loader expects (queue, args), so we provide a dummy queue
+    # The loader expects (queue, args, direction), so we provide a dummy queue
     dummy_queue = py_queue.Queue()
-    return minicpm_load_checkpoint(dummy_queue, args)
+    return minicpm_load_checkpoint(dummy_queue, args, direction)
