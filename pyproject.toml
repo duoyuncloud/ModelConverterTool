@@ -54,7 +54,7 @@ modelconvert = "model_converter_tool.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["model_converter_tool*"]
+include = ["model_converter_tool*", "megatron_converters*"]
 exclude = [
     "tests*",
     "docs*",
