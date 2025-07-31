@@ -48,3 +48,4 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+test_download/model.safetensors

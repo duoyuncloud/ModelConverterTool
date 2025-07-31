@@ -27,7 +27,7 @@ CLI → Core → API → Converter → Engine Modules
 - ONNX
 - GGUF
 - MLX
-- Megatron
+- Megatron-LM
 
 ### Output Formats
 - HuggingFace
@@ -38,6 +38,7 @@ CLI → Core → API → Converter → Engine Modules
 - MLX
 - GPTQ (quantized)
 - AWQ (quantized)
+- Megatron-LM
 
 ### Conversion Matrix
 
@@ -49,7 +50,7 @@ CLI → Core → API → Converter → Engine Modules
 | ONNX         | ONNX |
 | GGUF         | GGUF |
 | MLX          | MLX |
-| Megatron     | HuggingFace |
+| Megatron-LM  | HuggingFace |
 
 > **Note:** Some formats (MTK, RK, AX, QNN) are planned for future releases.
 
@@ -72,6 +73,32 @@ Fine-grained quantization control for GPTQ and AWQ:
 - Configurable bits, group size, symmetry
 - Custom calibration datasets
 - Hardware-optimized formats
+
+### Megatron-LM Integration
+Bidirectional conversion between HuggingFace and Megatron-LM formats:
+
+**Supported Models:**
+- **MiniCPM**: Full bidirectional support with optimized weight mapping
+- **Llama/Llama2**: Complete conversion with attention and MLP layer mapping
+- **Mistral**: Full support for Mistral architecture variants
+
+**Conversion Features:**
+- **Automatic format detection**: Detects Megatron-LM format by presence of `model.pt` + `metadata.json`
+- **Model structure mapping**: Handles differences between HuggingFace and Megatron-LM architectures
+- **Weight reordering**: Properly reorders attention and MLP weights for format compatibility
+- **Configuration preservation**: Maintains model configuration and metadata across conversions
+
+**Usage Examples:**
+```bash
+# HuggingFace to Megatron-LM
+modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
+
+# Megatron-LM to HuggingFace  
+modelconvert convert models/megatron_model hf --model-type minicpm
+
+# Llama models
+modelconvert convert meta-llama/Llama-2-7b hf2megatron --model-type llama
+```
 
 ## Engine Modules
 

@@ -21,6 +21,7 @@ SUPPORTED_FORMATS = [
     "ax",
     "qnn",
     "megatron2hf",  # Newly added planned formats
+    "hf2megatron",  # Added for bidirectional support
 ]
 
 
@@ -40,9 +41,13 @@ class ModelConverter:
     """
 
     def _get_converter_functions(self, output_format: str):
+        print(f"[DEBUG] _get_converter_functions: output_format={output_format}")
         """Lazy import converter functions"""
         if output_format in ("hf", "huggingface"):
+            # Check if we need to use megatron2hf converter based on input format
+            # This will be determined in the convert method
             from .engine.hf import convert_to_hf, validate_hf_file
+            from .engine.megatron2hf import convert_megatron_to_hf
 
             return convert_to_hf, validate_hf_file
         if output_format == "onnx":
@@ -98,6 +103,10 @@ class ModelConverter:
             from .engine.megatron2hf import convert_megatron_to_hf
 
             return convert_megatron_to_hf, (lambda *a, **kw: True)
+        elif output_format == "hf2megatron":
+            from .engine.megatron2hf import convert_hf_to_megatron
+
+            return convert_hf_to_megatron, (lambda *a, **kw: True)
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
 
@@ -123,6 +132,13 @@ class ModelConverter:
                 or any(path.glob("*.safetensors"))
             ):
                 return "huggingface", str(path)
+            # Check for Megatron format (contains layer_*.pt files or our custom format with model.pt + metadata.json)
+            if (
+                any(path.glob("layer_*.pt"))
+                or any(path.glob("mp_rank_*"))
+                or ((path / "model.pt").exists() and (path / "metadata.json").exists())
+            ):
+                return "megatron", str(path)
             return "unknown", str(path)
         # File extension based detection
         if suffix == ".onnx":
@@ -161,15 +177,16 @@ class ModelConverter:
         if input_format_norm not in self.get_conversion_matrix() and input_format_norm != "huggingface":
             errors.append(f"Unsupported input format: {input_format}")
 
+        # Allow 'hf2megatron' as a valid output format for huggingface/hf and megatron input
+        special_hf2megatron = output_format in ("hf2megatron",) and input_format in ("huggingface", "hf", "megatron")
         # Check if output format is supported (allow custom_quant for all)
         valid_outputs = self.get_conversion_matrix().get(input_format_norm, [])
-        if output_format_norm not in valid_outputs:
+        if output_format_norm not in valid_outputs and not special_hf2megatron:
             errors.append(f"Unsupported output format: {output_format}")
 
-        # Check model type
-        valid_model_types = ["auto", "text-generation", "text-classification", "image-classification"]
-        if model_type not in valid_model_types:
-            errors.append(f"Invalid model type: {model_type}. Valid types: {valid_model_types}")
+        # Allow any non-empty string as model_type for custom models (e.g., 'minicpm', 'llama')
+        if not model_type or not isinstance(model_type, str):
+            errors.append(f"Invalid model type: {model_type}. Must be a non-empty string.")
 
         # Check device
         valid_devices = ["auto", "cpu", "cuda", "mps"]
@@ -208,6 +225,7 @@ class ModelConverter:
         fake_weight_shape_dict: dict = None,  # New argument for custom fake weight shapes
         mup2llama: bool = False,  # New argument for muP-to-LLaMA scaling
     ) -> ConversionResult:
+        print(f"[DEBUG] convert: model_name={model_name}, output_format={output_format}, model_type={model_type}")
         """
         Convert a model to the specified format. Always performs static validation after conversion.
         Only returns success if both conversion and static validation succeed.
@@ -221,6 +239,19 @@ class ModelConverter:
         result = ConversionResult(success=False)
         try:
             input_format, norm_path = self._detect_model_format(model_name)
+            validation = self._validate_conversion_inputs(input_format, output_format, model_type, quantization, device)
+            import sys
+
+            print(f"[DEBUG] validation: {validation}", file=sys.stderr, flush=True)
+            if not validation["valid"]:
+                print(
+                    f"[DEBUG] conversion aborted due to validation errors: {validation['errors']}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                result.error = "; ".join(validation["errors"]) or "Invalid conversion inputs"
+                return result
+            print(f"[DEBUG] convert: detected input_format={input_format}, norm_path={norm_path}")
             convert_func, validate_func = self._get_converter_functions(output_format)
             internal_model_type = self._map_model_type_internal(model_type)
             # muP scaling: detect and compute scaling factors
@@ -378,6 +409,44 @@ class ModelConverter:
                 except Exception as e:
                     result.error = f"Custom quantization failed: {e}"
                     return result
+            # Special handling for megatron2hf and hf2megatron (must come BEFORE SUPPORTED_FORMATS block)
+            if output_format in ("megatron2hf", "hf2megatron") or (
+                input_format == "megatron" and output_format in ("hf", "huggingface")
+            ):
+                import sys
+
+                print(
+                    f"[DEBUG] About to call convert_func for {output_format}: {convert_func} with model_type={model_type}, norm_path={norm_path}, output_path={output_path}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+                # Use the appropriate converter function based on input/output format
+                if input_format == "megatron" and output_format in ("hf", "huggingface"):
+                    # Use megatron2hf converter for megatron->hf conversion
+                    from .engine.megatron2hf import convert_megatron_to_hf
+
+                    conversion_result = convert_megatron_to_hf(
+                        model_type=model_type, checkpoint_path=norm_path, output_path=output_path
+                    )
+                elif output_format == "hf2megatron":
+                    conversion_result = convert_func(model_type=model_type, hf_path=norm_path, output_path=output_path)
+                else:
+                    # For megatron2hf conversion
+                    conversion_result = convert_func(
+                        model_type=model_type, checkpoint_path=norm_path, output_path=output_path
+                    )
+                print(f"[DEBUG] convert_func returned: {conversion_result}", file=sys.stderr, flush=True)
+                # Wrap result if needed
+                if isinstance(conversion_result, bool):
+                    result.success = conversion_result
+                    result.output_path = output_path if conversion_result else None
+                elif hasattr(conversion_result, "success"):
+                    return conversion_result
+                else:
+                    result.success = bool(conversion_result)
+                    result.output_path = output_path if result.success else None
+                return result
             if output_format == "onnx":
                 success = convert_func(model_name=model_name, output_path=output_path, device=device)
                 if not success:
@@ -491,6 +560,7 @@ class ModelConverter:
                 "rk",
                 "ax",
                 "qnn",  # Newly added formats
+                "hf2megatron",  # Add HF2Megatron as valid output
             ],
             "hf": [
                 "huggingface",
@@ -506,8 +576,9 @@ class ModelConverter:
                 "rk",
                 "ax",
                 "qnn",  # Newly added formats
+                "hf2megatron",  # Add HF2Megatron as valid output
             ],
-            "megatron": ["hf", "megatron2hf"],  # Newly added format
+            "megatron": ["hf", "megatron2hf", "hf2megatron"],  # Add both directions
             "safetensors": ["huggingface", "hf", "safetensors"],
             "torchscript": ["torchscript"],
             "onnx": ["onnx"],
@@ -527,7 +598,20 @@ class ModelConverter:
         Return a dict of supported output formats. Key: format name, Value: description or empty dict.
         """
         return {
-            fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq", "mtk"] # , "rk", "ax", "qnn", "megatron2hf"]
+            fmt: {}
+            for fmt in [
+                "huggingface",
+                "hf",
+                "safetensors",
+                "torchscript",
+                "onnx",
+                "gguf",
+                "mlx",
+                "gptq",
+                "awq",
+                "hf2megatron",
+                "mtk"
+            ]
         }
 
     def _can_infer_model(self, model_path, model_format=None, **kwargs):

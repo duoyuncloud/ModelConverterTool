@@ -4,7 +4,8 @@ A flexible, extensible tool for converting, quantizing, and managing machine lea
 
 ## Features
 
-- **Multi-format support**: GGUF, ONNX, HuggingFace, Safetensors, TorchScript, MLX, GPTQ, AWQ, and more
+- **Multi-format support**: GGUF, ONNX, HuggingFace, Safetensors, TorchScript, MLX, GPTQ, AWQ, **Megatron-LM**, and more
+- **Megatron-LM integration**: Bidirectional conversion between HuggingFace and Megatron-LM formats
 - **muP-to-LLaMA scaling**: Automatically detect and rescale muP-initialized models for LLaMA compatibility
 - **Fake weights**: Generate models with zero or custom-shaped weights for testing and debugging
 - **Advanced quantization**: Fine-grained control with custom quantization configurations
@@ -36,6 +37,12 @@ modelconvert convert facebook/opt-125m gptq --quant 4bit -o outputs/opt_gptq
 # Convert muP model to LLaMA format
 modelconvert convert path/to/mup_model safetensors --mup2llama -o outputs/llama_model
 
+# Convert HuggingFace to Megatron-LM format
+modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm -o outputs/minicpm_megatron
+
+# Convert Megatron-LM to HuggingFace format
+modelconvert convert models/megatron_model hf --model-type minicpm -o outputs/minicpm_hf
+
 # Generate fake weight model for testing
 modelconvert convert gpt2 safetensors --fake-weight -o outputs/fake_model
 
@@ -57,6 +64,7 @@ modelconvert history
 - **[CLI Reference](./cli.md)** - Complete command-line interface documentation
 - **[Configuration](./config.md)** - Batch processing and advanced configuration options
 - **[Converter Engine](./converter.md)** - Technical details and supported formats
+- **[Megatron-LM Integration](./megatron.md)** - Comprehensive guide for Megatron-LM conversions
 
 ## Examples
 
