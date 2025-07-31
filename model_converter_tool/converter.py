@@ -79,9 +79,9 @@ class ModelConverter:
             return convert_to_custom_quant, validate_custom_quant_file
         # Register new shell converters
         elif output_format == "mtk":
-            from .engine.mtk import convert_hf_to_mtk
+            from .engine.mtk import convert_hf_to_mtk, validate_mtk_file
 
-            return convert_hf_to_mtk, (lambda *a, **kw: True)
+            return convert_hf_to_mtk, validate_mtk_file
         elif output_format == "rk":
             from .engine.rk import convert_hf_to_rk
 
@@ -527,7 +527,7 @@ class ModelConverter:
         Return a dict of supported output formats. Key: format name, Value: description or empty dict.
         """
         return {
-            fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq"]
+            fmt: {} for fmt in ["huggingface", "hf", "safetensors", "torchscript", "onnx", "gguf", "mlx", "gptq", "awq", "mtk"] # , "rk", "ax", "qnn", "megatron2hf"]
         }
 
     def _can_infer_model(self, model_path, model_format=None, **kwargs):
