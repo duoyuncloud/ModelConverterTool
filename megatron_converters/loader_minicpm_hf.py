@@ -31,7 +31,7 @@ def add_arguments(parser):
         help="Path to the vocab file. If specified will use this to get vocab size and "
         "trim padding from the embedding table.",
     )
-    group.add_argument("--tokenizer-model", required=True, help="Sentencepiece tokenizer model.")
+    group.add_argument("--tokenizer-model", required=False, default=None, help="Sentencepiece tokenizer model.")
     group.add_argument("--megatron-path", type=str, default=None, help="Base directory of deepspeed repository")
 
 
