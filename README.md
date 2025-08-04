@@ -1,12 +1,13 @@
 # Model Converter Tool
 
 A professional, API-first tool for machine learning model conversion and management.
-Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors, HuggingFace, **Megatron-LM**, and more.
+Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors, HuggingFace, **Megatron-LM**, **MTK**, and more.
 
 ## Features
 
-- **Multi-format support**: Convert between ONNX, GGUF, MLX, GPTQ, AWQ, SafeTensors, **Megatron-LM**, and more
+- **Multi-format support**: Convert between ONNX, GGUF, MLX, GPTQ, AWQ, SafeTensors, **Megatron-LM**, **MTK**, and more
 - **Megatron-LM integration**: Bidirectional conversion between HuggingFace and Megatron-LM formats
+- **MTK integration**: Convert HuggingFace models to MTK format for MediaTek platforms
 - **Advanced quantization**: Fine-grained control with GPTQ/AWQ configuration
 - **muP-to-LLaMA scaling**: Automatic parameter rescaling for LLaMA compatibility
 - **Fake weights**: Generate test models without downloading large parameters
@@ -40,6 +41,9 @@ modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
 
 # Convert Megatron-LM to HuggingFace format
 modelconvert convert models/megatron_model hf --model-type minicpm
+
+# Convert to MTK format for MediaTek platforms
+modelconvert convert OpenBMB/MiniCPM4-0.5B mtk --model-type text-generation
 
 # Generate fake weights for testing
 modelconvert convert gpt2 safetensors --fake-weight
@@ -149,6 +153,46 @@ modelconvert convert meta-llama/Llama-2-7b hf2megatron --model-type llama
 - **Llama/Llama2**: Full bidirectional support
 - **Mistral**: Full bidirectional support
 
+### MTK Integration
+Convert HuggingFace models to MTK format for MediaTek platforms:
+
+```bash
+# Basic LLM conversion
+modelconvert convert OpenBMB/MiniCPM4-0.5B mtk --model-type text-generation
+
+# VLM conversion with custom platform
+modelconvert convert vision-model mtk --model-type image-classification \
+  --quantization-config '{"platform": "MT6897", "model_size": "1_6B"}'
+
+# Advanced configuration
+modelconvert convert model mtk --model-type text-generation \
+  --quantization-config '{
+    "platform": "MT6991",
+    "model_size": "1_2B", 
+    "weight_bit": 4,
+    "mtk_cloud_path": "/custom/path/to/mtk_cloud"
+  }'
+```
+
+**Supported Platforms:**
+- **MT6991**: High-end MediaTek platform
+- **MT6989**: Mid-range MediaTek platform  
+- **MT6897**: Entry-level MediaTek platform
+
+**Supported Model Sizes:**
+- **0_5B, 0_9B, 1_2B, 1_6B, 8B, 0_58B**
+
+**Features:**
+- Automatic model type detection (LLM vs VLM)
+- Real-time conversion progress display
+- Custom MTK cloud path configuration
+- Environment variable support (`MTK_CLOUD_PATH`)
+- Output validation with TFLite file detection
+
+**Dependencies:**
+- MTK conversion requires a separate `mtk_cloud` repository with `install.sh`
+- The repository provides conversion scripts for LLM and VLM models
+
 ### Fake Weights
 Generate models with zero weights for testing:
 
@@ -173,6 +217,7 @@ modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.
 | GGUF         | GGUF |
 | MLX          | MLX |
 | Megatron-LM  | HuggingFace |
+| **MTK**      | **MTK** |
 
 ### Quantization Support
 
@@ -183,6 +228,7 @@ modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.
 | GGUF   | q4_k_m, q5_k_m, q8_0 |
 | MLX    | q4_k_m, q8_0, q5_k_m |
 | SafeTensors | fp16, fp32 |
+| **MTK** | **4bit, 8bit** |
 
 ## API Usage
 

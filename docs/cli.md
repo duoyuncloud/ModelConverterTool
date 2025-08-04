@@ -46,6 +46,9 @@ modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
 # Megatron-LM to HuggingFace conversion
 modelconvert convert models/megatron_model hf --model-type minicpm
 
+# MTK conversion for MediaTek platforms
+modelconvert convert OpenBMB/MiniCPM4-0.5B mtk --model-type text-generation
+
 # Fake weights for testing
 modelconvert convert gpt2 safetensors --fake-weight
 
@@ -156,7 +159,7 @@ modelconvert convert gpt2 safetensors --fake-weight --fake-weight-config shapes.
 ## Supported Formats
 
 **Input:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, **Megatron-LM**
-**Output:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, GPTQ, AWQ, **Megatron-LM**
+**Output:** HuggingFace, Safetensors, TorchScript, ONNX, GGUF, MLX, GPTQ, AWQ, **Megatron-LM**, **MTK**
 
 ### Megatron-LM Support
 
@@ -176,6 +179,53 @@ modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
 # Megatron-LM to HF
 modelconvert convert models/megatron_model hf --model-type minicpm
 ```
+
+### MTK Support
+
+Convert HuggingFace models to MTK format for MediaTek platforms:
+
+**Supported Platforms:**
+- **MT6991**: High-end MediaTek platform
+- **MT6989**: Mid-range MediaTek platform  
+- **MT6897**: Entry-level MediaTek platform
+
+**Supported Model Sizes:**
+- **0_5B, 0_9B, 1_2B, 1_6B, 8B, 0_58B**
+
+**Configuration Options:**
+- `--model-type`: `text-generation` (LLM) or `image-classification` (VLM)
+- `--quantization-config`: JSON configuration for platform, model size, and other parameters
+
+**Examples:**
+```bash
+# Basic LLM conversion
+modelconvert convert OpenBMB/MiniCPM4-0.5B mtk --model-type text-generation
+
+# VLM conversion with custom platform
+modelconvert convert vision-model mtk --model-type image-classification \
+  --quantization-config '{"platform": "MT6897", "model_size": "1_6B"}'
+
+# Advanced configuration
+modelconvert convert model mtk --model-type text-generation \
+  --quantization-config '{
+    "platform": "MT6991",
+    "model_size": "1_2B", 
+    "weight_bit": 4,
+    "mtk_cloud_path": "/custom/path/to/mtk_cloud"
+  }'
+```
+
+**Features:**
+- **Automatic model type detection**: Detects LLM vs VLM based on model configuration
+- **Real-time progress display**: Shows conversion progress with detailed logging
+- **Flexible path configuration**: Supports custom MTK cloud paths via parameters or environment variables
+- **Output validation**: Validates conversion results by checking for TFLite files
+
+**Dependencies:**
+- Requires separate `mtk_cloud` repository with conversion scripts
+- Repository provides `install.sh` for dependency installation
+- Uses `run_example_llm_cybertron.sh` for LLM models
+- Uses `run_example_vlm_cybertron.sh` for VLM models
 
 ## Troubleshooting
 
