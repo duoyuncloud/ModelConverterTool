@@ -118,8 +118,8 @@ def load_retro_args(args):
     args.max_position_embeddings = retro_config.retro_gpt_seq_length
     args.merge_file = (
         os.path.join(
-            args.retro_project_dir,
-            retro_config.retro_gpt_merge_file,
+        args.retro_project_dir,
+        retro_config.retro_gpt_merge_file,
         )
         if retro_config.retro_gpt_merge_file is not None
         else None
@@ -128,8 +128,8 @@ def load_retro_args(args):
     args.seq_length = retro_config.retro_gpt_seq_length
     args.tokenizer_model = (
         os.path.join(
-            args.retro_project_dir,
-            retro_config.retro_gpt_tokenizer_model,
+        args.retro_project_dir,
+        retro_config.retro_gpt_tokenizer_model,
         )
         if retro_config.retro_gpt_tokenizer_model is not None
         else None
@@ -138,8 +138,8 @@ def load_retro_args(args):
     args.train_samples = retro_config.retro_gpt_train_samples
     args.vocab_file = (
         os.path.join(
-            args.retro_project_dir,
-            retro_config.retro_gpt_vocab_file,
+        args.retro_project_dir,
+        retro_config.retro_gpt_vocab_file,
         )
         if retro_config.retro_gpt_vocab_file is not None
         else None
@@ -195,8 +195,8 @@ def validate_args(args, defaults={}):
             "pipeline-model-parallel size: {} ".format(
                 args.world_size,
                 args.data_parallel_size,
-                args.context_parallel_size,
-                args.tensor_model_parallel_size,
+                  args.context_parallel_size,
+                  args.tensor_model_parallel_size,
                 args.pipeline_model_parallel_size,
             ),
             flush=True,
@@ -688,7 +688,7 @@ def _add_inference_args(parser):
     group.add_argument(
         "--bert-embedder-type",
         default="megatron",
-        choices=["megatron", "huggingface"],
+                       choices=["megatron", "huggingface"],
         help="Select either Megatron or Huggingface as the " "Bert embedder.",
     )
 
@@ -741,7 +741,7 @@ def _add_retro_args(parser):
     group.add_argument(
         "--retro-no-verify-neighbor-count",
         action="store_false",
-        dest="retro_verify_neighbor_count",
+                       dest="retro_verify_neighbor_count",
         help="Skip verifying that len(GPT dataset) == len(saved " "neighbors).",
     )
 
@@ -1057,7 +1057,7 @@ def _add_training_args(parser):
     group.add_argument(
         "--micro-batch-size",
         type=int,
-        default=None,
+                       default=None,
         help="Batch size per model instance (local batch size). "
         "Global batch size is local batch size times data "
         "parallel size times number of micro batches.",
@@ -1212,7 +1212,7 @@ def _add_training_args(parser):
         "--empty-unused-memory-level",
         default=0,
         type=int,
-        choices=[0, 1, 2],
+                       choices=[0, 1, 2],
         help="Call torch.cuda.empty_cache() each iteration "
         "(training and eval), to reduce fragmentation."
         "0=off, 1=moderate, 2=aggressive.",
@@ -1546,8 +1546,8 @@ def _add_checkpointing_args(parser):
     group.add_argument(
         "--exit-on-missing-checkpoint",
         action="store_true",
-        help="If '--load' is set, but checkpoint is not found "
-        "(e.g., path typo), then exit instead of random "
+                       help="If '--load' is set, but checkpoint is not found "
+                       "(e.g., path typo), then exit instead of random "
         "initialization.",
     )
     group.add_argument("--use-dist-ckpt", action="store_true", help="Use distributed checkpoint format.")
@@ -1782,7 +1782,7 @@ def _add_data_args(parser):
     group.add_argument(
         "--data-path",
         nargs="*",
-        default=None,
+                       default=None,
         help="The weight and prefix list for a set of train, validation, and test"
         "datasets which split according to --split. The accepted formats are: "
         "(1) a single prefix, "

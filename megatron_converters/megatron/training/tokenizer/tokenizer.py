@@ -40,7 +40,6 @@ def build_tokenizer(args):
             tokenizer = _Llama2Tokenizer(args.tokenizer_model)
         else:
             # For conversion purposes, we can use a dummy tokenizer
-            print("[DEBUG] tokenizer_model is None, using dummy tokenizer for conversion")
             tokenizer = _NullTokenizer(args.vocab_size)
     elif args.tokenizer_type == "NullTokenizer":
         assert args.vocab_size is not None
@@ -85,7 +84,6 @@ class _BertWordPieceTokenizer(MegatronTokenizer):
         self._additional_special_tokens = []
 
         # (dsachan) Add BOS and EOS tokens
-        SPECIAL_TOKENS = {"eos_token": "[EOS]", "bos_token": "[BOS]"}
         self._bos_token = "[BOS]"
         self.add_token(self._bos_token)
         self._bos_token_id = self.vocab.get(self._bos_token)
@@ -460,7 +458,7 @@ class _Llama2Tokenizer(_SentencePieceTokenizer):
 
     def tokenize(self, s: str, bos=True, eos=False):
         """Default args for text completion, not chat/dialog."""
-        assert type(s) is str
+        assert isinstance(s, str)
         t = self.tokenizer.encode(s)
         if bos:
             t = [self.bos_id] + t

@@ -41,7 +41,6 @@ class ModelConverter:
     """
 
     def _get_converter_functions(self, output_format: str):
-        print(f"[DEBUG] _get_converter_functions: output_format={output_format}")
         """Lazy import converter functions"""
         if output_format in ("hf", "huggingface"):
             # Check if we need to use megatron2hf converter based on input format
@@ -225,7 +224,6 @@ class ModelConverter:
         fake_weight_shape_dict: dict = None,  # New argument for custom fake weight shapes
         mup2llama: bool = False,  # New argument for muP-to-LLaMA scaling
     ) -> ConversionResult:
-        print(f"[DEBUG] convert: model_name={model_name}, output_format={output_format}, model_type={model_type}")
         """
         Convert a model to the specified format. Always performs static validation after conversion.
         Only returns success if both conversion and static validation succeed.
@@ -240,18 +238,9 @@ class ModelConverter:
         try:
             input_format, norm_path = self._detect_model_format(model_name)
             validation = self._validate_conversion_inputs(input_format, output_format, model_type, quantization, device)
-            import sys
-
-            print(f"[DEBUG] validation: {validation}", file=sys.stderr, flush=True)
             if not validation["valid"]:
-                print(
-                    f"[DEBUG] conversion aborted due to validation errors: {validation['errors']}",
-                    file=sys.stderr,
-                    flush=True,
-                )
                 result.error = "; ".join(validation["errors"]) or "Invalid conversion inputs"
                 return result
-            print(f"[DEBUG] convert: detected input_format={input_format}, norm_path={norm_path}")
             convert_func, validate_func = self._get_converter_functions(output_format)
             internal_model_type = self._map_model_type_internal(model_type)
             # muP scaling: detect and compute scaling factors
@@ -413,13 +402,6 @@ class ModelConverter:
             if output_format in ("megatron2hf", "hf2megatron") or (
                 input_format == "megatron" and output_format in ("hf", "huggingface")
             ):
-                import sys
-
-                print(
-                    f"[DEBUG] About to call convert_func for {output_format}: {convert_func} with model_type={model_type}, norm_path={norm_path}, output_path={output_path}",
-                    file=sys.stderr,
-                    flush=True,
-                )
 
                 # Use the appropriate converter function based on input/output format
                 if input_format == "megatron" and output_format in ("hf", "huggingface"):
@@ -436,7 +418,6 @@ class ModelConverter:
                     conversion_result = convert_func(
                         model_type=model_type, checkpoint_path=norm_path, output_path=output_path
                     )
-                print(f"[DEBUG] convert_func returned: {conversion_result}", file=sys.stderr, flush=True)
                 # Wrap result if needed
                 if isinstance(conversion_result, bool):
                     result.success = conversion_result
@@ -610,7 +591,7 @@ class ModelConverter:
                 "gptq",
                 "awq",
                 "hf2megatron",
-                "mtk"
+                "mtk",
             ]
         }
 

@@ -95,44 +95,28 @@ def set_global_variables(args, build_tokenizer=True):
     if _GLOBAL_ARGS is None:
         _ensure_var_is_not_initialized(_GLOBAL_ARGS, "args")
         set_args(args)
-    else:
-        print("[DEBUG] Args already initialized, skipping set_args")
 
     # Only build these if they haven't been built yet
     if _GLOBAL_NUM_MICROBATCHES_CALCULATOR is None:
         _build_num_microbatches_calculator(args)
-    else:
-        print("[DEBUG] Num microbatches calculator already initialized, skipping")
 
     if build_tokenizer and _GLOBAL_TOKENIZER is None:
         _ = _build_tokenizer(args)
-    elif build_tokenizer:
-        print("[DEBUG] Tokenizer already initialized, skipping")
 
     if _GLOBAL_TENSORBOARD_WRITER is None:
         _set_tensorboard_writer(args)
-    else:
-        print("[DEBUG] Tensorboard writer already initialized, skipping")
 
     if _GLOBAL_WANDB_WRITER is None:
         _set_wandb_writer(args)
-    else:
-        print("[DEBUG] Wandb writer already initialized, skipping")
 
     if _GLOBAL_ONE_LOGGER is None:
         _set_one_logger(args)
-    else:
-        print("[DEBUG] One logger already initialized, skipping")
 
     if _GLOBAL_ADLR_AUTORESUME is None:
         _set_adlr_autoresume(args)
-    else:
-        print("[DEBUG] ADLR autoresume already initialized, skipping")
 
     if _GLOBAL_TIMERS is None:
         _set_timers(args)
-    else:
-        print("[DEBUG] Timers already initialized, skipping")
 
     if args.exit_signal_handler:
         _set_signal_handler()
@@ -150,8 +134,6 @@ def _build_num_microbatches_calculator(args):
         _ensure_var_is_not_initialized(_GLOBAL_NUM_MICROBATCHES_CALCULATOR, "num microbatches calculator")
 
         _GLOBAL_NUM_MICROBATCHES_CALCULATOR = build_num_microbatches_calculator(args)
-    else:
-        print("[DEBUG] Num microbatches calculator already exists, skipping")
 
 
 def _build_tokenizer(args):
@@ -160,8 +142,6 @@ def _build_tokenizer(args):
     if _GLOBAL_TOKENIZER is None:
         _ensure_var_is_not_initialized(_GLOBAL_TOKENIZER, "tokenizer")
         _GLOBAL_TOKENIZER = build_tokenizer(args)
-    else:
-        print("[DEBUG] Tokenizer already exists, skipping")
     return _GLOBAL_TOKENIZER
 
 
@@ -192,8 +172,6 @@ def _set_tensorboard_writer(args):
                     "no TensorBoard logs will be written.",
                     flush=True,
                 )
-    else:
-        print("[DEBUG] Tensorboard writer already exists, skipping")
 
 
 def _set_wandb_writer(args):
@@ -220,8 +198,6 @@ def _set_wandb_writer(args):
             os.makedirs(wandb_kwargs["dir"], exist_ok=True)
             wandb.init(**wandb_kwargs)
             _GLOBAL_WANDB_WRITER = wandb
-    else:
-        print("[DEBUG] Wandb writer already exists, skipping")
 
 
 def _set_one_logger(args):
@@ -247,8 +223,6 @@ def _set_one_logger(args):
                     "--index-url=https://sc-hw-artf.nvidia.com/api/pypi/hwinf-ml-pypi/simple"
                     " one_logger to install it"
                 )
-    else:
-        print("[DEBUG] One logger already exists, skipping")
 
 
 def _set_adlr_autoresume(args):
@@ -268,8 +242,6 @@ def _set_adlr_autoresume(args):
                 sys.exit()
 
             _GLOBAL_ADLR_AUTORESUME = AutoResume
-    else:
-        print("[DEBUG] ADLR autoresume already exists, skipping")
 
 
 def _set_timers(args):
@@ -278,8 +250,6 @@ def _set_timers(args):
     if _GLOBAL_TIMERS is None:
         _ensure_var_is_not_initialized(_GLOBAL_TIMERS, "timers")
         _GLOBAL_TIMERS = Timers(args.timing_log_level, args.timing_log_option)
-    else:
-        print("[DEBUG] Timers already exists, skipping")
 
 
 def _ensure_var_is_initialized(var, name):

@@ -20,7 +20,6 @@ def load(args):
     cc_flag = []
 
     # Skip fused kernels loading for conversion scripts
-    print("[DEBUG] Skipping fused kernels loading (not needed for conversion)")
     return
     # For conversion purposes, we skip the actual CUDA compilation
     # bare_metal_major and bare_metal_minor are not defined in conversion context

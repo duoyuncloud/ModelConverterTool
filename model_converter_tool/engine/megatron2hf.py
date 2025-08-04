@@ -39,9 +39,6 @@ def convert_megatron_to_hf(model_type: str, checkpoint_path: str, output_path: s
 
 
 def convert_hf_to_megatron(model_type: str, hf_path: str, output_path: str, **kwargs):
-    print(
-        f"[DEBUG] convert_hf_to_megatron called with model_type={model_type}, hf_path={hf_path}, output_path={output_path}, kwargs={kwargs}"
-    )
     """
     Convert a HuggingFace-format checkpoint to Megatron format.
     Args:
@@ -59,17 +56,14 @@ def convert_hf_to_megatron(model_type: str, hf_path: str, output_path: str, **kw
     # Check if hf_path is a local path or a HuggingFace model name
     if os.path.exists(hf_path):
         local_model_path = hf_path
-        print(f"[DEBUG] Using local model path: {local_model_path}")
     else:
         # Download the model to a temporary directory
-        print(f"[DEBUG] Downloading model: {hf_path}")
         try:
             from transformers import AutoModelForCausalLM
             import tempfile
 
             # Create a temporary directory for the model
             temp_dir = tempfile.mkdtemp(prefix="megatron_convert_")
-            print(f"[DEBUG] Temporary directory: {temp_dir}")
 
             # Download the model
             model = AutoModelForCausalLM.from_pretrained(hf_path, device_map="cpu", trust_remote_code=True)
@@ -81,13 +75,11 @@ def convert_hf_to_megatron(model_type: str, hf_path: str, output_path: str, **kw
 
                 tokenizer = AutoTokenizer.from_pretrained(hf_path, trust_remote_code=True)
                 tokenizer.save_pretrained(temp_dir)
-            except Exception as e:
-                print(f"[DEBUG] Could not save tokenizer: {e}")
+            except Exception:
+                pass
 
             local_model_path = temp_dir
-            print(f"[DEBUG] Model downloaded to: {local_model_path}")
-        except Exception as e:
-            print(f"[DEBUG] Error downloading model: {e}")
+        except Exception:
             return False
 
     class Args:
@@ -101,9 +93,6 @@ def convert_hf_to_megatron(model_type: str, hf_path: str, output_path: str, **kw
                 setattr(self, k, v)
 
     args = Args(load_dir=local_model_path, save_dir=output_path, model_type=model_type, **kwargs)
-    print(
-        f"[DEBUG] Args object created: load_dir={args.load_dir}, save_dir={args.save_dir}, model_type={args.model_type}"
-    )
     if model_type == "llama":
         return convert_llama(args, direction="hf2megatron")
     elif model_type == "minicpm":

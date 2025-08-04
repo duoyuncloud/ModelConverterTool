@@ -395,8 +395,8 @@ def set_attn_state(args, layer, hf_layer):
         torch.cat(
             [
                 hf_attn.q_proj.weight.reshape((ng, dim * nh // ng, -1)),
-                hf_attn.k_proj.weight.reshape((ng, dim, -1)),
-                hf_attn.v_proj.weight.reshape((ng, dim, -1)),
+        hf_attn.k_proj.weight.reshape((ng, dim, -1)),
+        hf_attn.v_proj.weight.reshape((ng, dim, -1)),
             ],
             dim=1,
         ).reshape((-1, args.hidden_size))
@@ -413,8 +413,8 @@ def set_mlp_state(args, layer, hf_layer):
     mlp.dense_h_to_4h.weight.data.copy_(
         torch.cat(
             [
-                hf_mlp.gate_proj.weight,
-                hf_mlp.up_proj.weight,
+        hf_mlp.gate_proj.weight,
+        hf_mlp.up_proj.weight,
             ],
             dim=0,
         )
@@ -516,7 +516,7 @@ def _load_checkpoint(queue, args):
         "--no-initialization",
         "--load",
         args.load_dir,
-    ]
+                ]
 
     margs = parse_args()
     margs.tokenizer_model = args.tokenizer_model

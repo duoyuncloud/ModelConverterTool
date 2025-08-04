@@ -42,26 +42,19 @@ def verify_transformers_version():
 
 def load_args_from_checkpoint(args):
 
-    print(f"[DEBUG] load_args_from_checkpoint: loading config from {args.load}")
-
     # Read Llama args.
     try:
         # Try to load from our custom metadata.json format first
         metadata_path = os.path.join(args.load, "metadata.json")
         if os.path.exists(metadata_path):
-            print(f"[DEBUG] Loading from metadata.json: {metadata_path}")
             with open(metadata_path) as f:
                 minicpm_args = json.load(f)
-            print(f"[DEBUG] Metadata loaded successfully: {type(minicpm_args)}")
         else:
             # Fall back to original config.json format
             minicpm_args_path = os.path.join(args.load, "config.json")
-            print(f"[DEBUG] Config path: {minicpm_args_path}")
             with open(minicpm_args_path) as f:
                 minicpm_args = json.load(f)
-            print(f"[DEBUG] Config loaded successfully: {type(minicpm_args)}")
-    except Exception as e:
-        print(f"[DEBUG] Error loading config: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
@@ -169,53 +162,36 @@ def set_layer_state(args, model, hf_model, layer_idx):
 def load_checkpoint_to_model(args):
     """Set model params for hf2megatron conversion."""
 
-    print("[DEBUG] Starting load_checkpoint_to_model...")
-
     # Import model_provider from megatron inference
-    print("[DEBUG] Importing model_provider...")
     from megatron.inference.gpt.model_provider import model_provider
 
-    print("[DEBUG] Importing AutoModelForCausalLM...")
     from transformers import AutoModelForCausalLM
 
-    print(f"[DEBUG] Loading HF model from: {args.load}")
     # Load Huggingface model using AutoModelForCausalLM to handle MiniCPM correctly.
     try:
         hf_model = AutoModelForCausalLM.from_pretrained(args.load, device_map="cpu", trust_remote_code=True)
-        print("[DEBUG] HF model loaded successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error loading HF model: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
         raise
 
     # Init Megatron model.
-    print("[DEBUG] Creating Megatron model...")
     try:
         model = model_provider(True, True).to(args.params_dtype)
-        print("[DEBUG] Megatron model created successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error creating Megatron model: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
         raise
 
     # Set model state.
-    print("[DEBUG] Setting model state...")
     try:
-        print("[DEBUG] Setting preprocess state...")
         set_preprocess_state(args, model, hf_model)
-        print("[DEBUG] Setting postprocess state...")
         set_postprocess_state(args, model, hf_model)
-        print("[DEBUG] Setting layer states...")
         for layer_idx in tqdm(range(args.num_layers), "set layer states"):
-            print(f"[DEBUG] Setting layer {layer_idx}...")
             set_layer_state(args, model, hf_model, layer_idx)
-        print("[DEBUG] Model state set successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error in set_layer_state: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
@@ -227,31 +203,22 @@ def load_checkpoint_to_model(args):
 def load_megatron_checkpoint_to_hf(args):
     """Load Megatron model and convert to HuggingFace format for megatron2hf conversion."""
 
-    print("[DEBUG] Starting load_megatron_checkpoint_to_hf...")
-
-    # Import model_provider from megatron inference
-    print("[DEBUG] Importing model_provider...")
-
-    print("[DEBUG] Importing AutoModelForCausalLM...")
     from transformers import AutoModelForCausalLM, AutoConfig
 
     # Load the saved Megatron model
-    print(f"[DEBUG] Loading Megatron model from: {args.load}")
     try:
         # import torch  # Not used in this function
 
         # model_path = os.path.join(args.load, "model.pt")  # Not used
         # megatron_model = torch.load(model_path, map_location="cpu")
-        print("[DEBUG] Megatron model loaded successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error loading Megatron model: {e}")
+        pass
+    except Exception:
         import traceback
 
         traceback.print_exc()
         raise
 
     # Create a HuggingFace model with the same configuration
-    print("[DEBUG] Creating HuggingFace model...")
     try:
         # Create config from metadata
         metadata_path = os.path.join(args.load, "metadata.json")
@@ -279,22 +246,18 @@ def load_megatron_checkpoint_to_hf(args):
         config.update(config_dict)
 
         hf_model = AutoModelForCausalLM.from_config(config, trust_remote_code=True)
-        print("[DEBUG] HuggingFace model created successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error creating HuggingFace model: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
         raise
 
     # Convert Megatron weights to HuggingFace format
-    print("[DEBUG] Converting weights...")
     try:
         # This is a simplified conversion - in practice, you'd need to map all the weights
         # For now, we'll just return the HuggingFace model with the config
-        print("[DEBUG] Weight conversion completed")
-    except Exception as e:
-        print(f"[DEBUG] Error converting weights: {e}")
+        pass
+    except Exception:
         import traceback
 
         traceback.print_exc()
@@ -305,14 +268,10 @@ def load_megatron_checkpoint_to_hf(args):
 
 def _load_checkpoint(queue, args):
 
-    print("[DEBUG] Starting _load_checkpoint...")
-
     # Llama-2 requires HF transformers >=4.31.0.
-    print("[DEBUG] Verifying transformers version...")
     verify_transformers_version()
 
     # Add current directory to path to find local megatron module
-    print("[DEBUG] Setting up sys.path...")
     current_dir = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, current_dir)
 
@@ -321,35 +280,25 @@ def _load_checkpoint(queue, args):
     if args.megatron_path is not None:
         sys.path.insert(0, args.megatron_path)
 
-    print("[DEBUG] Importing Megatron modules...")
     try:
-        print("[DEBUG] Importing arguments...")
         from megatron.training.arguments import parse_args, validate_args
 
-        print("[DEBUG] Importing global_vars...")
         from megatron.training.global_vars import set_global_variables
 
-        print("[DEBUG] Importing module...")
         from megatron.legacy.model import module
 
-        print("[DEBUG] Importing mpu...")
         from megatron.core import mpu
 
-        print("[DEBUG] Importing enums...")
         from megatron.core.enums import ModelType
 
-        print("[DEBUG] Importing fused_kernels...")
         from megatron.legacy import fused_kernels
 
-        print("[DEBUG] All imports successful")
-    except ModuleNotFoundError as e:
-        print(f"[DEBUG] Import error: {e}")
+    except ModuleNotFoundError:
         print("Unable to import Megatron, please specify the path to Megatron using --megatron-path. Exiting.")
         queue.put("exit")
         exit(1)
 
     # We want all arguments to come from us.
-    print("[DEBUG] Setting up sys.argv...")
     sys.argv = [
         "script.py",
         "--no-masked-softmax-fusion",
@@ -369,36 +318,26 @@ def _load_checkpoint(queue, args):
         args.load_dir,
     ]
 
-    print("[DEBUG] Parsing arguments...")
     margs = parse_args()
-    print("[DEBUG] Setting tokenizer_model...")
     margs.tokenizer_model = args.tokenizer_model
-    print("[DEBUG] Loading args from checkpoint...")
     load_args_from_checkpoint(margs)
 
     # Arguments do sanity checks on the world size, but we don't care,
     # so trick it into thinking we are plenty of processes.
     margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
-    print("[DEBUG] Validating arguments...")
     margs = validate_args(margs)
-    print("[DEBUG] Arguments validated successfully")
 
     def check_for_arg(arg_name, default=None):
-        print(f"[DEBUG] Checking arg: {arg_name}")
         if getattr(margs, arg_name, None) is None:
             if default is not None:
-                print(f"[DEBUG] Setting {arg_name} to default: {default}")
                 setattr(margs, arg_name, default)
             else:
                 print(f"Checkpoint does not specify the argument {arg_name}. Exiting.")
                 print(f"Arguments: {margs}")
                 queue.put("exit")
                 exit(1)
-        else:
-            print(f"[DEBUG] {arg_name} is already set: {getattr(margs, arg_name)}")
 
-    print("[DEBUG] Checking required arguments...")
     check_for_arg("tensor_model_parallel_size")
     check_for_arg("pipeline_model_parallel_size")
     check_for_arg("num_layers")
@@ -414,43 +353,26 @@ def _load_checkpoint(queue, args):
     check_for_arg("params_dtype")
     check_for_arg("swiglu", False)
 
-    print("[DEBUG] All argument checks completed successfully")
-
     # Determine how to make our models.
     # MiniCPM is also a GPT model, so we accept both "GPT" and "minicpm"
-    print(f"[DEBUG] Checking model_type: {args.model_type}")
     assert args.model_type in ["GPT", "minicpm"], f"MiniCPM is a GPT model, but got {args.model_type}."
-    print("[DEBUG] Setting model_type to ModelType.encoder_or_decoder")
     margs.model_type = ModelType.encoder_or_decoder
 
     # Suppress warning about torch.distributed not being initialized.
-    print("[DEBUG] Setting embedding_warning_printed")
     module.MegatronModule.embedding_warning_printed = True
 
-    print("[DEBUG] Setting global variables...")
     try:
         set_global_variables(margs, build_tokenizer=False)
-        print("[DEBUG] Global variables set successfully")
-    except Exception as e:
-        print(f"[DEBUG] Error in set_global_variables: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
         raise
-    print("[DEBUG] Setting tensor model parallel world size...")
     mpu.set_tensor_model_parallel_world_size(margs.tensor_model_parallel_size)
-    print("[DEBUG] Setting pipeline model parallel world size...")
     mpu.set_pipeline_model_parallel_world_size(margs.pipeline_model_parallel_size)
-    print("[DEBUG] Setting virtual pipeline model parallel world size...")
     mpu.set_virtual_pipeline_model_parallel_world_size(margs.virtual_pipeline_model_parallel_size)
-    print("[DEBUG] Loading fused kernels...")
-    print(f"[DEBUG] fused_kernels type: {type(fused_kernels)}")
-    print(f"[DEBUG] fused_kernels value: {fused_kernels}")
     if fused_kernels is not None:
-        print("[DEBUG] Calling fused_kernels.load(margs)...")
         fused_kernels.load(margs)
-    else:
-        print("[DEBUG] Skipping fused_kernels.load (fused_kernels is None)")
 
     # Short aliases.
     tp_size = margs.tensor_model_parallel_size
@@ -576,14 +498,11 @@ def _load_checkpoint(queue, args):
 def load_checkpoint(queue, args, direction="hf2megatron"):
     try:
         # For direct saving, we'll bypass the queue system and save directly
-        print(f"[DEBUG] Starting direct save mode for {direction}...")
 
         # Llama-2 requires HF transformers >=4.31.0.
-        print("[DEBUG] Verifying transformers version...")
         verify_transformers_version()
 
         # Add current directory to path to find local megatron module
-        print("[DEBUG] Setting up sys.path...")
         current_dir = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, current_dir)
 
@@ -592,34 +511,24 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
         if args.megatron_path is not None:
             sys.path.insert(0, args.megatron_path)
 
-        print("[DEBUG] Importing Megatron modules...")
         try:
-            print("[DEBUG] Importing arguments...")
             from megatron.training.arguments import parse_args, validate_args
 
-            print("[DEBUG] Importing global_vars...")
             from megatron.training.global_vars import set_global_variables
 
-            print("[DEBUG] Importing module...")
             # from megatron.legacy.model import module  # Not used
 
-            print("[DEBUG] Importing mpu...")
             from megatron.core import mpu
 
-            print("[DEBUG] Importing enums...")
             from megatron.core.enums import ModelType
 
-            print("[DEBUG] Importing fused_kernels...")
             from megatron.legacy import fused_kernels
 
-            print("[DEBUG] All imports successful")
-        except ModuleNotFoundError as e:
-            print(f"[DEBUG] Import error: {e}")
+        except ModuleNotFoundError:
             print("Unable to import Megatron, please specify the path to Megatron using --megatron-path. Exiting.")
             return None
 
         # We want all arguments to come from us.
-        print("[DEBUG] Setting up sys.argv...")
         sys.argv = [
             "script.py",
             "--no-masked-softmax-fusion",
@@ -639,33 +548,24 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
             args.load_dir,
         ]
 
-        print("[DEBUG] Parsing arguments...")
         margs = parse_args()
-        print("[DEBUG] Setting tokenizer_model...")
         margs.tokenizer_model = args.tokenizer_model
-        print("[DEBUG] Loading args from checkpoint...")
         load_args_from_checkpoint(margs)
 
         # Arguments do sanity checks on the world size, but we don't care,
         # so trick it into thinking we are plenty of processes.
         margs.world_size = margs.tensor_model_parallel_size * margs.pipeline_model_parallel_size
 
-        print("[DEBUG] Validating arguments...")
         margs = validate_args(margs)
-        print("[DEBUG] Arguments validated successfully")
 
         def check_for_arg(arg_name, default=None):
-            print(f"[DEBUG] Checking arg: {arg_name}")
             if getattr(margs, arg_name, None) is None:
                 if default is not None:
-                    print(f"[DEBUG] Setting {arg_name} to default: {default}")
                     setattr(margs, arg_name, default)
                 else:
                     print(f"Checkpoint does not specify the argument {arg_name}. Exiting.")
                     print(f"Arguments: {margs}")
                     return None
-            else:
-                print(f"[DEBUG] {arg_name} is already set: {getattr(margs, arg_name)}")
 
         # Check for required arguments
         check_for_arg("tensor_model_parallel_size", 1)
@@ -683,45 +583,30 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
         check_for_arg("params_dtype")
         check_for_arg("swiglu")
 
-        print("[DEBUG] All argument checks completed successfully")
-
         # Check model type
-        print(f"[DEBUG] Checking model_type: {args.model_type}")
         if args.model_type == "minicpm":
             margs.model_type = ModelType.encoder_or_decoder
-        print(f"[DEBUG] Setting model_type to {margs.model_type}")
 
         # Set global variables
-        print("[DEBUG] Setting global variables...")
         # set_args(margs)  # Not imported, skipping
         set_global_variables(margs)
-        print("[DEBUG] Global variables set successfully")
 
         # Set tensor model parallel world size
-        print("[DEBUG] Setting tensor model parallel world size...")
         mpu.set_tensor_model_parallel_world_size(margs.tensor_model_parallel_size)
-        print("[DEBUG] Setting pipeline model parallel world size...")
         mpu.set_pipeline_model_parallel_world_size(margs.pipeline_model_parallel_size)
-        print("[DEBUG] Setting virtual pipeline model parallel world size...")
         mpu.set_virtual_pipeline_model_parallel_world_size(margs.virtual_pipeline_model_parallel_size)
 
         # Load fused kernels
-        print("[DEBUG] Loading fused kernels...")
-        print(f"[DEBUG] fused_kernels type: {type(fused_kernels)}")
-        print(f"[DEBUG] fused_kernels value: {fused_kernels}")
-        print("[DEBUG] Calling fused_kernels.load(margs)...")
         try:
             fused_kernels.load(margs)
-        except Exception as e:
-            print(f"[DEBUG] Skipping fused kernels loading (not needed for conversion): {e}")
+        except Exception:
+            pass
 
         # Load the model based on direction
         if direction == "hf2megatron":
-            print("[DEBUG] Starting load_checkpoint_to_model for hf2megatron...")
             model = load_checkpoint_to_model(margs)
 
             # Save the model directly
-            print(f"[DEBUG] Saving model to {args.save_dir}...")
             os.makedirs(args.save_dir, exist_ok=True)
 
             # Save model state dict
@@ -744,26 +629,21 @@ def load_checkpoint(queue, args, direction="hf2megatron"):
             with open(os.path.join(args.save_dir, "metadata.json"), "w") as f:
                 json.dump(metadata, f, indent=2)
 
-            print(f"[DEBUG] Model saved successfully to {args.save_dir}")
             return model
         elif direction == "megatron2hf":
-            print("[DEBUG] Starting load_megatron_checkpoint_to_hf for megatron2hf...")
             hf_model = load_megatron_checkpoint_to_hf(margs)
 
             # Save the HuggingFace model
-            print(f"[DEBUG] Saving HuggingFace model to {args.save_dir}...")
             os.makedirs(args.save_dir, exist_ok=True)
 
             # Save the model using HuggingFace's save_pretrained
             hf_model.save_pretrained(args.save_dir)
 
-            print(f"[DEBUG] HuggingFace model saved successfully to {args.save_dir}")
             return hf_model
         else:
             raise ValueError(f"Unsupported direction: {direction}")
 
-    except Exception as e:
-        print(f"[DEBUG] Error in load_checkpoint: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
