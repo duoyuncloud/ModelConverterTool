@@ -287,6 +287,43 @@ def convert_7b_llama_megatron_to_hf(in_dir: str, save_path: str) -> None:
     )
 
 
+# Standalone wrapper functions for backward compatibility and easy imports
+def convert_minicpm_megatron_to_hf_tp_pp(
+    num_layer: int, tp_size: int, pp_size: int, in_dir: str, save_path: str, num_kv_heads: int, num_query_heads: int
+) -> None:
+    """
+    Standalone wrapper function for MiniCPM Megatron to HF conversion with TP/PP support
+    """
+    converter = TensorParallelConverter()
+    converter.convert_minicpm_megatron_to_hf_tp_pp(
+        num_layer=num_layer,
+        tp_size=tp_size,
+        pp_size=pp_size,
+        in_dir=in_dir,
+        save_path=save_path,
+        num_kv_heads=num_kv_heads,
+        num_query_heads=num_query_heads,
+    )
+
+
+def convert_llama_megatron_to_hf_tp_pp(
+    num_layer: int, tp_size: int, pp_size: int, in_dir: str, save_path: str, num_kv_heads: int, num_query_heads: int
+) -> None:
+    """
+    Standalone wrapper function for Llama Megatron to HF conversion with TP/PP support
+    """
+    converter = TensorParallelConverter()
+    converter.convert_llama_megatron_to_hf_tp_pp(
+        num_layer=num_layer,
+        tp_size=tp_size,
+        pp_size=pp_size,
+        in_dir=in_dir,
+        save_path=save_path,
+        num_kv_heads=num_kv_heads,
+        num_query_heads=num_query_heads,
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Megatron to HuggingFace conversion with TP/PP support")
     parser.add_argument("--model_type", choices=["minicpm", "llama"], default="minicpm")

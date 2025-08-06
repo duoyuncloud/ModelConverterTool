@@ -40,7 +40,7 @@ from .smart_converter import (
 )
 
 # Direct checkpoint converters
-from .ckpt_to_hf_minicpm_with_tp_pp import convert_minicpm_megatron_to_hf_tp_pp as ckpt_to_hf_minicpm_tp_pp
+from .ckpt_to_hf_minicpm_with_tp_pp import convert_minicpm_megatron_to_hf_tp_pp as ckpt_convert_minicpm_tp_pp
 
 # Distributed checkpoint converters
 try:
@@ -73,7 +73,7 @@ __all__ = [
     "convert_llama_7b",
     "convert_minicpm4_8b",
     # Direct checkpoint converters
-    "ckpt_to_hf_minicpm_tp_pp",
+    "ckpt_convert_minicpm_tp_pp",
     # Distributed checkpoint converters
     "dist_ckpt_to_hf_minicpm",
     "dist_ckpt_to_hf_minicpm4",
