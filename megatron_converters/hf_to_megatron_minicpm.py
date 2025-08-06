@@ -36,9 +36,15 @@ def convert_hf_to_megatron_minicpm_main(
         output_path = save_dir + "/" + f"mp_rank_0{tp_rank}"
     os.makedirs(output_path, exist_ok=True)
 
-    cpm_model_dict = torch.load(load_path)
-    # llama_model = AutoModelForCausalLM.from_pretrained(load_path, torch_dtype=torch.bfloat16, trust_remote_code=True)
-    # cpm_model_dict = llama_model.state_dict()
+    # Load HuggingFace model
+    try:
+        from transformers import AutoModelForCausalLM
+        model = AutoModelForCausalLM.from_pretrained(load_path, torch_dtype=torch.bfloat16, trust_remote_code=True)
+        cpm_model_dict = model.state_dict()
+    except Exception as e:
+        print(f"Failed to load HuggingFace model: {e}")
+        # Fallback to torch.load for local files
+        cpm_model_dict = torch.load(load_path)
 
     for k in cpm_model_dict:
         print(k, cpm_model_dict[k].shape, cpm_model_dict[k].dtype)
@@ -206,9 +212,19 @@ def convert_hf_to_megatron_minicpm(
     print(f"Model config: {num_layer} layers, TP={tp_size}, PP={pp_size}")
     print(f"Attention config: {num_query_heads} query heads, {num_kv_heads} KV heads")
 
-    # This would need to be implemented to call the main conversion logic
-    # For now, it's a placeholder that can be extended based on the specific needs
-    pass
+    # Call the main conversion function
+    convert_hf_to_megatron_minicpm_main(
+        load_path=checkpoint_path,
+        num_layer=num_layer,
+        tp_size=tp_size,
+        tp_rank=0,  # Default to rank 0 for single conversion
+        pp_size=pp_size,
+        pp_rank=0,  # Default to rank 0 for single conversion
+        save_dir=output_path,
+        num_kv_heads=num_kv_heads,
+        num_query_heads=num_query_heads,
+        use_mla=kwargs.get("use_mla", False),
+    )
 
 
 def main():

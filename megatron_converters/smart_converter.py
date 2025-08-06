@@ -59,6 +59,14 @@ class SmartConverter:
             },
             # Llama series
             "llama": {
+                "0.5b": {
+                    "layers": 12,
+                    "tp_size": 1,
+                    "pp_size": 1,
+                    "use_basic": True,
+                    "num_kv_heads": 8,
+                    "num_query_heads": 32,
+                },
                 "7b": {
                     "layers": 32,
                     "tp_size": 1,
@@ -99,12 +107,69 @@ class SmartConverter:
         Automatically detect model type and size from checkpoint structure
 
         Args:
-            checkpoint_path: Path to the checkpoint directory
+            checkpoint_path: Path to the checkpoint directory or HuggingFace model name
 
         Returns:
             Tuple of (model_type, model_size)
         """
         checkpoint_path = Path(checkpoint_path)
+
+        # Check if it's a HuggingFace model (not a local path)
+        if not checkpoint_path.exists() and "/" in str(checkpoint_path):
+            # This is likely a HuggingFace model name
+            try:
+                from transformers import AutoConfig
+                config = AutoConfig.from_pretrained(str(checkpoint_path), trust_remote_code=True)
+                
+                # Detect model type from config
+                if hasattr(config, 'model_type'):
+                    raw_model_type = config.model_type
+                    print(f"DEBUG: Raw model type: {raw_model_type}")
+                    # Map HuggingFace model types to our supported types
+                    if raw_model_type in ['gpt2', 'gpt', 'gpt_neox']:
+                        model_type = 'llama'  # Treat GPT models as Llama-like for conversion
+                    elif raw_model_type in ['llama', 'mistral']:
+                        model_type = 'llama'
+                    elif raw_model_type in ['minicpm']:
+                        model_type = 'minicpm'
+                    else:
+                        model_type = 'llama'  # Default for unknown (treat as Llama-like)
+                    print(f"DEBUG: Mapped model type: {model_type}")
+                elif hasattr(config, 'architectures') and config.architectures:
+                    arch = config.architectures[0].lower()
+                    if 'llama' in arch or 'mistral' in arch:
+                        model_type = 'llama'
+                    elif 'minicpm' in arch:
+                        model_type = 'minicpm'
+                    elif 'gpt2' in arch or 'gpt' in arch:
+                        model_type = 'llama'  # Treat GPT models as Llama-like for conversion
+                    else:
+                        model_type = 'llama'  # Default for unknown (treat as Llama-like)
+                else:
+                    model_type = 'llama'  # Default (treat as Llama-like)
+                
+                # Detect model size from config
+                if hasattr(config, 'num_hidden_layers'):
+                    num_layers = config.num_hidden_layers
+                    if num_layers == 32:
+                        model_size = '8b'
+                    elif num_layers == 24:
+                        model_size = '3b'
+                    elif num_layers == 40:
+                        model_size = '14b'
+                    elif num_layers == 18:
+                        model_size = '1.5b'
+                    elif num_layers == 12:
+                        model_size = '0.5b'
+                    else:
+                        model_size = 'unknown'
+                else:
+                    model_size = 'unknown'
+                
+                return model_type, model_size
+            except Exception as e:
+                print(f"Warning: Could not detect HuggingFace model type: {e}")
+                return 'minicpm', 'unknown'
 
         # Check if directory exists
         if not checkpoint_path.exists():
@@ -375,10 +440,37 @@ class SmartConverter:
             )
         elif model_type == "llama":
             from .loader_llama2_hf import load_checkpoint
+            import queue
+            import os
 
-            load_checkpoint(
-                None, type("Args", (), {"load": checkpoint_path, "save": output_path, **kwargs}), "hf2megatron"
-            )
+            # Create a queue for the conversion process
+            conversion_queue = queue.Queue()
+            
+            # If it's a HuggingFace model name, download it first
+            if "/" in checkpoint_path and not os.path.exists(checkpoint_path):
+                from transformers import AutoModel
+                print(f"Downloading model: {checkpoint_path}")
+                model = AutoModel.from_pretrained(checkpoint_path, torch_dtype='auto', trust_remote_code=True)
+                # Get the actual cached path
+                from huggingface_hub import snapshot_download
+                cached_path = snapshot_download(repo_id=checkpoint_path, local_files_only=True)
+                checkpoint_path = cached_path
+                print(f"Model downloaded to: {checkpoint_path}")
+            
+            # Create args object with required attributes
+            megatron_path = os.path.join(os.path.dirname(__file__), "megatron")
+            
+            args_obj = type("Args", (), {
+                "load": checkpoint_path,  # Use 'load' to match load_args_from_checkpoint
+                "load_dir": checkpoint_path,  # Use 'load_dir' to match _load_checkpoint
+                "save": output_path,
+                "tokenizer_model": "tokenizer.model",  # Default tokenizer path
+                "model_type": "GPT",  # Required for Llama models
+                "megatron_path": megatron_path,  # Path to local Megatron
+                **kwargs
+            })
+            
+            load_checkpoint(conversion_queue, args_obj)
 
         print(f"Conversion completed: {output_path}")
 
@@ -419,3 +511,4 @@ def convert_minicpm4_8b(checkpoint_path: str, output_path: str) -> None:
     """8B MiniCPM-4 dedicated conversion"""
     converter = SmartConverter()
     converter.convert_megatron_to_hf(checkpoint_path, output_path, "minicpm", "8b")
+    
