@@ -237,9 +237,9 @@ class SmartConverter:
         print(f"Starting smart conversion: {checkpoint_path} -> {output_path}")
 
         # 1. Auto-detect model type and size
-        if model_type is None or model_size is None:
+        if model_type is None or model_size is None or model_type == "auto":
             detected_type, detected_size = self.detect_model_type_and_size(checkpoint_path)
-            model_type = model_type or detected_type
+            model_type = detected_type if model_type in (None, "auto") else model_type
             model_size = model_size or detected_size
             print(f"Auto-detection result: {model_type} {model_size}")
 
@@ -344,9 +344,9 @@ class SmartConverter:
         print(f"Starting smart conversion: {checkpoint_path} -> {output_path}")
 
         # Auto-detect if not provided
-        if model_type is None or model_size is None:
+        if model_type is None or model_size is None or model_type == "auto":
             detected_type, detected_size = self.detect_model_type_and_size(checkpoint_path)
-            model_type = model_type or detected_type
+            model_type = detected_type if model_type in (None, "auto") else model_type
             model_size = model_size or detected_size
             print(f"Auto-detection result: {model_type} {model_size}")
 

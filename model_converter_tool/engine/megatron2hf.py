@@ -52,19 +52,28 @@ def convert_megatron_to_hf(model_type: str, checkpoint_path: str, output_path: s
     use_smart_converter = kwargs.pop("use_smart_converter", True)
     use_legacy_converter = kwargs.pop("use_legacy_converter", False)
 
-    if use_legacy_converter:
-        # Use legacy converters for backward compatibility
+    # Force smart converter for auto detection
+    if model_type == "auto":
+        use_smart_converter = True
+        use_legacy_converter = False
+
+    if use_legacy_converter and model_type != "auto":
+        # Use legacy converters for backward compatibility (but not for auto)
         return _convert_megatron_to_hf_legacy(model_type, checkpoint_path, output_path, **kwargs)
 
-    if use_smart_converter:
+    if use_smart_converter or model_type == "auto":
         try:
             # Use smart converter with auto-detection
             smart_convert_megatron_to_hf(checkpoint_path, output_path, **kwargs)
             return True
         except Exception as e:
             print(f"Smart conversion failed: {e}")
-            print("Falling back to legacy converter...")
-            return _convert_megatron_to_hf_legacy(model_type, checkpoint_path, output_path, **kwargs)
+            if model_type != "auto":
+                print("Falling back to legacy converter...")
+                return _convert_megatron_to_hf_legacy(model_type, checkpoint_path, output_path, **kwargs)
+            else:
+                print("Auto-detection failed and no fallback available for 'auto' model type")
+                return False
 
     # Use model-specific converters if available
     if model_type == "minicpm":
@@ -191,19 +200,28 @@ def convert_hf_to_megatron(model_type: str, hf_path: str, output_path: str, **kw
     use_smart_converter = kwargs.pop("use_smart_converter", True)
     use_legacy_converter = kwargs.pop("use_legacy_converter", False)
 
-    if use_legacy_converter:
-        # Use legacy converters for backward compatibility
+    # Force smart converter for auto detection
+    if model_type == "auto":
+        use_smart_converter = True
+        use_legacy_converter = False
+
+    if use_legacy_converter and model_type != "auto":
+        # Use legacy converters for backward compatibility (but not for auto)
         return _convert_hf_to_megatron_legacy(model_type, hf_path, output_path, **kwargs)
 
-    if use_smart_converter:
+    if use_smart_converter or model_type == "auto":
         try:
             # Use smart converter with auto-detection
             smart_convert_hf_to_megatron(hf_path, output_path, **kwargs)
             return True
         except Exception as e:
             print(f"Smart conversion failed: {e}")
-            print("Falling back to legacy converter...")
-            return _convert_hf_to_megatron_legacy(model_type, hf_path, output_path, **kwargs)
+            if model_type != "auto":
+                print("Falling back to legacy converter...")
+                return _convert_hf_to_megatron_legacy(model_type, hf_path, output_path, **kwargs)
+            else:
+                print("Auto-detection failed and no fallback available for 'auto' model type")
+                return False
 
     # Use model-specific converters if available
     if model_type == "minicpm":
