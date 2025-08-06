@@ -47,10 +47,7 @@ def test_quantization(api, output_dir, input_model, output_format, output_file, 
         device="cpu",
         quantization=quantization,
     )
-    print(f"DEBUG: result.success = {result.success}")
-    print(f"DEBUG: result.error = {result.error}")
-    print(f"DEBUG: result.validation = {result.validation}")
-    print(f"DEBUG: result.output_path = {result.output_path}")
+    # Debug prints removed
     assert result.success, f"{output_format} quantization failed: {result.error}"
     assert os.path.exists(output_path)
 

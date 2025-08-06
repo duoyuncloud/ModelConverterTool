@@ -7,6 +7,8 @@ Supports ONNX, GGUF, MLX, TorchScript, GPTQ, AWQ, SafeTensors, HuggingFace, **Me
 
 - **Multi-format support**: Convert between ONNX, GGUF, MLX, GPTQ, AWQ, SafeTensors, **Megatron-LM**, **MTK**, and more
 - **Megatron-LM integration**: Bidirectional conversion between HuggingFace and Megatron-LM formats
+- **Tensor Parallel Support**: Advanced conversion for distributed models with TP/PP (Tensor/Pipeline Parallelism)
+- **Smart Auto-Detection**: Automatically detects model type, size, and parallel configuration
 - **MTK integration**: Convert HuggingFace models to MTK format for MediaTek platforms
 - **Advanced quantization**: Fine-grained control with GPTQ/AWQ configuration
 - **muP-to-LLaMA scaling**: Automatic parameter rescaling for LLaMA compatibility
@@ -42,6 +44,9 @@ modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
 # Convert Megatron-LM to HuggingFace format
 modelconvert convert models/megatron_model hf --model-type minicpm
 
+# Convert tensor parallel Megatron model (auto-detection)
+modelconvert convert models/tp_megatron_model hf --model-type auto
+
 # Convert to MTK format for MediaTek platforms
 modelconvert convert OpenBMB/MiniCPM4-0.5B mtk --model-type text-generation
 
@@ -73,7 +78,9 @@ Convert a model to a different format.
 - `--quant` - Quantization type (4bit, q4_k_m, etc.)
 - `--quant-config` - Advanced quantization config (JSON/YAML)
 - `--mup2llama` - Enable muP-to-LLaMA scaling
-- `--model-type` - Model type for Megatron conversions (minicpm, llama)
+- `--model-type` - Model type for Megatron conversions (minicpm, llama, auto)
+- `--use-smart-converter` - Force use of smart converter for tensor parallel models
+- `--use-legacy-converter` - Force use of legacy converter for compatibility
 - `--fake-weight` - Use zero weights for testing
 - `--dtype` - Output precision (fp16, fp32)
 
@@ -135,23 +142,37 @@ modelconvert convert mup_model safetensors --mup2llama
 ```
 
 ### Megatron-LM Integration
-Bidirectional conversion between HuggingFace and Megatron-LM formats:
+Bidirectional conversion between HuggingFace and Megatron-LM formats with advanced tensor parallel support:
 
 ```bash
 # HuggingFace to Megatron-LM
 modelconvert convert OpenBMB/MiniCPM4-0.5B hf2megatron --model-type minicpm
 
-# Megatron-LM to HuggingFace
+# Megatron-LM to HuggingFace (basic)
 modelconvert convert models/megatron_model hf --model-type minicpm
 
-# Llama models
-modelconvert convert meta-llama/Llama-2-7b hf2megatron --model-type llama
+# Tensor Parallel Megatron-LM to HuggingFace (auto-detection)
+modelconvert convert models/tp_megatron_model hf --model-type auto
+
+# Force smart converter for complex models
+modelconvert convert models/large_megatron_model hf --model-type minicpm --use-smart-converter
+
+# Use legacy converter for compatibility
+modelconvert convert models/old_megatron_model hf --model-type minicpm --use-legacy-converter
 ```
 
 **Supported Models:**
-- **MiniCPM**: Full bidirectional support
-- **Llama/Llama2**: Full bidirectional support
+- **MiniCPM Series**: 0.5B, 1.5B, 3B, 8B, 14B (with TP/PP support)
+- **MiniCPM-4**: MoE (Mixture of Experts) models
+- **Llama Series**: 7B, 13B, 30B, 65B (with TP/PP support)
 - **Mistral**: Full bidirectional support
+
+**Tensor Parallel Features:**
+- **Auto-Detection**: Automatically detects model type, size, and parallel configuration
+- **Smart Conversion**: Chooses optimal conversion strategy based on model characteristics
+- **TP/PP Support**: Handles Tensor Parallel (TP) and Pipeline Parallel (PP) configurations
+- **Fallback Strategy**: Graceful fallback to legacy converters if needed
+- **Model-Specific Optimizations**: Specialized converters for common model sizes
 
 ### MTK Integration
 Convert HuggingFace models to MTK format for MediaTek platforms:
@@ -192,6 +213,35 @@ modelconvert convert model mtk --model-type text-generation \
 **Dependencies:**
 - MTK conversion requires a separate `mtk_cloud` repository with `install.sh`
 - The repository provides conversion scripts for LLM and VLM models
+
+### Tensor Parallel Conversion
+Advanced conversion for distributed models with tensor and pipeline parallelism:
+
+```bash
+# Auto-detect and convert tensor parallel model
+modelconvert convert models/tp_megatron_model hf --model-type auto
+
+# Force smart converter for complex distributed models
+modelconvert convert models/large_tp_model hf --model-type minicpm --use-smart-converter
+
+# Convert with specific parallel configuration
+modelconvert convert models/custom_tp_model hf --model-type minicpm \
+  --tp-size 4 --pp-size 2 --num-layer 32
+
+# Convert MiniCPM-4 MoE model
+modelconvert convert models/minicpm4_moe_model hf --model-type minicpm4
+```
+
+**Supported Parallel Configurations:**
+- **Tensor Parallel (TP)**: 1, 2, 4, 8 ranks
+- **Pipeline Parallel (PP)**: 1, 2, 4 stages
+- **Hybrid TP/PP**: Combined tensor and pipeline parallelism
+
+**Auto-Detection Features:**
+- Model type detection (MiniCPM, Llama, MiniCPM-4)
+- Model size detection (0.5B, 1.5B, 3B, 8B, 14B, etc.)
+- Parallel configuration detection (TP/PP sizes)
+- MoE layer detection for MiniCPM-4 models
 
 ### Fake Weights
 Generate models with zero weights for testing:
@@ -283,4 +333,5 @@ pytest tests/test_cli.py
 - **[Configuration](docs/config.md)** - Batch processing and advanced options
 - **[Converter Engine](docs/converter.md)** - Technical details and architecture
 - **[Megatron-LM Integration](docs/megatron.md)** - Comprehensive guide for Megatron-LM conversions
+- **[Tensor Parallel Conversion](docs/tensor_parallel.md)** - Advanced guide for TP/PP model conversions
 - **[Examples](examples/)** - Sample scripts and workflows

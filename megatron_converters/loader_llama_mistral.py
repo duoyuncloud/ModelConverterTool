@@ -1,9 +1,3 @@
-"""
-Llama/Llama2/Mistral Megatron<->HF conversion loader for ModelConverterTool.
-Supports both Megatron2HF and HF2Megatron directions.
-Usage: Import and call `load_checkpoint(args)` from ModelConverterTool's unified interface.
-"""
-
 # Copyright (c) 2023, NVIDIA CORPORATION. All rights reserved.
 
 import json
@@ -395,8 +389,8 @@ def set_attn_state(args, layer, hf_layer):
         torch.cat(
             [
                 hf_attn.q_proj.weight.reshape((ng, dim * nh // ng, -1)),
-        hf_attn.k_proj.weight.reshape((ng, dim, -1)),
-        hf_attn.v_proj.weight.reshape((ng, dim, -1)),
+                hf_attn.k_proj.weight.reshape((ng, dim, -1)),
+                hf_attn.v_proj.weight.reshape((ng, dim, -1)),
             ],
             dim=1,
         ).reshape((-1, args.hidden_size))
@@ -413,8 +407,8 @@ def set_mlp_state(args, layer, hf_layer):
     mlp.dense_h_to_4h.weight.data.copy_(
         torch.cat(
             [
-        hf_mlp.gate_proj.weight,
-        hf_mlp.up_proj.weight,
+                hf_mlp.gate_proj.weight,
+                hf_mlp.up_proj.weight,
             ],
             dim=0,
         )
@@ -467,10 +461,6 @@ def _load_checkpoint(queue, args):
 
     verify_transformers_version()
 
-    # Add current directory to path to find local megatron module
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    sys.path.insert(0, current_dir)
-
     # Search in directory above this.
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir)))
     if args.megatron_path is not None:
@@ -516,7 +506,7 @@ def _load_checkpoint(queue, args):
         "--no-initialization",
         "--load",
         args.load_dir,
-                ]
+    ]
 
     margs = parse_args()
     margs.tokenizer_model = args.tokenizer_model
@@ -578,7 +568,6 @@ def _load_checkpoint(queue, args):
 
     # Short aliases.
     tp_size = margs.tensor_model_parallel_size
-    # pp_size = margs.pipeline_model_parallel_size
     vp_size = margs.virtual_pipeline_model_parallel_size
     if vp_size is None:
         vp_size = 1
