@@ -5,6 +5,7 @@ Automatically selects the best conversion script based on model type, size, and 
 """
 
 import torch
+import os
 from typing import Dict, Optional, Tuple
 from pathlib import Path
 
@@ -438,6 +439,19 @@ class SmartConverter:
         if model_type == "minicpm":
             from .hf_to_megatron_minicpm import convert_hf_to_megatron_minicpm
 
+            # Detect if model uses MLA by checking the original model type
+            use_mla = False
+            if "/" in checkpoint_path and not os.path.exists(checkpoint_path):
+                # This is a HuggingFace model name, check the original model type
+                try:
+                    from transformers import AutoConfig
+                    config_obj = AutoConfig.from_pretrained(checkpoint_path, trust_remote_code=True)
+                    if hasattr(config_obj, 'model_type') and config_obj.model_type == 'minicpm3':
+                        use_mla = True
+                        print(f"Detected MiniCPM3 model, using MLA attention")
+                except Exception as e:
+                    print(f"Warning: Could not detect MLA usage: {e}")
+
             convert_hf_to_megatron_minicpm(
                 checkpoint_path=checkpoint_path,
                 output_path=output_path,
@@ -446,12 +460,12 @@ class SmartConverter:
                 pp_size=config["pp_size"],
                 num_kv_heads=config["num_kv_heads"],
                 num_query_heads=config["num_query_heads"],
+                use_mla=use_mla,
                 **kwargs,
             )
         elif model_type == "llama":
             from .loader_llama2_hf import load_checkpoint
             import queue
-            import os
 
             # Create a queue for the conversion process
             conversion_queue = queue.Queue()
