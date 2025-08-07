@@ -61,7 +61,7 @@ __all__ = [
     "SmartConverter",
     # TP/PP converters
     "convert_minicpm_megatron_to_hf_tp_pp",
-    "convert_llama_megatron_to_hf_tp_pp",
+    "convert_llama_megatron_to_hf_tp_pp", 
     "convert_8b_minicpm_megatron_to_hf",
     "convert_3b_minicpm_megatron_to_hf",
     "convert_7b_llama_megatron_to_hf",
