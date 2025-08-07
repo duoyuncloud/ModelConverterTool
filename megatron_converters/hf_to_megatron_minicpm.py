@@ -75,37 +75,37 @@ def convert_hf_to_megatron_minicpm_main(
                 f"model.layers.{layer_idx}.input_layernorm.weight"
             ].clone()
             q_b_proj_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.q_b_proj.weight"]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.linear_q_up.weight"] = torch.split(
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_q_up.weight"] = torch.split(
                 q_b_proj_weight, dim=0, split_size_or_sections=q_b_proj_weight.shape[0] // tp_size
             )[tp_rank].clone()
 
             q_a_proj_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.q_a_proj.weight"]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.linear_q_down.weight"] = torch.split(
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_q_down.weight"] = torch.split(
                 q_a_proj_weight, dim=0, split_size_or_sections=q_a_proj_weight.shape[0] // tp_size
             )[tp_rank].clone()
 
             kv_b_proj_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.kv_b_proj.weight"]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.linear_kv_up.weight"] = torch.split(
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_kv_up.weight"] = torch.split(
                 kv_b_proj_weight, dim=0, split_size_or_sections=kv_b_proj_weight.shape[0] // tp_size
             )[tp_rank].clone()
 
             kv_a_proj_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.kv_a_proj_with_mqa.weight"]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.linear_kv_down.weight"] = torch.split(
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_kv_down.weight"] = torch.split(
                 kv_a_proj_weight, dim=0, split_size_or_sections=kv_a_proj_weight.shape[0] // tp_size
             )[tp_rank].clone()
 
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.q_layernorm.weight"] = cpm_model_dict[
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.q_layernorm.weight"] = cpm_model_dict[
                 f"model.layers.{layer_idx}.self_attn.q_a_layernorm.weight"
             ]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.kv_layernorm.weight"] = cpm_model_dict[
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.kv_layernorm.weight"] = cpm_model_dict[
                 f"model.layers.{layer_idx}.self_attn.kv_a_layernorm.weight"
             ]
             o_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.o_proj.weight"]
-            megatron_model_dict[f"decoder.layers.{layer_idx}.self_attention.linear_proj.weight"] = torch.split(
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_proj.weight"] = torch.split(
                 o_weight, dim=1, split_size_or_sections=o_weight.shape[1] // tp_size
             )[tp_rank].clone()
 
-            megatron_model_dict[f"decoder.layers.{layer_idx}.pre_mlp_layernorm.weight"] = cpm_model_dict[
+            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.pre_mlp_layernorm.weight"] = cpm_model_dict[
                 f"model.layers.{layer_idx}.post_attention_layernorm.weight"
             ].clone()
             w0_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.gate_proj.weight"]

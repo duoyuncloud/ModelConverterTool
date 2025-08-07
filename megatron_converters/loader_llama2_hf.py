@@ -70,7 +70,12 @@ def load_args_from_checkpoint(args):
         args.untie_embeddings_and_output_weights = False  # GPT-2 ties embeddings
         args.vocab_size = model_args["vocab_size"]
         args.padded_vocab_size = model_args["vocab_size"]
-        args.ffn_hidden_size = model_args["n_inner"]
+        # Handle n_inner being None (use 4 * hidden_size as fallback)
+        n_inner = model_args.get("n_inner")
+        if n_inner is None:
+            args.ffn_hidden_size = 4 * model_args["n_embd"]
+        else:
+            args.ffn_hidden_size = n_inner
         args.group_query_attention = False  # GPT-2 doesn't use GQA
     else:
         # Llama style config
@@ -88,7 +93,7 @@ def load_args_from_checkpoint(args):
         args.vocab_size = model_args["vocab_size"]
         args.padded_vocab_size = model_args["vocab_size"]
         args.ffn_hidden_size = model_args["intermediate_size"]
-        
+
         if "num_key_value_heads" in model_args:
             args.group_query_attention = True
             args.num_query_groups = model_args["num_key_value_heads"]
@@ -131,8 +136,8 @@ def set_attn_state(args, layer, hf_layer):
         torch.cat(
             [
                 hf_attn.q_proj.weight.reshape((ng, dim * nh // ng, -1)),
-        hf_attn.k_proj.weight.reshape((ng, dim, -1)),
-        hf_attn.v_proj.weight.reshape((ng, dim, -1)),
+                hf_attn.k_proj.weight.reshape((ng, dim, -1)),
+                hf_attn.v_proj.weight.reshape((ng, dim, -1)),
             ],
             dim=1,
         ).reshape((-1, args.hidden_size))
@@ -149,8 +154,8 @@ def set_mlp_state(args, layer, hf_layer):
     mlp.dense_h_to_4h.weight.data.copy_(
         torch.cat(
             [
-        hf_mlp.gate_proj.weight,
-        hf_mlp.up_proj.weight,
+                hf_mlp.gate_proj.weight,
+                hf_mlp.up_proj.weight,
             ],
             dim=0,
         )
@@ -173,7 +178,7 @@ def set_layer_state(args, model, hf_model, layer_idx):
 def load_checkpoint_to_model(args):
     """Set model params."""
 
-    from pretrain_gpt import model_provider
+    from megatron.inference.gpt.model_provider import model_provider
     from transformers import LlamaForCausalLM
 
     # Load Huggingface model.
