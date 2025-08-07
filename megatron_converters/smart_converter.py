@@ -40,6 +40,14 @@ class SmartConverter:
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
                 },
+                "4b": {
+                    "layers": 62,
+                    "tp_size": 1,
+                    "pp_size": 1,
+                    "use_basic": True,
+                    "num_kv_heads": 8,
+                    "num_query_heads": 40,
+                },
                 "8b": {
                     "layers": 32,
                     "tp_size": 2,
@@ -130,7 +138,7 @@ class SmartConverter:
                         model_type = 'llama'  # Treat GPT models as Llama-like for conversion
                     elif raw_model_type in ['llama', 'mistral']:
                         model_type = 'llama'
-                    elif raw_model_type in ['minicpm']:
+                    elif raw_model_type in ['minicpm', 'minicpm3']:
                         model_type = 'minicpm'
                     else:
                         model_type = 'llama'  # Default for unknown (treat as Llama-like)
@@ -155,6 +163,8 @@ class SmartConverter:
                         model_size = '8b'
                     elif num_layers == 24:
                         model_size = '3b'
+                    elif num_layers == 62:
+                        model_size = '4b'
                     elif num_layers == 40:
                         model_size = '14b'
                     elif num_layers == 18:
@@ -448,9 +458,9 @@ class SmartConverter:
             
             # If it's a HuggingFace model name, download it first
             if "/" in checkpoint_path and not os.path.exists(checkpoint_path):
-                from transformers import AutoModel
+                from transformers import AutoModelForCausalLM
                 print(f"Downloading model: {checkpoint_path}")
-                model = AutoModel.from_pretrained(checkpoint_path, torch_dtype='auto', trust_remote_code=True)
+                model = AutoModelForCausalLM.from_pretrained(checkpoint_path, torch_dtype='auto', trust_remote_code=True)
                 # Get the actual cached path
                 from huggingface_hub import snapshot_download
                 cached_path = snapshot_download(repo_id=checkpoint_path, local_files_only=True)

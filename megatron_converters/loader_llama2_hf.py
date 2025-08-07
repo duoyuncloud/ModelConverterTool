@@ -45,36 +45,60 @@ def verify_transformers_version():
 
 def load_args_from_checkpoint(args):
 
-    # Read Llama args.
-    llama_args_path = os.path.join(args.load, "config.json")
-    with open(llama_args_path) as f:
-        llama_args = json.load(f)
+    # Read model args.
+    model_args_path = os.path.join(args.load, "config.json")
+    with open(model_args_path) as f:
+        model_args = json.load(f)
 
     # Update Megatron args.
     args.seq_length = 4096
     args.max_position_embeddings = 4096
-    args.hidden_size = llama_args["hidden_size"]
-    args.num_attention_heads = llama_args["num_attention_heads"]
-    args.num_layers = llama_args["num_hidden_layers"]
-    args.global_batch_size = 1024
-    args.norm_epsilon = llama_args["rms_norm_eps"]
-    args.iteration = 1  # '0', 'release' don't work
-    args.add_position_embedding = False
-    args.use_rotary_position_embeddings = True
-    args.swiglu = True
-    args.tokenizer_type = "Llama2Tokenizer"
-    args.fp16 = True
-    args.normalization = "RMSNorm"
-    args.add_bias_linear = False
-    args.untie_embeddings_and_output_weights = True
-    args.vocab_size = llama_args["vocab_size"]
-    args.padded_vocab_size = llama_args["vocab_size"]
-    args.llama = llama_args
-    args.ffn_hidden_size = llama_args["intermediate_size"]
+    
+    # Handle different model types
+    if model_args.get("model_type") == "gpt2":
+        # GPT-2 style config
+        args.hidden_size = model_args["n_embd"]
+        args.num_attention_heads = model_args["n_head"]
+        args.num_layers = model_args["n_layer"]
+        args.norm_epsilon = model_args["layer_norm_epsilon"]
+        args.add_position_embedding = True  # GPT-2 has position embeddings
+        args.use_rotary_position_embeddings = False  # GPT-2 uses learned position embeddings
+        args.swiglu = False  # GPT-2 uses GELU
+        args.tokenizer_type = "GPT2Tokenizer"
+        args.normalization = "LayerNorm"
+        args.add_bias_linear = True  # GPT-2 has bias
+        args.untie_embeddings_and_output_weights = False  # GPT-2 ties embeddings
+        args.vocab_size = model_args["vocab_size"]
+        args.padded_vocab_size = model_args["vocab_size"]
+        args.ffn_hidden_size = model_args["n_inner"]
+        args.group_query_attention = False  # GPT-2 doesn't use GQA
+    else:
+        # Llama style config
+        args.hidden_size = model_args["hidden_size"]
+        args.num_attention_heads = model_args["num_attention_heads"]
+        args.num_layers = model_args["num_hidden_layers"]
+        args.norm_epsilon = model_args["rms_norm_eps"]
+        args.add_position_embedding = False
+        args.use_rotary_position_embeddings = True
+        args.swiglu = True
+        args.tokenizer_type = "Llama2Tokenizer"
+        args.normalization = "RMSNorm"
+        args.add_bias_linear = False
+        args.untie_embeddings_and_output_weights = True
+        args.vocab_size = model_args["vocab_size"]
+        args.padded_vocab_size = model_args["vocab_size"]
+        args.ffn_hidden_size = model_args["intermediate_size"]
+        
+        if "num_key_value_heads" in model_args:
+            args.group_query_attention = True
+            args.num_query_groups = model_args["num_key_value_heads"]
+        else:
+            args.group_query_attention = False
 
-    if "num_key_value_heads" in llama_args:
-        args.group_query_attention = True
-        args.num_query_groups = llama_args["num_key_value_heads"]
+    args.global_batch_size = 1024
+    args.iteration = 1  # '0', 'release' don't work
+    args.fp16 = True
+    args.llama = model_args
 
 
 def set_preprocess_state(args, model, hf_model):
