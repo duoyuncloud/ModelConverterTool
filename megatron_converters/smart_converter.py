@@ -15,226 +15,153 @@ class SmartConverter:
 
     def __init__(self):
         self.model_configs = {
-            # MiniCPM series
+            # MiniCPM configurations
             "minicpm": {
-                "0.5b": {
-                    "layers": 12,
-                    "tp_size": 1,
+                "8b": {
+                    "num_layer": 32,
+                    "tp_size": 2,
                     "pp_size": 1,
-                    "use_basic": True,
-                    "num_kv_heads": 8,
-                    "num_query_heads": 32,
-                },
-                "1.5b": {
-                    "layers": 18,
-                    "tp_size": 1,
-                    "pp_size": 1,
-                    "use_basic": True,
-                    "num_kv_heads": 8,
-                    "num_query_heads": 32,
-                },
-                "3b": {
-                    "layers": 24,
-                    "tp_size": 1,
-                    "pp_size": 1,
-                    "use_basic": True,
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
                 },
                 "4b": {
-                    "layers": 62,
-                    "tp_size": 1,
-                    "pp_size": 1,
-                    "use_basic": True,
-                    "num_kv_heads": 8,
-                    "num_query_heads": 40,
-                },
-                "8b": {
-                    "layers": 32,
+                    "num_layer": 62,
                     "tp_size": 2,
                     "pp_size": 1,
-                    "use_basic": False,
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
                 },
-                "14b": {
-                    "layers": 40,
-                    "tp_size": 4,
+                "3b": {
+                    "num_layer": 24,
+                    "tp_size": 1,
                     "pp_size": 1,
-                    "use_basic": False,
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
                 },
             },
-            # Llama series
+            # Llama configurations
             "llama": {
-                "0.5b": {
-                    "layers": 12,
-                    "tp_size": 1,
-                    "pp_size": 1,
-                    "use_basic": True,
-                    "num_kv_heads": 8,
-                    "num_query_heads": 32,
-                },
                 "7b": {
-                    "layers": 32,
+                    "num_layer": 32,
                     "tp_size": 1,
                     "pp_size": 1,
-                    "use_basic": True,
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
                 },
                 "13b": {
-                    "layers": 40,
+                    "num_layer": 40,
                     "tp_size": 2,
                     "pp_size": 1,
-                    "use_basic": False,
                     "num_kv_heads": 8,
                     "num_query_heads": 40,
                 },
                 "30b": {
-                    "layers": 60,
+                    "num_layer": 60,
                     "tp_size": 4,
                     "pp_size": 1,
-                    "use_basic": False,
                     "num_kv_heads": 8,
                     "num_query_heads": 52,
                 },
                 "65b": {
-                    "layers": 80,
+                    "num_layer": 80,
                     "tp_size": 8,
                     "pp_size": 1,
-                    "use_basic": False,
                     "num_kv_heads": 8,
                     "num_query_heads": 64,
+                },
+                "0.5b": {
+                    "num_layer": 12,
+                    "tp_size": 1,
+                    "pp_size": 1,
+                    "num_kv_heads": 4,
+                    "num_query_heads": 16,
+                },
+                "1.1b": {
+                    "num_layer": 22,
+                    "tp_size": 1,
+                    "pp_size": 1,
+                    "num_kv_heads": 4,
+                    "num_query_heads": 32,
                 },
             },
         }
 
-    def detect_model_type_and_size(self, checkpoint_path: str) -> Tuple[str, str]:
+    def detect_model_type_and_size(self, config) -> Tuple[str, str]:
         """
-        Automatically detect model type and size from checkpoint structure
-
-        Args:
-            checkpoint_path: Path to the checkpoint directory or HuggingFace model name
-
-        Returns:
-            Tuple of (model_type, model_size)
+        Detect model type and size from HuggingFace config
         """
-        checkpoint_path = Path(checkpoint_path)
-
-        # Check if it's a HuggingFace model (not a local path)
-        if not checkpoint_path.exists() and "/" in str(checkpoint_path):
-            # This is likely a HuggingFace model name
-            try:
-                from transformers import AutoConfig
-                config = AutoConfig.from_pretrained(str(checkpoint_path), trust_remote_code=True)
-                
-                # Detect model type from config
-                if hasattr(config, 'model_type'):
-                    raw_model_type = config.model_type
-                    print(f"DEBUG: Raw model type: {raw_model_type}")
-                    # Map HuggingFace model types to our supported types
-                    if raw_model_type in ['gpt2', 'gpt', 'gpt_neox']:
-                        model_type = 'llama'  # Treat GPT models as Llama-like for conversion
-                    elif raw_model_type in ['llama', 'mistral']:
-                        model_type = 'llama'
-                    elif raw_model_type in ['minicpm', 'minicpm3']:
-                        model_type = 'minicpm'
-                    else:
-                        model_type = 'llama'  # Default for unknown (treat as Llama-like)
-                    print(f"DEBUG: Mapped model type: {model_type}")
-                elif hasattr(config, 'architectures') and config.architectures:
-                    arch = config.architectures[0].lower()
-                    if 'llama' in arch or 'mistral' in arch:
-                        model_type = 'llama'
-                    elif 'minicpm' in arch:
-                        model_type = 'minicpm'
-                    elif 'gpt2' in arch or 'gpt' in arch:
-                        model_type = 'llama'  # Treat GPT models as Llama-like for conversion
-                    else:
-                        model_type = 'llama'  # Default for unknown (treat as Llama-like)
+        print(f"DEBUG: Raw model type: {config.model_type}")
+        
+        # Detect model type from config
+        if hasattr(config, 'model_type'):
+            raw_model_type = config.model_type
+            # Map HuggingFace model types to our supported types
+            if raw_model_type in ['gpt2', 'gpt', 'gpt_neox']:
+                model_type = 'llama'  # Treat GPT models as Llama-like for conversion
+            elif raw_model_type in ['llama', 'mistral']:
+                model_type = 'llama'
+            elif raw_model_type in ['minicpm', 'minicpm3']: # Added 'minicpm3'
+                model_type = 'minicpm'
+            else:
+                model_type = 'llama'  # Default for unknown (treat as Llama-like)
+        else:
+            model_type = 'llama'  # Default fallback
+        
+        print(f"DEBUG: Mapped model type: {model_type}")
+        
+        # Detect model size based on parameters
+        if hasattr(config, 'num_hidden_layers') and hasattr(config, 'hidden_size'):
+            num_layers = config.num_hidden_layers
+            hidden_size = config.hidden_size
+            
+            # Calculate approximate model size in billions
+            vocab_size = getattr(config, 'vocab_size', 32000)
+            num_heads = getattr(config, 'num_attention_heads', 32)
+            
+            # Rough parameter count estimation
+            # Embedding: vocab_size * hidden_size
+            # Each layer: 4 * hidden_size * hidden_size (QKV + output + 2 MLP layers)
+            # Final norm: hidden_size
+            # Output layer: vocab_size * hidden_size
+            
+            embedding_params = vocab_size * hidden_size
+            layer_params = num_layers * (4 * hidden_size * hidden_size + hidden_size)
+            output_params = vocab_size * hidden_size
+            total_params = embedding_params + layer_params + output_params
+            
+            # Convert to billions
+            model_size_b = total_params / 1e9
+            
+            print(f"DEBUG: Estimated model size: {model_size_b:.1f}B parameters")
+            
+            # Map to closest size
+            if model_type == 'llama':
+                if model_size_b < 0.8:
+                    size = '0.5b'
+                elif model_size_b < 1.5:
+                    size = '1.1b'
+                elif model_size_b < 10:
+                    size = '7b'
+                elif model_size_b < 20:
+                    size = '13b'
+                elif model_size_b < 40:
+                    size = '30b'
                 else:
-                    model_type = 'llama'  # Default (treat as Llama-like)
-                
-                # Detect model size from config
-                if hasattr(config, 'num_hidden_layers'):
-                    num_layers = config.num_hidden_layers
-                    if num_layers == 32:
-                        model_size = '8b'
-                    elif num_layers == 24:
-                        model_size = '3b'
-                    elif num_layers == 62:
-                        model_size = '4b'
-                    elif num_layers == 40:
-                        model_size = '14b'
-                    elif num_layers == 18:
-                        model_size = '1.5b'
-                    elif num_layers == 12:
-                        model_size = '0.5b'
-                    else:
-                        model_size = 'unknown'
+                    size = '65b'
+            elif model_type == 'minicpm':
+                if model_size_b < 2:
+                    size = '3b'
+                elif model_size_b < 6:
+                    size = '4b'
                 else:
-                    model_size = 'unknown'
-                
-                return model_type, model_size
-            except Exception as e:
-                print(f"Warning: Could not detect HuggingFace model type: {e}")
-                return 'minicpm', 'unknown'
-
-        # Check if directory exists
-        if not checkpoint_path.exists():
-            raise FileNotFoundError(f"Checkpoint path does not exist: {checkpoint_path}")
-
-        # Check for sharded files
-        has_tp = any(checkpoint_path.glob("mp_rank_*"))
-
-        if has_tp:
-            # Has sharded files, indicating a large model
-            # Try to load first shard to detect model
-            first_ckpt = next(checkpoint_path.glob("mp_rank_*"))
-            if (first_ckpt / "model_optim_rng.pt").exists():
-                try:
-                    state_dict = torch.load(first_ckpt / "model_optim_rng.pt", map_location="cpu")
-                    if "model" in state_dict:
-                        model_state = state_dict["model"]
-
-                        # Determine model type by weight names
-                        if "decoder.layers" in str(model_state.keys()):
-                            # MiniCPM family
-                            layer_count = len(
-                                [k for k in model_state.keys() if "decoder.layers." in k and ".self_attention." in k]
-                            )
-                            if layer_count == 32:
-                                return "minicpm", "8b"
-                            elif layer_count == 24:
-                                return "minicpm", "3b"
-                            elif layer_count == 40:
-                                return "minicpm", "14b"
-                            elif layer_count == 18:
-                                return "minicpm", "1.5b"
-                            elif layer_count == 12:
-                                return "minicpm", "0.5b"
-                            else:
-                                return "minicpm", "unknown"
-                        elif "transformer.layers" in str(model_state.keys()):
-                            # Llama family
-                            layer_count = len([k for k in model_state.keys() if "transformer.layers." in k])
-                            if layer_count == 32:
-                                return "llama", "7b"
-                            elif layer_count == 40:
-                                return "llama", "13b"
-                            elif layer_count == 60:
-                                return "llama", "30b"
-                            elif layer_count == 80:
-                                return "llama", "65b"
-                            else:
-                                return "llama", "unknown"
-                except Exception as e:
-                    print(f"Warning: Could not load checkpoint for detection: {e}")
-
-        # Default detection - conservative estimate
-        return "minicpm", "3b"
+                    size = '8b'
+            else:
+                size = 'unknown'
+        else:
+            size = 'unknown'
+        
+        print(f"Auto-detection result: {model_type} {size}")
+        return model_type, size
 
     def detect_parallel_config(self, checkpoint_path: str) -> Dict[str, int]:
         """
@@ -498,6 +425,58 @@ class SmartConverter:
 
         print(f"Conversion completed: {output_path}")
 
+    def smart_convert(self, checkpoint_path: str, output_path: str, model_type: str = None) -> bool:
+        """
+        Smart conversion that automatically detects model type and configuration
+        """
+        print(f"Starting smart conversion: {checkpoint_path} -> {output_path}")
+        
+        try:
+            # Load config for detection
+            from transformers import AutoConfig
+            config = AutoConfig.from_pretrained(checkpoint_path, trust_remote_code=True)
+            
+            # Auto-detect if not specified
+            if model_type is None or model_type == "auto":
+                detected_type, detected_size = self.detect_model_type_and_size(config)
+            else:
+                detected_type = model_type
+                detected_size = "unknown"
+            
+            # Get configuration
+            if detected_type in self.model_configs and detected_size in self.model_configs[detected_type]:
+                config_dict = self.model_configs[detected_type][detected_size]
+                print(f"Using configuration: {detected_type} {detected_size}")
+                print(f"Config: {config_dict}")
+                
+                # Perform conversion
+                if detected_type == "minicpm":
+                    from .hf_to_megatron_minicpm import convert_hf_to_megatron_minicpm
+                    convert_hf_to_megatron_minicpm(
+                        checkpoint_path=checkpoint_path,
+                        output_path=output_path,
+                        num_layer=config_dict["num_layer"],
+                        tp_size=config_dict["tp_size"],
+                        pp_size=config_dict["pp_size"],
+                        num_kv_heads=config_dict["num_kv_heads"],
+                        num_query_heads=config_dict["num_query_heads"],
+                    )
+                    return True
+                elif detected_type == "llama":
+                    # Use the legacy converter for Llama models
+                    print("Using legacy converter for Llama models")
+                    return False
+                else:
+                    print(f"Unsupported model type: {detected_type}")
+                    return False
+            else:
+                print(f"Smart conversion failed: Unsupported model size: {detected_size}")
+                return False
+                
+        except Exception as e:
+            print(f"Smart conversion failed: {e}")
+            return False
+
 
 # Convenience functions
 def smart_convert_megatron_to_hf(checkpoint_path: str, output_path: str, **kwargs) -> None:
@@ -535,4 +514,3 @@ def convert_minicpm4_8b(checkpoint_path: str, output_path: str) -> None:
     """8B MiniCPM-4 dedicated conversion"""
     converter = SmartConverter()
     converter.convert_megatron_to_hf(checkpoint_path, output_path, "minicpm", "8b")
-    

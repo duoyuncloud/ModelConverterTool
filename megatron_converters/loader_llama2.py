@@ -388,7 +388,7 @@ def set_layer_state(args, model, hf_model, layer_idx):
 def load_checkpoint_to_model(args):
     """Set model params."""
 
-    from pretrain_gpt import model_provider
+    from megatron.inference.gpt.model_provider import model_provider
     from transformers import LlamaForCausalLM
 
     # Load Huggingface model.
@@ -459,6 +459,7 @@ def _load_checkpoint(queue, args):
         "--no-save-optim",
         "--no-save-rng",
         "--no-initialization",
+        "--no-gradient-accumulation-fusion",
         "--load",
         args.load_dir,
     ]
@@ -473,8 +474,8 @@ def _load_checkpoint(queue, args):
 
     margs = validate_args(margs)
 
-    margs.use_mcore_models = False
-    margs.transformer_impl = args.loader_transformer_impl
+    margs.use_mcore_models = True
+    margs.transformer_impl = "transformer_engine"
 
     def check_for_arg(arg_name, default=None):
         if getattr(margs, arg_name, None) is None:
@@ -502,7 +503,9 @@ def _load_checkpoint(queue, args):
     check_for_arg("swiglu", False)
 
     # Determine how to make our models.
-    assert args.model_type == "GPT", "Llama-2 is a GPT model."
+    # Llama models are also encoder-decoder models like GPT
+    if args.model_type not in ["GPT", "llama"]:
+        print(f"Warning: Expected model type 'GPT' or 'llama', got '{args.model_type}'. Treating as GPT model.")
     margs.model_type = ModelType.encoder_or_decoder
     margs.params_dtype = torch.bfloat16 if args.bf16 else torch.float16 if args.fp16 else torch.float32
 

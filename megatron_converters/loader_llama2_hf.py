@@ -90,15 +90,15 @@ def load_args_from_checkpoint(args):
     args.normalization = "RMSNorm"
     args.add_bias_linear = False
     args.untie_embeddings_and_output_weights = True
-        args.vocab_size = model_args["vocab_size"]
-        args.padded_vocab_size = model_args["vocab_size"]
-        args.ffn_hidden_size = model_args["intermediate_size"]
+    args.vocab_size = model_args["vocab_size"]
+    args.padded_vocab_size = model_args["vocab_size"]
+    args.ffn_hidden_size = model_args["intermediate_size"]
 
-        if "num_key_value_heads" in model_args:
+    if "num_key_value_heads" in model_args:
         args.group_query_attention = True
-            args.num_query_groups = model_args["num_key_value_heads"]
-        else:
-            args.group_query_attention = False
+        args.num_query_groups = model_args["num_key_value_heads"]
+    else:
+        args.group_query_attention = False
 
     args.global_batch_size = 1024
     args.iteration = 1  # '0', 'release' don't work
@@ -277,7 +277,9 @@ def _load_checkpoint(queue, args):
     check_for_arg("swiglu", False)
 
     # Determine how to make our models.
-    assert args.model_type == "GPT", "Llama-2 is a GPT model."
+    # Llama models are also encoder-decoder models like GPT
+    if args.model_type not in ["GPT", "llama"]:
+        print(f"Warning: Expected model type 'GPT' or 'llama', got '{args.model_type}'. Treating as GPT model.")
     margs.model_type = ModelType.encoder_or_decoder
 
     # Suppress warning about torch.distributed not being initialized.
