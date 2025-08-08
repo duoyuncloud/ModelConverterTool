@@ -66,14 +66,63 @@ def create_multi_rank_megatron_checkpoint(
             print(f"  {file_path} ({file_size:.2f} GB)")
 
 if __name__ == "__main__":
-    # Test with MiniCPM4-8B
-    create_multi_rank_megatron_checkpoint(
-        hf_model_path="openbmb/MiniCPM4-8B",
-        output_dir="./test_output_minicpm4_8b_megatron_multi_rank",
-        num_layer=32,
-        tp_size=2,
-        pp_size=1,
-        num_kv_heads=8,
-        num_query_heads=32,
-        use_mla=False,
-    ) 
+    # Configuration
+    model_name = "openbmb/MiniCPM3-4B"  # Change to MiniCPM3-4B for testing
+    output_dir = "./test_output_minicpm3_4b_megatron_multi_rank"
+    
+    # Model configuration for MiniCPM3-4B
+    num_layers = 62  # MiniCPM3-4B has 62 layers
+    tp_size = 2
+    pp_size = 1
+    num_kv_heads = 8
+    num_query_heads = 32
+    
+    print(f"Creating multi-rank Megatron checkpoint: {model_name} -> {output_dir}")
+    print(f"Configuration: {num_layers} layers, TP={tp_size}, PP={pp_size}")
+    
+    # Create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate each rank
+    for rank in range(tp_size):
+        print(f"\nGenerating rank {rank}...")
+        rank_dir = os.path.join(output_dir, f"mp_rank_{rank:02d}")
+        os.makedirs(rank_dir, exist_ok=True)
+        
+        # Convert HF to Megatron for this rank
+        convert_hf_to_megatron_minicpm_main(
+            load_path=model_name,
+            save_dir=rank_dir,
+            num_layer=num_layers,
+            tp_size=tp_size,
+            tp_rank=rank,
+            pp_size=pp_size,
+            pp_rank=0,
+            num_kv_heads=num_kv_heads,
+            num_query_heads=num_query_heads,
+            use_mla=True
+        )
+        
+        # Move the checkpoint to the correct location
+        nested_dir = os.path.join(rank_dir, f"mp_rank_{rank:02d}")
+        if os.path.exists(nested_dir):
+            import shutil
+            for item in os.listdir(nested_dir):
+                src = os.path.join(nested_dir, item)
+                dst = os.path.join(rank_dir, item)
+                shutil.move(src, dst)
+            os.rmdir(nested_dir)
+        
+        print(f"Rank {rank} completed: {rank_dir}")
+    
+    print(f"\nMulti-rank conversion completed!")
+    print(f"Output directory: {output_dir}")
+    
+    # List created files
+    print("\nCreated files:")
+    for rank in range(tp_size):
+        rank_dir = os.path.join(output_dir, f"mp_rank_{rank:02d}")
+        ckpt_file = os.path.join(rank_dir, "model_optim_rng.pt")
+        if os.path.exists(ckpt_file):
+            size_gb = os.path.getsize(ckpt_file) / (1024**3)
+            print(f"  {ckpt_file} ({size_gb:.2f} GB)") 

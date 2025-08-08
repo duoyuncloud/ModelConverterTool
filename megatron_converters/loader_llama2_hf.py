@@ -83,19 +83,19 @@ def load_args_from_checkpoint(args):
         args.num_attention_heads = model_args["num_attention_heads"]
         args.num_layers = model_args["num_hidden_layers"]
         args.norm_epsilon = model_args["rms_norm_eps"]
-        args.add_position_embedding = False
-        args.use_rotary_position_embeddings = True
-        args.swiglu = True
-        args.tokenizer_type = "Llama2Tokenizer"
-        args.normalization = "RMSNorm"
-        args.add_bias_linear = False
-        args.untie_embeddings_and_output_weights = True
+    args.add_position_embedding = False
+    args.use_rotary_position_embeddings = True
+    args.swiglu = True
+    args.tokenizer_type = "Llama2Tokenizer"
+    args.normalization = "RMSNorm"
+    args.add_bias_linear = False
+    args.untie_embeddings_and_output_weights = True
         args.vocab_size = model_args["vocab_size"]
         args.padded_vocab_size = model_args["vocab_size"]
         args.ffn_hidden_size = model_args["intermediate_size"]
 
         if "num_key_value_heads" in model_args:
-            args.group_query_attention = True
+        args.group_query_attention = True
             args.num_query_groups = model_args["num_key_value_heads"]
         else:
             args.group_query_attention = False
@@ -136,8 +136,8 @@ def set_attn_state(args, layer, hf_layer):
         torch.cat(
             [
                 hf_attn.q_proj.weight.reshape((ng, dim * nh // ng, -1)),
-                hf_attn.k_proj.weight.reshape((ng, dim, -1)),
-                hf_attn.v_proj.weight.reshape((ng, dim, -1)),
+        hf_attn.k_proj.weight.reshape((ng, dim, -1)),
+        hf_attn.v_proj.weight.reshape((ng, dim, -1)),
             ],
             dim=1,
         ).reshape((-1, args.hidden_size))
@@ -154,8 +154,8 @@ def set_mlp_state(args, layer, hf_layer):
     mlp.dense_h_to_4h.weight.data.copy_(
         torch.cat(
             [
-                hf_mlp.gate_proj.weight,
-                hf_mlp.up_proj.weight,
+        hf_mlp.gate_proj.weight,
+        hf_mlp.up_proj.weight,
             ],
             dim=0,
         )

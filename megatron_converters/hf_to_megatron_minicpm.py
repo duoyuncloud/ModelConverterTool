@@ -139,46 +139,46 @@ def convert_hf_to_megatron_minicpm_main(
             v_weight_split = torch.split(v_weight, dim=0, split_size_or_sections=kv_head_dim)
             print(f"Head dims: q={head_dim}, kv={kv_head_dim}, splits: q={len(q_weight_split)}, k={len(k_weight_split)}, v={len(v_weight_split)}")
             
-            qkv_weight_list = []
-            for i in range(num_kv_heads):
-                q_group_weight = []
-                for j in range(num_query_heads_per_group):
-                    q_idx = i * num_query_heads_per_group + j
-                    if q_idx < len(q_weight_split):
-                        q_group_weight.append(q_weight_split[q_idx])
-                qkv_weight_list.extend(q_group_weight)
-                if i < len(k_weight_split) and i < len(v_weight_split):
-                    qkv_weight_list.extend([k_weight_split[i], v_weight_split[i]])
-            qkv_weight = torch.cat(qkv_weight_list, dim=0)
-            qkv_weight_tp = torch.split(qkv_weight, qkv_weight.shape[0] // tp_size, dim=0)
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv.weight"] = qkv_weight_tp[
-                tp_rank
-            ]
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv._extra_state"] = None
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_proj.weight"] = torch.split(
-                o_weight, o_weight.shape[1] // tp_size, dim=1
-            )[tp_rank]
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_proj._extra_state"] = None
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv.layer_norm_weight"] = (
-                cpm_model_dict[f"model.layers.{layer_idx}.input_layernorm.weight"]
-            )
+        qkv_weight_list = []
+        for i in range(num_kv_heads):
+            q_group_weight = []
+            for j in range(num_query_heads_per_group):
+                q_idx = i * num_query_heads_per_group + j
+                if q_idx < len(q_weight_split):
+                    q_group_weight.append(q_weight_split[q_idx])
+            qkv_weight_list.extend(q_group_weight)
+            if i < len(k_weight_split) and i < len(v_weight_split):
+                qkv_weight_list.extend([k_weight_split[i], v_weight_split[i]])
+        qkv_weight = torch.cat(qkv_weight_list, dim=0)
+        qkv_weight_tp = torch.split(qkv_weight, qkv_weight.shape[0] // tp_size, dim=0)
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv.weight"] = qkv_weight_tp[
+            tp_rank
+        ]
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv._extra_state"] = None
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_proj.weight"] = torch.split(
+            o_weight, o_weight.shape[1] // tp_size, dim=1
+        )[tp_rank]
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_proj._extra_state"] = None
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv.layer_norm_weight"] = (
+            cpm_model_dict[f"model.layers.{layer_idx}.input_layernorm.weight"]
+        )
 
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1.layer_norm_weight"] = cpm_model_dict[
-                f"model.layers.{layer_idx}.post_attention_layernorm.weight"
-            ]
-            w0_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.gate_proj.weight"]
-            w1_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.up_proj.weight"]
-            w2_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.down_proj.weight"]
-            w0_weight_cu_rank = torch.split(w0_weight, w0_weight.shape[0] // tp_size, dim=0)[tp_rank]
-            w1_weight_cu_rank = torch.split(w1_weight, w1_weight.shape[0] // tp_size, dim=0)[tp_rank]
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1.weight"] = torch.cat(
-                [w0_weight_cu_rank, w1_weight_cu_rank], dim=0
-            )
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1._extra_state"] = None
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc2.weight"] = torch.split(
-                w2_weight, w2_weight.shape[1] // tp_size, dim=1
-            )[tp_rank]
-            megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc2._extra_state"] = None
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1.layer_norm_weight"] = cpm_model_dict[
+            f"model.layers.{layer_idx}.post_attention_layernorm.weight"
+        ]
+        w0_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.gate_proj.weight"]
+        w1_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.up_proj.weight"]
+        w2_weight = cpm_model_dict[f"model.layers.{layer_idx}.mlp.down_proj.weight"]
+        w0_weight_cu_rank = torch.split(w0_weight, w0_weight.shape[0] // tp_size, dim=0)[tp_rank]
+        w1_weight_cu_rank = torch.split(w1_weight, w1_weight.shape[0] // tp_size, dim=0)[tp_rank]
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1.weight"] = torch.cat(
+            [w0_weight_cu_rank, w1_weight_cu_rank], dim=0
+        )
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc1._extra_state"] = None
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc2.weight"] = torch.split(
+            w2_weight, w2_weight.shape[1] // tp_size, dim=1
+        )[tp_rank]
+        megatron_model_dict[f"decoder.layers.{layer_idx_abs}.mlp.linear_fc2._extra_state"] = None
 
     megatron_ckpt = {"model": megatron_model_dict}
 

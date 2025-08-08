@@ -22,6 +22,7 @@ import queue as py_queue
 from .tp_pp_converter import (
     TensorParallelConverter,
     convert_minicpm_megatron_to_hf_tp_pp,
+    convert_minicpm_megatron_to_hf_tp_pp_memory_efficient,
     convert_llama_megatron_to_hf_tp_pp,
     convert_8b_minicpm_megatron_to_hf,
     convert_3b_minicpm_megatron_to_hf,
@@ -61,6 +62,7 @@ __all__ = [
     "SmartConverter",
     # TP/PP converters
     "convert_minicpm_megatron_to_hf_tp_pp",
+    "convert_minicpm_megatron_to_hf_tp_pp_memory_efficient",
     "convert_llama_megatron_to_hf_tp_pp", 
     "convert_8b_minicpm_megatron_to_hf",
     "convert_3b_minicpm_megatron_to_hf",
