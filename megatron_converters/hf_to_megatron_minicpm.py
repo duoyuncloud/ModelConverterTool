@@ -129,19 +129,26 @@ def convert_hf_to_megatron_minicpm_main(
             k_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.k_proj.weight"]
             v_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.v_proj.weight"]
             o_weight = cpm_model_dict[f"model.layers.{layer_idx}.self_attn.o_proj.weight"]
-            # print(q_weight.shape)
-            q_weight_split = torch.split(q_weight, dim=0, split_size_or_sections=64)
-            k_weight_split = torch.split(k_weight, dim=0, split_size_or_sections=64)
-            v_weight_split = torch.split(v_weight, dim=0, split_size_or_sections=64)
-            print(len(q_weight_split), q_weight_split[0].shape, len(k_weight_split))
+            # Calculate head dimensions dynamically
+            head_dim = q_weight.shape[0] // num_query_heads
+            kv_head_dim = k_weight.shape[0] // num_kv_heads
+            
+            # Split by actual head dimensions
+            q_weight_split = torch.split(q_weight, dim=0, split_size_or_sections=head_dim)
+            k_weight_split = torch.split(k_weight, dim=0, split_size_or_sections=kv_head_dim)
+            v_weight_split = torch.split(v_weight, dim=0, split_size_or_sections=kv_head_dim)
+            print(f"Head dims: q={head_dim}, kv={kv_head_dim}, splits: q={len(q_weight_split)}, k={len(k_weight_split)}, v={len(v_weight_split)}")
+            
             qkv_weight_list = []
             for i in range(num_kv_heads):
                 q_group_weight = []
                 for j in range(num_query_heads_per_group):
-                    # print(i * num_query_heads_per_group + j)
-                    q_group_weight.append(q_weight_split[i * num_query_heads_per_group + j])
+                    q_idx = i * num_query_heads_per_group + j
+                    if q_idx < len(q_weight_split):
+                        q_group_weight.append(q_weight_split[q_idx])
                 qkv_weight_list.extend(q_group_weight)
-                qkv_weight_list.extend([k_weight_split[i], v_weight_split[i]])
+                if i < len(k_weight_split) and i < len(v_weight_split):
+                    qkv_weight_list.extend([k_weight_split[i], v_weight_split[i]])
             qkv_weight = torch.cat(qkv_weight_list, dim=0)
             qkv_weight_tp = torch.split(qkv_weight, qkv_weight.shape[0] // tp_size, dim=0)
             megatron_model_dict[f"decoder.layers.{layer_idx_abs}.self_attention.linear_qkv.weight"] = qkv_weight_tp[
