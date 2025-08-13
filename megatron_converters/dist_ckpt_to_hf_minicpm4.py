@@ -270,7 +270,7 @@ def convert_minicpm4_megatron_to_hf(
     **kwargs,
 ) -> None:
     """
-    Wrapper function for MiniCPM-4 Megatron to HF conversion using distributed checkpointing
+    Convert MiniCPM-4 Megatron checkpoint to HuggingFace format
 
     Args:
         checkpoint_path: Path to the Megatron checkpoint directory
@@ -282,12 +282,119 @@ def convert_minicpm4_megatron_to_hf(
         num_query_heads: Number of query attention heads
         **kwargs: Additional arguments for the conversion
     """
-    # This function would need to be implemented to call the main conversion logic
-    # For now, it's a placeholder that can be extended based on the specific needs
     print(f"Converting MiniCPM-4 Megatron to HF: {checkpoint_path} -> {output_path}")
     print(f"Model config: {num_layer} layers, TP={tp_size}, PP={pp_size}")
     print(f"Attention config: {num_query_heads} query heads, {num_kv_heads} KV heads")
 
-    # The actual conversion logic would go here
-    # This would involve setting up the Megatron environment and calling the main conversion
-    pass
+    import os
+    import torch
+    from pathlib import Path
+
+    # Create output directory
+    os.makedirs(output_path, exist_ok=True)
+
+    # Load and merge all tensor parallel shards
+    merged_state_dict = {}
+    
+    for tp_rank in range(tp_size):
+        for pp_rank in range(pp_size):
+            if pp_size != 1:
+                rank_dir = f"mp_rank_0{tp_rank}_00{pp_rank}"
+            else:
+                rank_dir = f"mp_rank_0{tp_rank}"
+            
+            checkpoint_file = Path(checkpoint_path) / rank_dir / "model_optim_rng.pt"
+            
+            if checkpoint_file.exists():
+                print(f"Loading checkpoint from {checkpoint_file}")
+                checkpoint = torch.load(checkpoint_file, map_location="cpu")
+                state_dict = checkpoint["model"]
+                
+                # Merge tensor parallel shards
+                for key, value in state_dict.items():
+                    if key not in merged_state_dict:
+                        merged_state_dict[key] = []
+                    merged_state_dict[key].append(value)
+    
+    # Concatenate tensor parallel shards
+    hf_state_dict = {}
+    
+    # Handle embedding
+    if "embedding.word_embeddings.weight" in merged_state_dict:
+        embedding_shards = merged_state_dict["embedding.word_embeddings.weight"]
+        hf_state_dict["model.embed_tokens.weight"] = torch.cat(embedding_shards, dim=0)
+    
+    # Handle final layer norm
+    if "decoder.final_layernorm.weight" in merged_state_dict:
+        hf_state_dict["model.norm.weight"] = merged_state_dict["decoder.final_layernorm.weight"][0]
+    
+    # Handle layers
+    num_query_heads_per_group = num_query_heads // num_kv_heads
+    
+    for layer_idx in range(num_layer):
+        # Input layer norm
+        if f"decoder.layers.{layer_idx}.input_layernorm.weight" in merged_state_dict:
+            hf_state_dict[f"model.layers.{layer_idx}.input_layernorm.weight"] = \
+                merged_state_dict[f"decoder.layers.{layer_idx}.input_layernorm.weight"][0]
+        
+        # Attention layers
+        if f"decoder.layers.{layer_idx}.self_attention.linear_qkv.weight" in merged_state_dict:
+            qkv_weight = merged_state_dict[f"decoder.layers.{layer_idx}.self_attention.linear_qkv.weight"][0]
+            
+            # Split QKV weight back to separate projections
+            qkv_split = torch.split(qkv_weight, split_size_or_sections=64, dim=0)  # Assuming head_dim=64
+            
+            q_proj_list, k_proj_list, v_proj_list = [], [], []
+            for i in range(num_kv_heads):
+                q_group = qkv_split[i * num_query_heads_per_group:(i + 1) * num_query_heads_per_group]
+                q_proj_list.extend(q_group)
+                k_proj_list.append(qkv_split[num_query_heads + i])
+                v_proj_list.append(qkv_split[num_query_heads + num_kv_heads + i])
+            
+            hf_state_dict[f"model.layers.{layer_idx}.self_attn.q_proj.weight"] = torch.cat(q_proj_list, dim=0)
+            hf_state_dict[f"model.layers.{layer_idx}.self_attn.k_proj.weight"] = torch.cat(k_proj_list, dim=0)
+            hf_state_dict[f"model.layers.{layer_idx}.self_attn.v_proj.weight"] = torch.cat(v_proj_list, dim=0)
+        
+        # Output projection
+        if f"decoder.layers.{layer_idx}.self_attention.linear_proj.weight" in merged_state_dict:
+            o_proj_shards = merged_state_dict[f"decoder.layers.{layer_idx}.self_attention.linear_proj.weight"]
+            hf_state_dict[f"model.layers.{layer_idx}.self_attn.o_proj.weight"] = torch.cat(o_proj_shards, dim=1)
+        
+        # Post attention layer norm
+        if f"decoder.layers.{layer_idx}.pre_mlp_layernorm.weight" in merged_state_dict:
+            hf_state_dict[f"model.layers.{layer_idx}.post_attention_layernorm.weight"] = \
+                merged_state_dict[f"decoder.layers.{layer_idx}.pre_mlp_layernorm.weight"][0]
+        
+        # MLP layers (dense layers)
+        if f"decoder.layers.{layer_idx}.mlp.linear_fc1.weight" in merged_state_dict:
+            fc1_weight = merged_state_dict[f"decoder.layers.{layer_idx}.mlp.linear_fc1.weight"][0]
+            fc2_shards = merged_state_dict[f"decoder.layers.{layer_idx}.mlp.linear_fc2.weight"]
+            
+            # Split fc1 for SwiGLU
+            gate_proj, up_proj = torch.split(fc1_weight, split_size_or_sections=fc1_weight.shape[0] // 2, dim=0)
+            
+            hf_state_dict[f"model.layers.{layer_idx}.mlp.gate_proj.weight"] = gate_proj
+            hf_state_dict[f"model.layers.{layer_idx}.mlp.up_proj.weight"] = up_proj
+            hf_state_dict[f"model.layers.{layer_idx}.mlp.down_proj.weight"] = torch.cat(fc2_shards, dim=1)
+    
+    # Save HuggingFace format
+    torch.save(hf_state_dict, os.path.join(output_path, "pytorch_model.bin"))
+    
+    # Create config file
+    config = {
+        "architectures": ["MiniCPMForCausalLM"],
+        "model_type": "minicpm",
+        "hidden_size": 4096,  # Default for MiniCPM4-8B
+        "num_attention_heads": num_query_heads,
+        "num_hidden_layers": num_layer,
+        "intermediate_size": 16384,  # Default for MiniCPM4-8B
+        "max_position_embeddings": 32768,
+        "vocab_size": 73448,  # Default for MiniCPM4-8B
+        "rms_norm_eps": 1e-5,
+    }
+    
+    import json
+    with open(os.path.join(output_path, "config.json"), "w") as f:
+        json.dump(config, f, indent=2)
+    
+    print(f"✓ Conversion completed! Saved to {output_path}")

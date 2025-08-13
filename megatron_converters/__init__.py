@@ -56,6 +56,14 @@ except ImportError:
 from .hf_to_megatron_minicpm import convert_hf_to_megatron_minicpm
 from .hf_to_megatron_minicpm4 import convert_hf_to_megatron_minicpm4
 
+# Direct function imports for convenience
+try:
+    from .dist_ckpt_to_hf_minicpm4 import convert_minicpm4_megatron_to_hf
+except ImportError as e:
+    print(f"Warning: Could not import distributed version: {e}")
+    # Use standalone version as fallback
+    from .standalone_megatron_to_hf import convert_minicpm4_megatron_to_hf
+
 __all__ = [
     # Core converters
     "TensorParallelConverter",
@@ -82,6 +90,8 @@ __all__ = [
     # HF to Megatron converters
     "convert_hf_to_megatron_minicpm",
     "convert_hf_to_megatron_minicpm4",
+    # Direct function imports
+    "convert_minicpm4_megatron_to_hf",
     # Legacy loaders (for backward compatibility)
     "llama2_load_checkpoint",
     "minicpm_load_checkpoint",

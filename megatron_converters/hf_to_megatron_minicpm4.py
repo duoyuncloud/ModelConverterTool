@@ -211,10 +211,10 @@ def convert_hf_to_megatron_minicpm4(
     **kwargs,
 ) -> None:
     """
-    Wrapper function for HF to MiniCPM-4 Megatron conversion
+    Convert HuggingFace MiniCPM-4 model to Megatron format
 
     Args:
-        checkpoint_path: Path to the HF weights file
+        checkpoint_path: Path to the HF weights file or directory
         output_path: Path to save the Megatron checkpoint directory
         num_layer: Number of transformer layers
         tp_size: Tensor parallel size
@@ -227,9 +227,53 @@ def convert_hf_to_megatron_minicpm4(
     print(f"Model config: {num_layer} layers, TP={tp_size}, PP={pp_size}")
     print(f"Attention config: {num_query_heads} query heads, {num_kv_heads} KV heads")
 
-    # This would need to be implemented to call the main conversion logic
-    # For now, it's a placeholder that can be extended based on the specific needs
-    pass
+    import os
+    import torch
+    from pathlib import Path
+
+    # Create output directory
+    os.makedirs(output_path, exist_ok=True)
+
+    # Load HuggingFace model
+    if os.path.isdir(checkpoint_path):
+        # Directory format - look for pytorch_model.bin or safetensors
+        model_files = list(Path(checkpoint_path).glob("pytorch_model*.bin")) + \
+                     list(Path(checkpoint_path).glob("*.safetensors"))
+        if model_files:
+            hf_weights_path = str(model_files[0])
+        else:
+            raise FileNotFoundError(f"No model weights found in {checkpoint_path}")
+    else:
+        # Single file format
+        hf_weights_path = checkpoint_path
+
+    # Load HF weights
+    print(f"Loading HF weights from {hf_weights_path}")
+    hf_state_dict = torch.load(hf_weights_path, map_location="cpu")
+
+    # Convert for each rank
+    dense_layer_ids = kwargs.get("dense_layer_ids", "")
+    use_mla = kwargs.get("use_mla", False)
+
+    for tp_rank in range(tp_size):
+        for pp_rank in range(pp_size):
+            print(f"Converting rank TP={tp_rank}, PP={pp_rank}...")
+            
+            convert_hf_to_megatron_minicpm4_main(
+                load_path=hf_weights_path,
+                num_layer=num_layer,
+                tp_size=tp_size,
+                tp_rank=tp_rank,
+                pp_size=pp_size,
+                pp_rank=pp_rank,
+                save_dir=output_path,
+                num_kv_heads=num_kv_heads,
+                num_query_heads=num_query_heads,
+                dense_layer_ids=dense_layer_ids,
+                use_mla=use_mla,
+            )
+
+    print(f"✓ Conversion completed! Saved to {output_path}")
 
 
 def main():
