@@ -42,46 +42,64 @@ class SmartConverter:
             # Llama configurations
             "llama": {
                 "7b": {
-                    "num_layer": 32,
+                    "layers": 32,
                     "tp_size": 1,
                     "pp_size": 1,
                     "num_kv_heads": 8,
                     "num_query_heads": 32,
+                    "hidden_size": 4096,
+                    "intermediate_size": 11008,
+                    "use_basic": True,
                 },
                 "13b": {
-                    "num_layer": 40,
+                    "layers": 40,
                     "tp_size": 2,
                     "pp_size": 1,
                     "num_kv_heads": 8,
                     "num_query_heads": 40,
+                    "hidden_size": 5120,
+                    "intermediate_size": 13824,
+                    "use_basic": False,
                 },
                 "30b": {
-                    "num_layer": 60,
+                    "layers": 60,
                     "tp_size": 4,
                     "pp_size": 1,
                     "num_kv_heads": 8,
                     "num_query_heads": 52,
+                    "hidden_size": 6656,
+                    "intermediate_size": 17920,
+                    "use_basic": False,
                 },
                 "65b": {
-                    "num_layer": 80,
+                    "layers": 80,
                     "tp_size": 8,
                     "pp_size": 1,
                     "num_kv_heads": 8,
                     "num_query_heads": 64,
+                    "hidden_size": 8192,
+                    "intermediate_size": 22016,
+                    "use_basic": False,
                 },
                 "0.5b": {
-                    "num_layer": 12,
+                    "layers": 12,
                     "tp_size": 1,
                     "pp_size": 1,
                     "num_kv_heads": 4,
                     "num_query_heads": 16,
+                    "hidden_size": 768,
+                    "intermediate_size": 2048,
+                    "use_basic": True,
                 },
                 "1.1b": {
-                    "num_layer": 22,
+                    "layers": 22,
                     "tp_size": 1,
                     "pp_size": 1,
                     "num_kv_heads": 4,
                     "num_query_heads": 32,
+                    "hidden_size": 1024,
+                    "intermediate_size": 2816,
+                    "use_basic": True,
                 },
             },
         }
@@ -348,7 +366,10 @@ class SmartConverter:
 
         # Auto-detect if not provided
         if model_type is None or model_size is None or model_type == "auto":
-            detected_type, detected_size = self.detect_model_type_and_size(checkpoint_path)
+            # Load config for detection
+            from transformers import AutoConfig
+            config_obj = AutoConfig.from_pretrained(checkpoint_path, trust_remote_code=True)
+            detected_type, detected_size = self.detect_model_type_and_size(config_obj)
             model_type = detected_type if model_type in (None, "auto") else model_type
             model_size = model_size or detected_size
             print(f"Auto-detection result: {model_type} {model_size}")

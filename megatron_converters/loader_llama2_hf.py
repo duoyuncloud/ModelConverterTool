@@ -92,7 +92,18 @@ def load_args_from_checkpoint(args):
     args.untie_embeddings_and_output_weights = True
     args.vocab_size = model_args["vocab_size"]
     args.padded_vocab_size = model_args["vocab_size"]
-    args.ffn_hidden_size = model_args["intermediate_size"]
+    
+    # Handle intermediate_size for different model types
+    if model_args.get("model_type") == "gpt2":
+        # GPT-2 uses n_inner or 4 * hidden_size
+        n_inner = model_args.get("n_inner")
+        if n_inner is None:
+            args.ffn_hidden_size = 4 * model_args["n_embd"]
+        else:
+            args.ffn_hidden_size = n_inner
+    else:
+        # Llama style models use intermediate_size
+        args.ffn_hidden_size = model_args["intermediate_size"]
 
     if "num_key_value_heads" in model_args:
         args.group_query_attention = True
